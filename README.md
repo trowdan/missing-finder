@@ -1,15 +1,15 @@
 
-# Missing Finder
+# Homeward: Missing persons finder
 
 ## 1. Introduction
 
 ### 1.1. Project Overview
 
-The **"Missing Finder"** is a specialized software application designed to assist law enforcement agencies and governmental bodies in the critical task of locating missing individuals. This system leverages Artificial Intelligence (AI), specifically Large Language Models (LLMs) like Google's Gemini, to analyze vast amounts of unstructured data such as video surveillance footage and photographs. By integrating with **Google BigQuery** for robust data management and utilizing a Python-based user interface built with the **NiceGUI** library, the solution aims to accelerate the search process, improve accuracy, and enhance collaboration among the different entities involved in a missing person case.
+The **"Homeward"** is a specialized software application designed to assist law enforcement agencies and governmental bodies in the critical task of locating missing individuals. This system leverages Artificial Intelligence (AI), specifically Large Language Models (LLMs) like Google's Gemini, to analyze vast amounts of unstructured data such as video surveillance footage and photographs. By integrating with **Google BigQuery** AI capabilities, the solution aims to accelerate the search process, improve accuracy, and enhance collaboration among the different entities involved in a missing person case.
 
 ### 1.2. Goals and Objectives
 
-The primary goals and objectives of the Missing Finder application are:
+The primary goals and objectives of the Homeward application are:
 
 * **Accelerate Search Operations**: Significantly reduce the time required to find a missing person by automating the analysis of video footage and other data sources.
 * **Improve Investigation Accuracy**: Leverage AI to identify potential sightings and connections that might be missed by human operators.
@@ -62,7 +62,7 @@ The core video analysis is performed using Google's powerful multimodal models (
 
 ### 2.4. Application Layer
 
-The **Missing Finder application**, built with Python and the NiceGUI library, serves as the primary user interface. It connects securely to Google BigQuery to perform the following actions:
+The **Homeward application**, built with Python and the NiceGUI library, serves as the primary user interface. It connects securely to Google BigQuery to perform the following actions:
 
 * Perform full **CRUD (Create, Read, Update, Delete)** operations on case and sighting information.
 * Query the video external table to populate the map interface with camera locations and to filter videos for analysis.
