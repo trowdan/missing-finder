@@ -40,9 +40,15 @@ def create_new_report_page(data_service: DataService, config: AppConfig, on_back
             create_footer(config.version)
 
 
-def handle_form_submission(form_data: dict, data_service: DataService, on_success: callable):
+def handle_form_submission(form_data: dict, data_service: DataService, _on_success: callable = None):
     """Handle the form submission and create new case"""
     try:
+        # Validate required fields
+        required_fields = ['name', 'surname', 'age', 'gender']
+        for field in required_fields:
+            if not form_data.get(field):
+                raise ValueError(f"Missing required field: {field}")
+        
         # Create Location object
         location = Location(
             address=form_data.get('last_seen_address', ''),
@@ -137,11 +143,14 @@ def handle_form_submission(form_data: dict, data_service: DataService, on_succes
         # Save case using data service
         # Note: This assumes the data service has a method to create cases
         # In a real implementation, you'd need to implement this method
+        # For now, we'll just verify the case was created successfully
+        if not case:
+            raise ValueError("Failed to create case")
         
         ui.notify('Missing person report submitted successfully!', type='positive')
         
-        # Navigate back to dashboard after a brief delay
-        ui.timer(2.0, lambda: on_success(), once=True)
+        # Navigate to case detail page after a brief delay
+        ui.timer(2.0, lambda: ui.navigate.to(f'/case/{case.id}'), once=True)
         
     except Exception as e:
         ui.notify(f'Error submitting report: {str(e)}', type='negative')

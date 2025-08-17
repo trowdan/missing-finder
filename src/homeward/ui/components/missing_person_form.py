@@ -67,7 +67,7 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
     with ui.column().classes('w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8'):
         # Clean Header
         with ui.column().classes('items-center justify-center text-center gap-4 w-full mb-8'):
-            ui.icon('person_search', size='3rem').classes('text-blue-400')
+            ui.icon('search', size='3rem').classes('text-blue-400')
             ui.label('Missing Person Report').classes('text-3xl sm:text-4xl lg:text-5xl font-extralight text-white tracking-wide')
             ui.label('Please provide detailed information to help locate the missing person').classes('text-gray-400 text-base sm:text-lg font-light px-4 text-center')
         
@@ -104,7 +104,7 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
                     ui.separator().classes('my-6 bg-gray-600')
                     
                     with ui.row().classes('items-center mb-4'):
-                        ui.icon('straighten', size='1.2rem').classes('text-gray-400 mr-2')
+                        ui.icon('height', size='1.2rem').classes('text-gray-400 mr-2')
                         ui.label('Physical Description').classes('text-lg font-light text-gray-200')
                     
                     with ui.grid(columns='1fr 1fr').classes('w-full gap-4 grid-cols-1 sm:grid-cols-2'):
@@ -179,7 +179,7 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
                         ui.label('Circumstances & Details').classes('text-2xl font-light text-white')
                     
                     with ui.row().classes('items-center mb-4'):
-                        ui.icon('checkroom', size='1.2rem').classes('text-gray-400 mr-2')
+                        ui.icon('dry_cleaning', size='1.2rem').classes('text-gray-400 mr-2')
                         ui.label('Last Seen Wearing').classes('text-lg font-light text-gray-200')
                     
                     form_data['clothing_description'] = ui.textarea(
@@ -189,7 +189,7 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
                     ui.separator().classes('my-6 bg-gray-600')
                     
                     with ui.row().classes('items-center mb-4'):
-                        ui.icon('psychology', size='1.2rem').classes('text-gray-400 mr-2')
+                        ui.icon('help_outline', size='1.2rem').classes('text-gray-400 mr-2')
                         ui.label('Circumstances of Disappearance').classes('text-lg font-light text-gray-200')
                     
                     form_data['circumstances'] = ui.textarea(
@@ -223,7 +223,7 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
                 # Contact Information Card
                 with ui.card().classes('w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl hover:bg-gray-800/30 transition-all duration-300'):
                     with ui.row().classes('items-center mb-6'):
-                        ui.icon('contact_phone', size='1.5rem').classes('text-cyan-400 mr-3')
+                        ui.icon('phone', size='1.5rem').classes('text-cyan-400 mr-3')
                         ui.label('Contact Information').classes('text-2xl font-light text-white')
                     
                     with ui.grid(columns='1fr 1fr').classes('w-full gap-4 grid-cols-1 sm:grid-cols-2'):
@@ -243,7 +243,7 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
                 # Photo Upload Card
                 with ui.card().classes('w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl hover:bg-gray-800/30 transition-all duration-300'):
                     with ui.row().classes('items-center mb-6'):
-                        ui.icon('photo_camera', size='1.5rem').classes('text-pink-400 mr-3')
+                        ui.icon('camera_alt', size='1.5rem').classes('text-pink-400 mr-3')
                         ui.label('Photo Upload').classes('text-2xl font-light text-white')
                     
                     with ui.column().classes('w-full items-center'):
@@ -255,20 +255,17 @@ def create_missing_person_form(on_submit: Callable[[dict], None], on_cancel: Cal
                         
                         ui.label('Drag and drop or click to select a recent, clear photo').classes('text-gray-400 text-sm mt-2')
             
-                # Action Buttons Card
-                with ui.card().classes('w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl hover:bg-gray-800/30 transition-all duration-300'):
-                    with ui.column().classes('w-full items-center gap-4 sm:flex-row sm:justify-center'):
-                        ui.button(
-                            'Cancel',
-                            icon='close',
-                            on_click=on_cancel
-                        ).classes('w-full sm:w-auto bg-gray-600 text-white px-8 py-4 rounded-xl hover:bg-gray-500 transition-all duration-300 font-light text-lg tracking-wide shadow-lg hover:shadow-xl transform hover:-translate-y-1')
-                        
-                        ui.button(
-                            'Submit Report',
-                            icon='send',
-                            on_click=lambda: handle_submit(form_data, on_submit)
-                        ).classes('w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-500 text-white px-12 py-4 rounded-xl hover:from-blue-500 hover:to-blue-400 transition-all duration-300 font-light text-lg tracking-wide shadow-lg hover:shadow-xl transform hover:-translate-y-1')
+                # Action Buttons
+                with ui.column().classes('w-full items-center gap-6 sm:flex-row sm:justify-center mt-8'):
+                    ui.button(
+                        'Cancel',
+                        on_click=on_cancel
+                    ).classes('bg-transparent text-gray-300 px-8 py-4 rounded-full border-2 border-gray-400/80 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-gray-400/20 hover:ring-gray-200/40 hover:ring-4')
+                    
+                    ui.button(
+                        'Submit Report',
+                        on_click=lambda: handle_submit(form_data, on_submit)
+                    ).classes('bg-transparent text-blue-300 px-8 py-4 rounded-full border-2 border-blue-400/80 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-blue-400/20 hover:ring-blue-200/40 hover:ring-4')
 
 
 def handle_submit(form_data: dict, on_submit: Callable[[dict], None]):

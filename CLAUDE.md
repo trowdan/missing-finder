@@ -63,3 +63,9 @@ The `demo/` directory contains sample data:
 ## Development Notes
 
 This appears to be a proof-of-concept or demonstration project for a BigQuery hackathon, focusing on AI-powered video analysis for missing person cases. The repository currently contains primarily documentation and demo structure rather than implementation code.
+
+## Best practices
+- Run all the tests everytime you modify the code.
+- Every time tests are working add a Git Commit.
+- Commit message must start with the commit type. [FEAT], [FIX], [STYLE], etc.
+- Be sure to be compliant with Ruff linter.
