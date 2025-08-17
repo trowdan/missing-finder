@@ -47,14 +47,14 @@ def create_dashboard(data_service: DataService, config: AppConfig):
             with ui.card().classes('w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl mb-8'):
                 with ui.row().classes('items-center mb-6'):
                     ui.icon('search', size='1.5rem').classes('text-blue-400 mr-3')
-                    ui.label('Search Missing Persons').classes('text-xl sm:text-2xl font-light text-white')
+                    ui.label('Search Missing Person Reports').classes('text-xl sm:text-2xl font-light text-white')
 
                 # Search form
                 create_advanced_search_form(data_service, all_cases)
 
             # Cases Section with reactive results
             with ui.column().classes('w-full'):
-                ui.label('Latest Missing Persons').classes('text-2xl font-extralight text-white mb-8 tracking-tight')
+                ui.label('Latest Missing Person Reports').classes('text-2xl font-extralight text-white mb-8 tracking-tight')
                 with ui.column().classes('w-full'):
                     create_cases_table(latest_cases, on_case_click=handle_case_click, on_view_all_click=handle_view_all_cases_click)
 
@@ -83,109 +83,144 @@ def handle_view_all_cases_click():
 
 
 def create_advanced_search_form(data_service: DataService, all_cases: list):
-    """Create comprehensive search form with all search types"""
+    """Create comprehensive search form with conditional field visibility"""
 
-    # Search state
-    search_state = {
-        'search_type': 'basic',
-        'basic_query': '',
-        'search_field': 'all',
-        'latitude': '',
-        'longitude': '',
-        'radius': 5.0,
-        'semantic_description': ''
-    }
-
-    # Main search controls
+    # Main search controls row
     with ui.row().classes('w-full gap-4 mb-6'):
         # Search type selector
         search_type_select = ui.select(
-            options=['basic', 'position', 'semantic'],
+            options=['keyword', 'geographic', 'semantic'],
             label='Search Type',
-            value='basic'
+            value='keyword'
         ).classes('w-48 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
 
-        # Basic search input
-        basic_search_input = ui.input(
-            'Search Term',
-            placeholder='Enter ID, name, or surname...'
-        ).classes('flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
-
-        # Search field selector for basic search
-        search_field_select = ui.select(
-            options=['all', 'id', 'name', 'surname'],
-            label='Field',
-            value='all'
-        ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
-
-        # Search button
-        ui.button(
+        # Search and Reset buttons
+        search_button = ui.button(
             'Search',
-            on_click=lambda: perform_advanced_search(data_service, all_cases, search_state, search_type_select, basic_search_input, search_field_select, latitude_input, longitude_input, radius_input, semantic_input)
+            on_click=lambda: None  # Will be updated after field containers are defined
         ).classes('bg-transparent text-blue-300 px-6 py-3 rounded-full border-2 border-blue-400/80 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-sm tracking-wide')
 
-        # Reset button
-        ui.button(
+        reset_button = ui.button(
             'Reset',
-            on_click=lambda: reset_advanced_search(data_service, all_cases, basic_search_input, search_field_select, latitude_input, longitude_input, radius_input, semantic_input, search_type_select)
+            on_click=lambda: None  # Will be updated after field containers are defined
         ).classes('bg-transparent text-gray-300 px-6 py-3 rounded-full border border-gray-400/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide')
 
-    # Advanced search options container
-    with ui.column().classes('w-full'):
-        # Position search fields
-        with ui.row().classes('w-full gap-4 mb-4'):
-            ui.icon('location_on', size='1.2rem').classes('text-cyan-400 mt-6')
-            ui.label('Position Search').classes('text-lg font-light text-gray-200 mt-6 mr-4')
+    # Conditional search fields container
+    with ui.column().classes('w-full') as conditional_container:
 
-            latitude_input = ui.input(
-                'Latitude',
-                placeholder='e.g., 45.4642'
-            ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+        # Keyword search fields
+        with ui.column().classes('w-full') as keyword_fields:
+            with ui.row().classes('w-full gap-4 items-center mb-4'):
+                ui.icon('search', size='1.2rem').classes('text-blue-400')
+                ui.label('Keyword Search').classes('text-lg font-light text-gray-200 mr-4')
 
-            longitude_input = ui.input(
-                'Longitude',
-                placeholder='e.g., 9.1900'
-            ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+            with ui.row().classes('w-full gap-4'):
+                keyword_search_input = ui.input(
+                    'Search Term',
+                    placeholder='Enter ID or full name...'
+                ).classes('flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
 
-            radius_input = ui.number(
-                'Radius (km)',
-                value=5.0,
-                min=0.1,
-                max=100.0,
-                step=0.5
-            ).classes('w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+                keyword_field_select = ui.select(
+                    options=['all', 'id', 'full name'],
+                    label='Field',
+                    value='all'
+                ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
 
-        ui.separator().classes('my-4 bg-gray-600')
+        # Geographic search fields
+        with ui.column().classes('w-full').style('display: none') as geographic_fields:
+            with ui.row().classes('w-full gap-4 items-center mb-4'):
+                ui.icon('location_on', size='1.2rem').classes('text-cyan-400')
+                ui.label('Geographic Search').classes('text-lg font-light text-gray-200 mr-4')
 
-        # Semantic search field
-        with ui.row().classes('w-full gap-4 items-end'):
-            ui.icon('psychology', size='1.2rem').classes('text-purple-400')
-            ui.label('Semantic Search').classes('text-lg font-light text-gray-200 mr-4')
+            with ui.row().classes('w-full gap-4'):
+                geographic_latitude_input = ui.input(
+                    'Latitude',
+                    placeholder='e.g., 45.4642'
+                ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
 
-            semantic_input = ui.textarea(
+                geographic_longitude_input = ui.input(
+                    'Longitude',
+                    placeholder='e.g., 9.1900'
+                ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+
+                geographic_radius_input = ui.number(
+                    'Radius (km)',
+                    value=5.0,
+                    min=0.1,
+                    max=100.0,
+                    step=0.5
+                ).classes('w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+
+        # Semantic search fields
+        with ui.column().classes('w-full').style('display: none') as semantic_fields:
+            with ui.row().classes('w-full gap-4 items-center mb-4'):
+                ui.icon('psychology', size='1.2rem').classes('text-purple-400')
+                ui.label('Semantic Search').classes('text-lg font-light text-gray-200 mr-4')
+                # AI badge
+                with ui.element('div').classes('ml-auto flex items-center gap-2'):
+                    with ui.element('div').classes('w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center'):
+                        ui.icon('smart_toy', size='0.75rem').classes('text-white')
+                    ui.label('AI-Powered').classes('text-xs text-purple-400 font-medium')
+
+            semantic_description_input = ui.textarea(
                 'Description',
                 placeholder='Describe appearance, clothing, or other characteristics...'
-            ).classes('flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg min-h-20').props('outlined')
+            ).classes('w-full bg-gray-700/50 text-white border-gray-500 rounded-lg min-h-20').props('outlined')
 
-    # AI badge for semantic search
-    with ui.element('div').classes('absolute top-4 right-4 flex items-center gap-2'):
-        with ui.element('div').classes('w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center'):
-            ui.icon('smart_toy', size='0.75rem').classes('text-white')
-        ui.label('AI-Powered').classes('text-xs text-purple-400 font-medium')
+    # Store field references for handlers
+    keyword_fields.search_input = keyword_search_input
+    keyword_fields.field_select = keyword_field_select
+    geographic_fields.latitude_input = geographic_latitude_input
+    geographic_fields.longitude_input = geographic_longitude_input
+    geographic_fields.radius_input = geographic_radius_input
+    semantic_fields.description_input = semantic_description_input
+
+    # Set up dynamic field visibility
+    def update_field_visibility():
+        search_type = search_type_select.value
+
+        # Hide all fields first
+        keyword_fields.style('display: none')
+        geographic_fields.style('display: none')
+        semantic_fields.style('display: none')
+
+        # Show relevant fields
+        if search_type == 'keyword':
+            keyword_fields.style('display: block')
+        elif search_type == 'geographic':
+            geographic_fields.style('display: block')
+        elif search_type == 'semantic':
+            semantic_fields.style('display: block')
+
+    # Bind visibility update to search type change
+    search_type_select.on('update:model-value', lambda: update_field_visibility())
+
+    # Update button handlers now that containers are defined
+    search_button.on('click', lambda: perform_dynamic_search(data_service, all_cases, search_type_select, keyword_fields, geographic_fields, semantic_fields))
+    reset_button.on('click', lambda: reset_dynamic_search(data_service, all_cases, search_type_select, keyword_fields, geographic_fields, semantic_fields))
+
+    # Initialize with keyword fields visible
+    update_field_visibility()
 
 
-def perform_advanced_search(data_service, all_cases, search_state, search_type_select, basic_search_input, search_field_select, latitude_input, longitude_input, radius_input, semantic_input):
-    """Perform search based on selected search type and parameters"""
+def perform_dynamic_search(data_service, all_cases, search_type_select, keyword_fields, geographic_fields, semantic_fields):
+    """Perform search based on selected search type and dynamic field inputs"""
     try:
         search_type = search_type_select.value
         results = []
 
-        if search_type == 'basic':
-            results = perform_basic_search_advanced(all_cases, basic_search_input.value, search_field_select.value)
-        elif search_type == 'position':
-            results = perform_position_search_advanced(all_cases, latitude_input.value, longitude_input.value, radius_input.value)
+        if search_type == 'keyword':
+            query = keyword_fields.search_input.value
+            field = keyword_fields.field_select.value
+            results = perform_keyword_search(all_cases, query, field)
+        elif search_type == 'geographic':
+            latitude = geographic_fields.latitude_input.value
+            longitude = geographic_fields.longitude_input.value
+            radius = geographic_fields.radius_input.value
+            results = perform_geographic_search(all_cases, latitude, longitude, radius)
         elif search_type == 'semantic':
-            results = perform_semantic_search_advanced(all_cases, semantic_input.value)
+            description = semantic_fields.description_input.value
+            results = perform_semantic_search_dynamic(all_cases, description)
         else:
             results = sorted(all_cases, key=lambda x: x.created_date, reverse=True)
 
@@ -202,8 +237,8 @@ def perform_advanced_search(data_service, all_cases, search_state, search_type_s
         ui.notify(f'❌ Search failed: {str(e)}', type='negative')
 
 
-def perform_basic_search_advanced(cases: list, query: str, field: str) -> list:
-    """Perform basic text search on ID, name, or surname"""
+def perform_keyword_search(cases: list, query: str, field: str) -> list:
+    """Perform keyword text search on ID or full name"""
     if not query:
         return sorted(cases, key=lambda x: x.created_date, reverse=True)
 
@@ -217,12 +252,9 @@ def perform_basic_search_advanced(cases: list, query: str, field: str) -> list:
             if query in case.id.lower():
                 match = True
 
-        if field == 'all' or field == 'name':
-            if query in case.name.lower():
-                match = True
-
-        if field == 'all' or field == 'surname':
-            if query in case.surname.lower():
+        if field == 'all' or field == 'full name':
+            full_name = f"{case.name} {case.surname}".lower()
+            if query in full_name:
                 match = True
 
         if match:
@@ -231,10 +263,10 @@ def perform_basic_search_advanced(cases: list, query: str, field: str) -> list:
     return results
 
 
-def perform_position_search_advanced(cases: list, latitude: str, longitude: str, radius: float) -> list:
-    """Perform position-based search with radius using geospatial calculations"""
+def perform_geographic_search(cases: list, latitude: str, longitude: str, radius: float) -> list:
+    """Perform geographic search with radius using geospatial calculations"""
     if not latitude or not longitude:
-        ui.notify('Please enter both latitude and longitude for position search', type='warning')
+        ui.notify('Please enter both latitude and longitude for geographic search', type='warning')
         return cases
 
     try:
@@ -266,7 +298,7 @@ def perform_position_search_advanced(cases: list, latitude: str, longitude: str,
         return cases
 
 
-def perform_semantic_search_advanced(cases: list, description: str) -> list:
+def perform_semantic_search_dynamic(cases: list, description: str) -> list:
     """Perform AI-powered semantic search on case descriptions"""
     if not description:
         ui.notify('Please enter a description for semantic search', type='warning')
@@ -318,22 +350,22 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return c * r
 
 
-def reset_advanced_search(data_service, all_cases, basic_search_input, search_field_select, latitude_input, longitude_input, radius_input, semantic_input, search_type_select):
+def reset_dynamic_search(data_service, all_cases, search_type_select, keyword_fields, geographic_fields, semantic_fields):
     """Reset all search fields and show latest missing persons"""
     try:
         # Clear all input fields
-        basic_search_input.value = ''
-        search_field_select.value = 'all'
-        latitude_input.value = ''
-        longitude_input.value = ''
-        radius_input.value = 5.0
-        semantic_input.value = ''
-        search_type_select.value = 'basic'
+        keyword_fields.search_input.value = ''
+        keyword_fields.field_select.value = 'all'
+        geographic_fields.latitude_input.value = ''
+        geographic_fields.longitude_input.value = ''
+        geographic_fields.radius_input.value = 5.0
+        semantic_fields.description_input.value = ''
+        search_type_select.value = 'keyword'
 
         # Show latest cases
         sorted(all_cases, key=lambda x: x.created_date, reverse=True)
 
-        ui.notify('🔄 Search reset - showing latest missing persons', type='info')
+        ui.notify('🔄 Search reset - showing latest missing person reports', type='info')
 
     except Exception as e:
         ui.notify(f'❌ Reset failed: {str(e)}', type='negative')
