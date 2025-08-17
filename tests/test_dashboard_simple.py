@@ -45,9 +45,10 @@ class TestDashboardCreation:
     
     @patch('homeward.ui.pages.dashboard.create_kpi_grid')
     @patch('homeward.ui.pages.dashboard.create_cases_table')
+    @patch('homeward.ui.pages.dashboard.create_sightings_table')
     @patch('homeward.ui.pages.dashboard.create_footer')
     @patch('homeward.ui.pages.dashboard.ui')
-    def test_dashboard_component_calls(self, mock_ui, mock_footer, mock_cases_table, mock_kpi_grid):
+    def test_dashboard_component_calls(self, mock_ui, mock_footer, mock_sightings_table, mock_cases_table, mock_kpi_grid):
         """Test that dashboard calls all required components"""
         from homeward.ui.pages.dashboard import create_dashboard
         
@@ -55,6 +56,8 @@ class TestDashboardCreation:
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = Mock()
         mock_data_service.get_cases.return_value = []
+        mock_data_service.get_sightings.return_value = []
+        mock_data_service.get_sightings.return_value = []
         
         # Setup config mock
         mock_config = Mock()
@@ -80,9 +83,10 @@ class TestDashboardCreation:
     
     @patch('homeward.ui.pages.dashboard.create_kpi_grid')
     @patch('homeward.ui.pages.dashboard.create_cases_table')
+    @patch('homeward.ui.pages.dashboard.create_sightings_table')
     @patch('homeward.ui.pages.dashboard.create_footer')
     @patch('homeward.ui.pages.dashboard.ui')
-    def test_dashboard_ui_structure(self, mock_ui, mock_footer, mock_cases_table, mock_kpi_grid):
+    def test_dashboard_ui_structure(self, mock_ui, mock_footer, mock_sightings_table, mock_cases_table, mock_kpi_grid):
         """Test that dashboard creates correct UI structure"""
         from homeward.ui.pages.dashboard import create_dashboard
         
@@ -90,6 +94,7 @@ class TestDashboardCreation:
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = Mock()
         mock_data_service.get_cases.return_value = []
+        mock_data_service.get_sightings.return_value = []
         mock_config = Mock()
         mock_config.version = "1.0.0"
         
@@ -110,9 +115,10 @@ class TestDashboardCreation:
     
     @patch('homeward.ui.pages.dashboard.create_kpi_grid')
     @patch('homeward.ui.pages.dashboard.create_cases_table')
+    @patch('homeward.ui.pages.dashboard.create_sightings_table')
     @patch('homeward.ui.pages.dashboard.create_footer')
     @patch('homeward.ui.pages.dashboard.ui')
-    def test_dashboard_button_handlers(self, mock_ui, mock_footer, mock_cases_table, mock_kpi_grid):
+    def test_dashboard_button_handlers(self, mock_ui, mock_footer, mock_sightings_table, mock_cases_table, mock_kpi_grid):
         """Test that dashboard buttons have click handlers"""
         from homeward.ui.pages.dashboard import create_dashboard
         
@@ -120,6 +126,7 @@ class TestDashboardCreation:
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = Mock()
         mock_data_service.get_cases.return_value = []
+        mock_data_service.get_sightings.return_value = []
         mock_config = Mock()
         mock_config.version = "1.0.0"
         
@@ -152,6 +159,7 @@ class TestDashboardCreation:
         with patch('homeward.ui.pages.dashboard.ui') as mock_ui, \
              patch('homeward.ui.pages.dashboard.create_kpi_grid'), \
              patch('homeward.ui.pages.dashboard.create_cases_table'), \
+             patch('homeward.ui.pages.dashboard.create_sightings_table'), \
              patch('homeward.ui.pages.dashboard.create_footer'):
             
             mock_ui.column.return_value.__enter__ = Mock()
@@ -177,6 +185,7 @@ class TestDashboardErrorHandling:
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.side_effect = Exception("Service error")
         mock_data_service.get_cases.side_effect = Exception("Service error")
+        mock_data_service.get_sightings.side_effect = Exception("Service error")
         
         mock_config = Mock()
         mock_config.version = "1.0.0"
@@ -187,9 +196,10 @@ class TestDashboardErrorHandling:
     
     @patch('homeward.ui.pages.dashboard.create_kpi_grid')
     @patch('homeward.ui.pages.dashboard.create_cases_table')
+    @patch('homeward.ui.pages.dashboard.create_sightings_table')
     @patch('homeward.ui.pages.dashboard.create_footer')
     @patch('homeward.ui.pages.dashboard.ui')
-    def test_dashboard_with_none_data(self, mock_ui, mock_footer, mock_cases_table, mock_kpi_grid):
+    def test_dashboard_with_none_data(self, mock_ui, mock_footer, mock_sightings_table, mock_cases_table, mock_kpi_grid):
         """Test dashboard handles None data gracefully"""
         from homeward.ui.pages.dashboard import create_dashboard
         
@@ -197,6 +207,7 @@ class TestDashboardErrorHandling:
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = None
         mock_data_service.get_cases.return_value = None
+        mock_data_service.get_sightings.return_value = None
         
         mock_config = Mock()
         mock_config.version = "1.0.0"
@@ -228,6 +239,7 @@ class TestDashboardIntegration:
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = mock_kpi_data
         mock_data_service.get_cases.return_value = mock_cases
+        mock_data_service.get_sightings.return_value = []
         
         mock_config = Mock()
         mock_config.version = "2.1.0"
@@ -235,6 +247,7 @@ class TestDashboardIntegration:
         with patch('homeward.ui.pages.dashboard.ui') as mock_ui, \
              patch('homeward.ui.pages.dashboard.create_kpi_grid') as mock_kpi_grid, \
              patch('homeward.ui.pages.dashboard.create_cases_table') as mock_cases_table, \
+             patch('homeward.ui.pages.dashboard.create_sightings_table') as mock_sightings_table, \
              patch('homeward.ui.pages.dashboard.create_footer') as mock_footer:
             
             mock_ui.column.return_value.__enter__ = Mock()

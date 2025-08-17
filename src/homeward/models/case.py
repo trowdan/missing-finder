@@ -16,6 +16,19 @@ class CasePriority(Enum):
     LOW = "Low"
 
 
+class SightingStatus(Enum):
+    UNVERIFIED = "Unverified"
+    VERIFIED = "Verified"
+    FALSE_POSITIVE = "False Positive"
+
+
+class ConfidenceLevel(Enum):
+    VERY_HIGH = "Very High - I'm certain it was them"
+    HIGH = "High - Very likely it was them"
+    MEDIUM = "Medium - Possibly them"
+    LOW = "Low - Uncertain but worth reporting"
+
+
 @dataclass
 class Location:
     address: str
@@ -40,6 +53,23 @@ class MissingPersonCase:
     photo_url: Optional[str] = None
     created_date: datetime = datetime.now()
     priority: CasePriority = CasePriority.MEDIUM
+
+
+@dataclass
+class Sighting:
+    id: str
+    reporter_name: str
+    sighting_date: datetime
+    sighting_location: Location
+    individual_age: Optional[int]
+    individual_gender: str
+    description: str
+    confidence: ConfidenceLevel
+    status: SightingStatus
+    linked_case_id: Optional[str] = None
+    reporter_email: Optional[str] = None
+    reporter_phone: Optional[str] = None
+    created_date: datetime = datetime.now()
 
 
 @dataclass
