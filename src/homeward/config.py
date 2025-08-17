@@ -1,7 +1,7 @@
-from enum import Enum
-from typing import Optional
 import os
 from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
 
 
 class DataSource(Enum):
@@ -22,12 +22,12 @@ class AppConfig:
 def load_config() -> AppConfig:
     """Load configuration from environment variables"""
     data_source_str = os.getenv("HOMEWARD_DATA_SOURCE", "mock").lower()
-    
+
     try:
         data_source = DataSource(data_source_str)
     except ValueError:
         data_source = DataSource.MOCK
-    
+
     return AppConfig(
         data_source=data_source,
         version=os.getenv("HOMEWARD_VERSION", "0.1.0"),

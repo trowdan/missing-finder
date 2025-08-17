@@ -1,7 +1,15 @@
-import pytest
 from datetime import datetime, timedelta
-from homeward.models.case import MissingPersonCase, Location, CaseStatus, CasePriority, KPIData
+
+import pytest
+
 from homeward.config import AppConfig, DataSource
+from homeward.models.case import (
+    CasePriority,
+    CaseStatus,
+    KPIData,
+    Location,
+    MissingPersonCase,
+)
 from homeward.services.mock_data_service import MockDataService
 
 

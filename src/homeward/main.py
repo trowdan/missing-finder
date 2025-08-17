@@ -1,10 +1,15 @@
 from nicegui import ui
+
 from homeward.config import load_config
-from homeward.services.service_factory import create_data_service, create_video_analysis_service
+from homeward.services.service_factory import (
+    create_data_service,
+    create_video_analysis_service,
+)
+from homeward.ui.pages.case_detail import create_case_detail_page
 from homeward.ui.pages.dashboard import create_dashboard
 from homeward.ui.pages.new_report import create_new_report_page
-from homeward.ui.pages.case_detail import create_case_detail_page
 from homeward.ui.pages.new_sighting import create_new_sighting_page
+
 
 def main():
     """Main application entry point"""

@@ -1,4 +1,5 @@
 from nicegui import ui
+
 from homeward.models.case import KPIData
 
 

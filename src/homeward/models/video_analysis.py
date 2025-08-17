@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
@@ -17,11 +16,11 @@ class VideoAnalysisResult:
     ai_description: str
     camera_id: str
     camera_type: str
-    
+
     def get_confidence_percentage(self) -> str:
         """Get confidence as percentage string"""
         return f"{int(self.confidence_score * 100)}%"
-    
+
     def get_distance_display(self) -> str:
         """Get formatted distance display"""
         if self.distance_from_last_seen < 1:
