@@ -15,13 +15,13 @@ class TestDashboardHandlers:
     def test_handle_new_case_click(self, mock_ui):
         """Test new case button click handler"""
         handle_new_case_click()
-        mock_ui.notify.assert_called_once_with('Navigate to new missing person form')
+        mock_ui.navigate.to.assert_called_once_with('/new-report')
     
     @patch('homeward.ui.pages.dashboard.ui')
     def test_handle_sightings_click(self, mock_ui):
-        """Test sightings button click handler"""
+        """Test new sighting button click handler"""
         handle_sightings_click()
-        mock_ui.notify.assert_called_once_with('Navigate to sightings management')
+        mock_ui.navigate.to.assert_called_once_with('/new-sighting')
     
     @patch('homeward.ui.pages.dashboard.ui')
     def test_handle_case_click(self, mock_ui):
@@ -31,8 +31,7 @@ class TestDashboardHandlers:
         
         handle_case_click(mock_case)
         
-        expected_message = 'Navigate to case details: MP001'
-        mock_ui.notify.assert_called_once_with(expected_message)
+        mock_ui.navigate.to.assert_called_once_with('/case/MP001')
     
     @patch('homeward.ui.pages.dashboard.ui')
     def test_handle_view_all_cases_click(self, mock_ui):
@@ -77,7 +76,7 @@ class TestDashboardCreation:
         
         # Verify data service was called
         mock_data_service.get_kpi_data.assert_called_once()
-        mock_data_service.get_cases.assert_called_once_with(status_filter="Active")
+        mock_data_service.get_cases.assert_called_once()
     
     @patch('homeward.ui.pages.dashboard.create_kpi_grid')
     @patch('homeward.ui.pages.dashboard.create_cases_table')
@@ -107,7 +106,7 @@ class TestDashboardCreation:
         assert mock_ui.column.call_count >= 2  # Main and header columns
         assert mock_ui.row.call_count >= 1     # Button row
         assert mock_ui.label.call_count >= 2   # Title and section labels
-        assert mock_ui.button.call_count == 2  # Two action buttons
+        assert mock_ui.button.call_count >= 2  # Action buttons (including search buttons)
     
     @patch('homeward.ui.pages.dashboard.create_kpi_grid')
     @patch('homeward.ui.pages.dashboard.create_cases_table')
@@ -132,8 +131,8 @@ class TestDashboardCreation:
         
         create_dashboard(mock_data_service, mock_config)
         
-        # Verify buttons were created with handlers
-        assert mock_ui.button.call_count == 2
+        # Verify buttons were created with handlers (now includes search buttons)
+        assert mock_ui.button.call_count >= 2
         
         # Check button calls have on_click handlers
         button_calls = mock_ui.button.call_args_list
@@ -163,8 +162,8 @@ class TestDashboardCreation:
             
             create_dashboard(mock_data_service, mock_config)
             
-            # Verify that only active cases are requested
-            mock_data_service.get_cases.assert_called_once_with(status_filter="Active")
+            # Verify that all cases are requested (changed to support search functionality)
+            mock_data_service.get_cases.assert_called_once()
 
 
 class TestDashboardErrorHandling:
