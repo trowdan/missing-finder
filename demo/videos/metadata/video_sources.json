@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "description": "VIRAT OpenData surveillance video sources for Homeward missing persons detection system",
+    "source": "https://data.kitware.com/#collection/56f56db28d777f753209ba9f/folder/56f581ce8d777f753209ca43",
+    "dataset": "VIRAT Video and Image Dataset Release 2.0",
+    "created_at": "2025-08-18T00:00:00Z",
+    "version": "1.0"
+  },
+  "videos": [
+    {
+      "id": "56f587eb8d777f753209cc12",
+      "download_url": "https://data.kitware.com/api/v1/item/56f587eb8d777f753209cc12/download",
+      "camera_id": "CAM001",
+      "timestamp": "20240815123000",
+      "latitude": 38.9122,
+      "longitude": -77.0319,
+      "camera_type": "VIRAT_OPENDATA",
+      "resolution": "1920x1080",
+      "location": "Washington_DC_Area",
+      "duration_seconds": 420,
+      "mime_type": "video/mp4"
+    },
+    {
+      "id": "56f587ca8d777f753209cbb2",
+      "download_url": "https://data.kitware.com/api/v1/item/56f587ca8d777f753209cbb2/download",
+      "camera_id": "CAM002",
+      "timestamp": "20240815140000",
+      "latitude": 38.9022,
+      "longitude": -77.0419,
+      "camera_type": "VIRAT_OPENDATA",
+      "resolution": "1920x1080",
+      "location": "Washington_DC_Area",
+      "duration_seconds": 360,
+      "mime_type": "video/mp4"
+    },
+    {
+      "id": "56f587a98d777f753209cb6d",
+      "download_url": "https://data.kitware.com/api/v1/item/56f587a98d777f753209cb6d/download",
+      "camera_id": "CAM003",
+      "timestamp": "20240815153000",
+      "latitude": 38.8972,
+      "longitude": -77.0269,
+      "camera_type": "VIRAT_OPENDATA",
+      "resolution": "1920x1080",
+      "location": "Washington_DC_Area",
+      "duration_seconds": 480,
+      "mime_type": "video/mp4"
+    },
+    {
+      "id": "56f5878c8d777f753209caf2",
+      "download_url": "https://data.kitware.com/api/v1/item/56f5878c8d777f753209caf2/download",
+      "camera_id": "CAM004",
+      "timestamp": "20240815170000",
+      "latitude": 38.9172,
+      "longitude": -77.0469,
+      "camera_type": "VIRAT_OPENDATA",
+      "resolution": "1920x1080",
+      "location": "Washington_DC_Area",
+      "duration_seconds": 390,
+      "mime_type": "video/mp4"
+    }
+  ],
+  "naming_convention": {
+    "pattern": "CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION.mp4",
+    "example": "CAM001_20240815120000_38.9072_-77.0369_VIRAT_OPENDATA_1920x1080.mp4",
+    "description": "Files will be renamed according to Homeward system requirements when uploaded to GCS bucket"
+  },
+  "geographic_area": {
+    "region": "Washington DC Metropolitan Area",
+    "bounds": {
+      "north": 38.9172,
+      "south": 38.8972,
+      "east": -77.0269,
+      "west": -77.0469
+    }
+  },
+  "download_instructions": {
+    "method": "Direct download via Kitware Data API",
+    "authentication": "None required for public VIRAT dataset",
+    "batch_download": "Use provided URLs with wget or curl commands"
+  }
+}
