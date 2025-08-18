@@ -67,5 +67,5 @@ This appears to be a proof-of-concept or demonstration project for a BigQuery ha
 ## Best practices
 - Run all the tests everytime you modify the code.
 - Every time tests are working add a Git Commit.
-- Commit message must start with the commit type. [FEAT], [FIX], [STYLE], etc.
+- Commit message must start with the commit type. [FEAT], [FIX], [STYLE], etc. without mentioning Claude in the commit message.
 - Be sure to be compliant with Ruff linter.
