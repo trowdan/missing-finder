@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from homeward.models.case import CasePriority, CaseStatus, Location, MissingPersonCase
 
@@ -114,12 +114,38 @@ class TestCaseDetailHelpers:
     """Test helper functions for case detail page"""
 
     @patch('homeward.ui.pages.case_detail.ui')
-    def test_handle_link_sighting(self, mock_ui):
-        """Test link sighting handler"""
-        from homeward.ui.pages.case_detail import handle_link_sighting
+    def test_open_link_sighting_modal(self, mock_ui):
+        """Test link sighting modal opening"""
+        from homeward.services.mock_data_service import MockDataService
+        from homeward.ui.pages.case_detail import open_link_sighting_modal
 
-        handle_link_sighting("MP001")
-        mock_ui.notify.assert_called_once_with('Link sighting to case MP001', type='info')
+        # Setup mocks - create comprehensive UI mock
+        mock_data_service = MockDataService()
+
+        # Mock all UI components used in the function
+        mock_dialog = MagicMock()
+        mock_dialog.__enter__ = MagicMock(return_value=mock_dialog)
+        mock_dialog.__exit__ = MagicMock(return_value=None)
+
+        mock_ui.dialog.return_value = mock_dialog
+        mock_ui.card.return_value.__enter__ = MagicMock()
+        mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+
+        # Call the function - should not raise an error
+        try:
+            open_link_sighting_modal("MP001", mock_data_service)
+            # If we get here without exceptions, the basic functionality works
+            assert True
+        except Exception as e:
+            # If there's an exception, fail the test
+            raise AssertionError(f"open_link_sighting_modal raised exception: {e}") from e
+
+        # Verify dialog was created
+        mock_ui.dialog.assert_called_once()
 
     @patch('homeward.ui.pages.case_detail.ui')
     def test_handle_analyze_video(self, mock_ui):

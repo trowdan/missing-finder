@@ -218,63 +218,47 @@ def show_link_case_modal(sighting_id: str, data_service: DataService):
         'clothing_lower': ''
     }
 
-    with ui.dialog() as dialog:
-        with ui.card().classes('w-full max-w-4xl p-8 bg-gray-900/95 backdrop-blur-sm border border-gray-800/50 shadow-2xl rounded-xl'):
-            # Modal header
-            with ui.row().classes('w-full items-center justify-between mb-6'):
+    with ui.dialog().props('persistent maximized') as dialog:
+        with ui.card().classes('w-full max-w-6xl mx-auto bg-gray-900 text-white'):
+            # Modal Header
+            with ui.row().classes('w-full items-center justify-between p-6 border-b border-gray-800'):
                 with ui.row().classes('items-center'):
-                    ui.icon('link', size='1.5rem').classes('text-blue-400 mr-3')
-                    ui.label('Link Sighting to Case').classes('text-2xl font-light text-white')
+                    ui.icon('search', size='1.5rem').classes('text-purple-400 mr-3')
+                    ui.label('Find Cases for this Sighting').classes('text-xl font-light text-white')
+                    # AI badge
+                    with ui.element('div').classes('ml-4 flex items-center gap-2'):
+                        with ui.element('div').classes('w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center'):
+                            ui.icon('smart_toy', size='0.875rem').classes('text-white')
+                        ui.label('AI-Powered').classes('text-xs text-purple-400 font-medium')
 
                 # Close button
-                ui.button(
-                    icon='close',
-                    on_click=dialog.close
-                ).classes('bg-transparent text-gray-400 hover:text-white hover:bg-gray-700/50 w-8 h-8 rounded-full transition-all duration-300').props('round flat dense')
+                ui.button('✕', on_click=dialog.close).classes('bg-transparent text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-all')
 
-            # AI-powered search section
-            with ui.card().classes('w-full p-6 bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 shadow-none rounded-xl relative mb-6'):
-                # AI badge
-                with ui.element('div').classes('absolute top-4 right-4 flex items-center gap-2'):
-                    with ui.element('div').classes('w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg'):
-                        ui.icon('psychology', size='0.875rem').classes('text-white')
-                    ui.label('AI-Powered').classes('text-xs text-purple-400 font-medium')
+            # Modal Content
+            with ui.column().classes('w-full p-6 space-y-6'):
+                # Search section
+                ui.label('Search for potentially matching missing person cases using AI-powered semantic analysis based on this sighting\'s details.').classes('text-gray-300 text-sm mb-4')
 
-                with ui.row().classes('items-center mb-6'):
-                    ui.icon('search', size='1.5rem').classes('text-purple-400 mr-3')
-                    ui.label('Find Similar Cases').classes('text-xl font-light text-white')
-
-                ui.label('Search for potentially matching missing person cases using AI-powered semantic analysis based on this sighting\'s details.').classes('text-gray-400 text-sm mb-6')
-
-                # Search button
-                with ui.row().classes('w-full justify-center mb-6'):
+                with ui.row().classes('w-full justify-center'):
                     search_button = ui.button(
                         'Search for Similar Cases',
                         on_click=lambda: None  # Will be updated after container is defined
                     ).classes('bg-transparent text-purple-300 px-8 py-4 rounded-full border-2 border-purple-400/80 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-purple-400/20 hover:ring-purple-200/40 hover:ring-4')
 
                 # Results container
-                with ui.column().classes('w-full bg-gray-800/30 rounded-lg p-6 border border-gray-700/50 relative') as results_container:
-                    with ui.row().classes('items-center mb-4'):
-                        ui.label('Potential Matches').classes('text-gray-300 font-medium text-lg')
-                        with ui.element('div').classes('ml-2 w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center'):
-                            ui.icon('smart_toy', size='0.875rem').classes('text-white')
+                with ui.column().classes('w-full min-h-96 bg-gray-800/50 rounded-lg p-6 border border-gray-700') as results_container:
+                    # Initial state
+                    with ui.column().classes('w-full items-center justify-center py-16'):
+                        ui.icon('search', size='3rem').classes('text-gray-500 mb-4')
+                        ui.label('Click "Search for Similar Cases" to find potential matches').classes('text-gray-400 text-center')
+                        ui.label('Find missing person cases that match this sighting\'s details').classes('text-gray-500 text-xs mt-2 text-center')
 
-                    # Initial placeholder
-                    with ui.column().classes('w-full items-center justify-center py-8'):
-                        ui.icon('search', size='2.5rem').classes('text-gray-500 mb-4')
-                        ui.label('Click "Search for Similar Cases" to find potential matches').classes('text-gray-400 text-sm text-center')
-                        ui.label('Powered by Google BigQuery').classes('text-purple-400 text-xs mt-2 font-medium')
-
-                # Update search button click handler now that container is defined
+                # Update search button handler
                 search_button.on('click', lambda: handle_modal_semantic_search(sighting_id, sighting_data, data_service, results_container))
 
-            # Modal actions
-            with ui.row().classes('w-full justify-end gap-4 mt-8'):
-                ui.button(
-                    'Cancel',
-                    on_click=dialog.close
-                ).classes('bg-transparent text-gray-300 px-6 py-3 rounded-full border border-gray-400/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide')
+            # Modal Footer
+            with ui.row().classes('w-full justify-end gap-4 p-6 border-t border-gray-800'):
+                ui.button('Cancel', on_click=dialog.close).classes('bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-800 px-6 py-2 rounded-lg')
 
     dialog.open()
 
@@ -371,15 +355,13 @@ def create_modal_results_table(matches: list, sighting_id: str, container):
         with ui.column().classes('w-full space-y-4'):
             # Results summary
             with ui.row().classes('items-center mb-4'):
-                ui.label('Potential Matches').classes('text-gray-300 font-medium text-lg')
-                with ui.element('div').classes('ml-2 w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center'):
-                    ui.icon('smart_toy', size='0.875rem').classes('text-white')
-                ui.label(f'{len(matches)} matches found').classes('text-gray-400 text-sm ml-auto')
+                ui.label('Potential Matching Cases').classes('text-gray-300 font-medium text-lg')
+                ui.label(f'{len(matches)} matching cases found').classes('text-gray-400 text-sm ml-auto')
 
-            # Results table
-            with ui.element('div').classes('w-full bg-gray-800/30 rounded-lg border border-gray-700/50 overflow-hidden'):
+            # Results table with full-width styling for modal
+            with ui.element('div').classes('w-full bg-gray-700/30 rounded-lg border border-gray-600/50 overflow-hidden'):
                 # Table header
-                with ui.element('div').classes('grid grid-cols-6 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-700/50'):
+                with ui.element('div').classes('grid grid-cols-6 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-600/50'):
                     ui.label('Name').classes('text-gray-300 font-medium text-sm')
                     ui.label('Age/Gender').classes('text-gray-300 font-medium text-sm text-center')
                     ui.label('Last Seen').classes('text-gray-300 font-medium text-sm')
@@ -391,9 +373,9 @@ def create_modal_results_table(matches: list, sighting_id: str, container):
                 for i, match in enumerate(matches):
                     case = match['case']
                     is_last = i == len(matches) - 1
-                    row_classes = 'grid grid-cols-6 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center'
+                    row_classes = 'grid grid-cols-6 gap-4 px-6 py-4 hover:bg-gray-600/30 transition-colors items-center'
                     if not is_last:
-                        row_classes += ' border-b border-gray-700/30'
+                        row_classes += ' border-b border-gray-600/30'
 
                     with ui.element('div').classes(row_classes):
                         # Name

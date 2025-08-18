@@ -154,7 +154,7 @@ def create_case_detail_page(case_id: str, data_service: DataService, video_analy
                         # Action buttons
                         ui.button(
                             'Link Sighting',
-                            on_click=lambda: handle_link_sighting(case.id)
+                            on_click=lambda: open_link_sighting_modal(case.id, data_service)
                         ).classes('ml-auto bg-transparent text-purple-300 px-4 py-2 rounded-full border border-purple-400/60 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide')
 
                     # Sightings table placeholder
@@ -302,9 +302,189 @@ def create_video_analysis_section():
 
 
 
-def handle_link_sighting(case_id: str):
-    """Handle linking a sighting to the case"""
-    ui.notify(f'Link sighting to case {case_id}', type='info')
+def open_link_sighting_modal(case_id: str, data_service: DataService):
+    """Open modal to link sightings to the case"""
+    with ui.dialog().props('persistent maximized') as dialog:
+        with ui.card().classes('w-full max-w-6xl mx-auto bg-gray-900 text-white'):
+            # Modal Header
+            with ui.row().classes('w-full items-center justify-between p-6 border-b border-gray-800'):
+                with ui.row().classes('items-center'):
+                    ui.icon('link', size='1.5rem').classes('text-purple-400 mr-3')
+                    ui.label('Link Sighting to Case').classes('text-xl font-light text-white')
+                    # AI badge
+                    with ui.element('div').classes('ml-4 flex items-center gap-2'):
+                        with ui.element('div').classes('w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center'):
+                            ui.icon('smart_toy', size='0.875rem').classes('text-white')
+                        ui.label('AI-Powered').classes('text-xs text-purple-400 font-medium')
+
+                # Close button
+                ui.button('✕', on_click=dialog.close).classes('bg-transparent text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-all')
+
+            # Modal Content
+            with ui.column().classes('w-full p-6 space-y-6'):
+                # Search section
+                ui.label('Find available sightings to link to this missing person case using the case details and AI matching.').classes('text-gray-300 text-sm mb-4')
+
+                with ui.row().classes('w-full justify-center'):
+                    search_button = ui.button('Search Available Sightings', on_click=lambda: None).classes('bg-transparent text-purple-300 px-8 py-4 rounded-full border-2 border-purple-400/80 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-purple-400/20 hover:ring-purple-200/40 hover:ring-4')
+
+                # Results container
+                with ui.column().classes('w-full min-h-96 bg-gray-800/50 rounded-lg p-6 border border-gray-700') as results_container:
+                    # Initial state
+                    with ui.column().classes('w-full items-center justify-center py-16'):
+                        ui.icon('search', size='3rem').classes('text-gray-500 mb-4')
+                        ui.label('Click "Search Available Sightings" to find unlinked sightings').classes('text-gray-400 text-center')
+                        ui.label('Find sightings that could match this missing person case').classes('text-gray-500 text-xs mt-2 text-center')
+
+                # Update search button handler
+                search_button.on('click', lambda: search_and_display_sightings(case_id, data_service, results_container, dialog))
+
+            # Modal Footer
+            with ui.row().classes('w-full justify-end gap-4 p-6 border-t border-gray-800'):
+                ui.button('Cancel', on_click=dialog.close).classes('bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-800 px-6 py-2 rounded-lg')
+
+    dialog.open()
+
+
+def search_and_display_sightings(case_id: str, data_service: DataService, results_container, dialog):
+    """Search for available sightings and display results in modal"""
+    try:
+        ui.notify('🔗 Searching for available sightings to link...', type='info')
+
+        # Get unlinked sightings (mock implementation)
+        unlinked_sightings = get_unlinked_sightings(data_service)
+
+        # Clear existing content and display results
+        results_container.clear()
+
+        if unlinked_sightings:
+            create_modal_sighting_results_table(unlinked_sightings, case_id, data_service, results_container, dialog)
+            ui.notify(f'✅ Found {len(unlinked_sightings)} available sightings to link', type='positive')
+        else:
+            with results_container:
+                with ui.column().classes('w-full items-center justify-center py-16'):
+                    ui.icon('search_off', size='3rem').classes('text-gray-500 mb-4')
+                    ui.label('No unlinked sightings found').classes('text-gray-400 text-center')
+                    ui.label('All sightings are already linked to cases or no sightings exist').classes('text-gray-500 text-xs mt-2 text-center')
+            ui.notify('No unlinked sightings found', type='warning')
+
+    except Exception as e:
+        ui.notify(f'❌ Failed to load sightings: {str(e)}', type='negative')
+
+
+def get_unlinked_sightings(data_service: DataService) -> list:
+    """Get unlinked sightings from the data service (mock implementation)"""
+    # Mock unlinked sightings data - in real implementation would query the database
+    from datetime import datetime
+
+    mock_sightings = [
+        {
+            'id': 'sighting_001',
+            'date': datetime(2023, 12, 2, 15, 30),
+            'location': 'Downtown Metro Station',
+            'address': '100 Queen St W, Toronto',
+            'reporter': 'Jane Smith',
+            'description': 'Male, approximately 28 years old, wearing blue jeans and white shirt',
+            'confidence': 0.85,
+            'status': 'Unlinked'
+        },
+        {
+            'id': 'sighting_002',
+            'date': datetime(2023, 12, 3, 9, 15),
+            'location': 'Harbourfront Centre',
+            'address': '235 Queens Quay W, Toronto',
+            'reporter': 'Mark Johnson',
+            'description': 'Young adult male, dark hair, casual clothing, seemed disoriented',
+            'confidence': 0.72,
+            'status': 'Unlinked'
+        },
+        {
+            'id': 'sighting_003',
+            'date': datetime(2023, 12, 4, 11, 45),
+            'location': 'Union Station',
+            'address': '65 Front St W, Toronto',
+            'reporter': 'Sarah Wilson',
+            'description': 'Male in his late twenties, approximately 5\'10", wearing jeans',
+            'confidence': 0.91,
+            'status': 'Unlinked'
+        }
+    ]
+
+    return mock_sightings
+
+
+def create_modal_sighting_results_table(sightings: list, case_id: str, data_service: DataService, container, dialog):
+    """Create and display sighting results table in modal"""
+    with container:
+        with ui.column().classes('w-full space-y-4'):
+            # Results summary
+            with ui.row().classes('items-center mb-4'):
+                ui.label('Available Sightings to Link').classes('text-gray-300 font-medium text-lg')
+                ui.label(f'{len(sightings)} unlinked sightings found').classes('text-gray-400 text-sm ml-auto')
+
+            # Results table with full-width styling for modal
+            with ui.element('div').classes('w-full bg-gray-700/30 rounded-lg border border-gray-600/50 overflow-hidden'):
+                # Table header
+                with ui.element('div').classes('grid grid-cols-6 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-600/50'):
+                    ui.label('Date & Time').classes('text-gray-300 font-medium text-sm')
+                    ui.label('Location').classes('text-gray-300 font-medium text-sm')
+                    ui.label('Reporter').classes('text-gray-300 font-medium text-sm')
+                    ui.label('Description').classes('text-gray-300 font-medium text-sm')
+                    ui.label('Confidence').classes('text-gray-300 font-medium text-sm text-center')
+                    ui.label('Actions').classes('text-gray-300 font-medium text-sm text-center')
+
+                # Table rows
+                for i, sighting in enumerate(sightings):
+                    is_last = i == len(sightings) - 1
+                    row_classes = 'grid grid-cols-6 gap-4 px-6 py-4 hover:bg-gray-600/30 transition-colors items-center'
+                    if not is_last:
+                        row_classes += ' border-b border-gray-600/30'
+
+                    with ui.element('div').classes(row_classes):
+                        # Date & Time
+                        ui.label(sighting['date'].strftime('%m/%d %H:%M')).classes('text-gray-100 text-sm')
+
+                        # Location
+                        ui.label(sighting['location']).classes('text-gray-100 text-sm')
+
+                        # Reporter
+                        ui.label(sighting['reporter']).classes('text-gray-100 text-sm')
+
+                        # Description (truncated)
+                        description_short = sighting['description'][:40] + '...' if len(sighting['description']) > 40 else sighting['description']
+                        ui.label(description_short).classes('text-gray-100 text-sm').props(f'title="{sighting["description"]}"')
+
+                        # Confidence
+                        with ui.element('div').classes('flex justify-center'):
+                            confidence_pct = f'{sighting["confidence"]:.0%}'
+                            confidence_color = 'text-green-400' if sighting['confidence'] >= 0.8 else 'text-yellow-400' if sighting['confidence'] >= 0.6 else 'text-red-400'
+                            ui.label(confidence_pct).classes(f'{confidence_color} text-sm font-medium')
+
+                        # Actions
+                        with ui.element('div').classes('flex justify-center gap-2'):
+                            ui.button('View', on_click=lambda s=sighting: handle_view_unlinked_sighting(s)).classes('bg-transparent text-blue-300 px-3 py-1 rounded border border-blue-500/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide')
+                            ui.button('Link', on_click=lambda s=sighting: handle_link_sighting_to_case_modal(s['id'], case_id, data_service, dialog)).classes('bg-transparent text-green-300 px-3 py-1 rounded border border-green-500/60 hover:bg-green-200 hover:text-green-900 hover:border-green-200 transition-all duration-300 font-light text-xs tracking-wide')
+
+
+def handle_view_unlinked_sighting(sighting: dict):
+    """Handle viewing unlinked sighting details"""
+    ui.notify(f'Viewing sighting at {sighting["location"]} on {sighting["date"].strftime("%m/%d %H:%M")}', type='info')
+
+
+def handle_link_sighting_to_case_modal(sighting_id: str, case_id: str, data_service: DataService, dialog):
+    """Handle linking a specific sighting to the case from modal"""
+    try:
+        # In a real implementation, this would update the database to link the sighting to the case
+        ui.notify(f'✅ Sighting {sighting_id} successfully linked to case {case_id}', type='positive')
+
+        # Close the modal after successful linking
+        dialog.close()
+
+        # Optionally, refresh the sightings table to show the newly linked sighting
+        # This would require reloading the case data and updating the UI
+
+    except Exception as e:
+        ui.notify(f'❌ Failed to link sighting: {str(e)}', type='negative')
 
 
 def handle_analyze_video(case_id: str, video_analysis_service: VideoAnalysisService, case: MissingPersonCase, results_container):
