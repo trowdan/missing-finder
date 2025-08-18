@@ -9,6 +9,7 @@ from homeward.ui.pages.case_detail import create_case_detail_page
 from homeward.ui.pages.dashboard import create_dashboard
 from homeward.ui.pages.new_report import create_new_report_page
 from homeward.ui.pages.new_sighting import create_new_sighting_page
+from homeward.ui.pages.sighting_detail import create_sighting_detail_page
 
 
 def main():
@@ -33,6 +34,10 @@ def main():
     @ui.page('/new-sighting')
     def new_sighting():
         create_new_sighting_page(data_service, config, lambda: ui.navigate.to('/'))
+
+    @ui.page('/sighting/{sighting_id}')
+    def sighting_detail(sighting_id: str):
+        create_sighting_detail_page(sighting_id, data_service, config, lambda: ui.navigate.to('/'))
 
 main()
 ui.run(title='Homeward - Missing Persons Finder', port=8080)
