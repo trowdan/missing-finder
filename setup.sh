@@ -7,7 +7,7 @@
 # missing persons finder application. It creates necessary cloud resources,
 # configures environment variables, and prepares the system for operation.
 #
-# Usage: ./setup.sh --input /path/to/video-resources-config-file.json --project-id PROJECT_ID --region REGION
+# Usage: ./setup.sh --demo-folder /path/to/demo-folder --project-id PROJECT_ID --region REGION
 # =============================================================================
 
 set -e  # Exit on any error
@@ -17,7 +17,7 @@ set -e  # Exit on any error
 # =============================================================================
 
 # Default values
-INPUT_JSON=""
+DEMO_FOLDER=""
 PROJECT_ID=""
 REGION=""
 
@@ -55,15 +55,15 @@ print_step() {
 
 # Display usage information
 show_usage() {
-    echo "Usage: $0 --input /path/to/video-resources-config-file.json --project-id PROJECT_ID --region REGION"
+    echo "Usage: $0 --demo-folder /path/to/demo-folder --project-id PROJECT_ID --region REGION"
     echo ""
     echo "Parameters:"
-    echo "  --input PATH        Path to a JSON file containing details about the recordings to download"
+    echo "  --demo-folder PATH  Path to the root demo folder containing videos, reports, and sql subfolders"
     echo "  --project-id ID     Google Cloud Project ID"
     echo "  --region REGION     Google Cloud region (e.g., us-central1)"
     echo ""
     echo "Example:"
-    echo "  $0 --input ./videos.json --project-id my-project-123 --region us-central1"
+    echo "  $0 --demo-folder ./demo --project-id my-project-123 --region us-central1"
 }
 
 # Generate random 8-character string for bucket suffix (macOS compatible)
@@ -81,11 +81,9 @@ generate_random_suffix() {
 validate_parameters() {
     print_step "Validating Input Parameters"
     
-    # Check if all required parameters are provided
-    if [[ -z "$INPUT_JSON" ]]; then
-        print_error "Missing required parameter: --input"
-        show_usage
-        exit 1
+    # Demo folder is optional - if not provided, only core infrastructure is set up
+    if [[ -z "$DEMO_FOLDER" ]]; then
+        print_info "No demo folder specified - will set up core infrastructure only"
     fi
     
     if [[ -z "$PROJECT_ID" ]]; then
@@ -100,25 +98,25 @@ validate_parameters() {
         exit 1
     fi
     
-    # Validate JSON file exists and is readable
-    if [[ ! -f "$INPUT_JSON" ]]; then
-        print_error "JSON file not found: $INPUT_JSON"
-        exit 1
-    fi
-    
-    if [[ ! -r "$INPUT_JSON" ]]; then
-        print_error "JSON file is not readable: $INPUT_JSON"
-        exit 1
-    fi
-    
-    # Validate JSON file format
-    if ! python3 -m json.tool "$INPUT_JSON" > /dev/null 2>&1; then
-        print_error "Invalid JSON format in file: $INPUT_JSON"
-        exit 1
+    # Validate demo folder exists and is readable (only if specified)
+    if [[ -n "$DEMO_FOLDER" ]]; then
+        if [[ ! -d "$DEMO_FOLDER" ]]; then
+            print_error "Demo folder not found: $DEMO_FOLDER"
+            exit 1
+        fi
+        
+        if [[ ! -r "$DEMO_FOLDER" ]]; then
+            print_error "Demo folder is not readable: $DEMO_FOLDER"
+            exit 1
+        fi
     fi
     
     print_success "All parameters validated successfully"
-    print_info "Input JSON: $INPUT_JSON"
+    if [[ -n "$DEMO_FOLDER" ]]; then
+        print_info "Demo folder: $DEMO_FOLDER"
+    else
+        print_info "Demo folder: Not specified (core setup only)"
+    fi
     print_info "Project ID: $PROJECT_ID"
     print_info "Region: $REGION"
 }
@@ -169,6 +167,36 @@ check_prerequisites() {
     print_success "All prerequisites are available"
 }
 
+# Load existing environment variables if available
+load_existing_environment() {
+    print_step "Loading Existing Environment"
+    
+    if [[ -f ".env" ]]; then
+        print_info "Loading existing environment from .env file..."
+        source .env
+        
+        if [[ -n "$HOMEWARD_VIDEO_BUCKET" ]]; then
+            print_info "Found existing bucket: $HOMEWARD_VIDEO_BUCKET"
+        fi
+        
+        if [[ -n "$HOMEWARD_BQ_CONNECTION" ]]; then
+            print_info "Found existing BigQuery connection: $HOMEWARD_BQ_CONNECTION"
+        fi
+        
+        if [[ -n "$HOMEWARD_BQ_DATASET" ]]; then
+            print_info "Found existing BigQuery dataset: $HOMEWARD_BQ_DATASET"
+        fi
+        
+        if [[ -n "$HOMEWARD_BQ_TABLE" ]]; then
+            print_info "Found existing BigQuery table: $HOMEWARD_BQ_TABLE"
+        fi
+        
+        print_success "Existing environment loaded"
+    else
+        print_info "No existing .env file found - fresh installation"
+    fi
+}
+
 # Authenticate with Google Cloud using service account
 authenticate_gcloud() {
     # Set the project
@@ -194,6 +222,19 @@ authenticate_gcloud() {
 create_storage_bucket() {
     print_step "Creating Google Cloud Storage Bucket"
     
+    # Check if bucket already exists from environment
+    if [[ -n "$HOMEWARD_VIDEO_BUCKET" ]]; then
+        print_info "Checking existing bucket: $HOMEWARD_VIDEO_BUCKET"
+        if gsutil ls -b "gs://$HOMEWARD_VIDEO_BUCKET" > /dev/null 2>&1; then
+            print_success "Using existing bucket: gs://$HOMEWARD_VIDEO_BUCKET"
+            BUCKET_NAME="$HOMEWARD_VIDEO_BUCKET"
+            export HOMEWARD_VIDEO_BUCKET="$BUCKET_NAME"
+            return 0
+        else
+            print_warning "Configured bucket no longer exists, creating new one..."
+        fi
+    fi
+    
     # Generate random suffix for bucket name
     RANDOM_SUFFIX=$(generate_random_suffix)
     BUCKET_NAME="homeward_videos_${RANDOM_SUFFIX}"
@@ -202,12 +243,12 @@ create_storage_bucket() {
     
     # Check if bucket name is available
     print_info "Checking bucket name availability..."
-    if gsutil ls -b "gs://$BUCKET_NAME" > /dev/null 2>&1; then
+    while gsutil ls -b "gs://$BUCKET_NAME" > /dev/null 2>&1; do
         print_warning "Bucket name already exists, generating new suffix..."
         RANDOM_SUFFIX=$(generate_random_suffix)
         BUCKET_NAME="homeward_videos_${RANDOM_SUFFIX}"
         print_info "New bucket name: $BUCKET_NAME"
-    fi
+    done
     
     # Create the bucket
     print_info "Creating private storage bucket in region: $REGION"
@@ -237,7 +278,9 @@ create_storage_bucket() {
     
     # Store bucket name for later use
     export HOMEWARD_VIDEO_BUCKET="$BUCKET_NAME"
-    echo "HOMEWARD_VIDEO_BUCKET=$BUCKET_NAME" >> .env
+    if ! grep -q "^HOMEWARD_VIDEO_BUCKET=" .env 2>/dev/null; then
+        echo "HOMEWARD_VIDEO_BUCKET=$BUCKET_NAME" >> .env
+    fi
     print_info "Bucket name saved to environment: HOMEWARD_VIDEO_BUCKET"
 }
 
@@ -245,8 +288,20 @@ create_storage_bucket() {
 create_bigquery_connection() {
     print_step "Creating BigQuery Connection"
     
-    # Use fixed connection name
-    CONNECTION_ID="homeward_gcp_connection"
+    # Check if connection already exists from environment
+    if [[ -n "$HOMEWARD_BQ_CONNECTION" ]]; then
+        CONNECTION_ID="$HOMEWARD_BQ_CONNECTION"
+        print_info "Checking existing BigQuery connection: $CONNECTION_ID"
+        if bq show --connection --location="$REGION" --project_id="$PROJECT_ID" "$CONNECTION_ID" > /dev/null 2>&1; then
+            print_success "Using existing BigQuery connection: $CONNECTION_ID"
+        else
+            print_warning "Configured connection no longer exists, creating new one..."
+            CONNECTION_ID="homeward_gcp_connection"
+        fi
+    else
+        # Use fixed connection name
+        CONNECTION_ID="homeward_gcp_connection"
+    fi
     
     print_info "Creating BigQuery connection: $CONNECTION_ID"
     
@@ -257,7 +312,7 @@ create_bigquery_connection() {
     else
         # Check if connection already exists
         if bq show --connection --location="$REGION" --project_id="$PROJECT_ID" "$CONNECTION_ID" > /dev/null 2>&1; then
-            print_warning "BigQuery connection already exists: $CONNECTION_ID"
+            print_success "Using existing BigQuery connection: $CONNECTION_ID"
         else
             print_error "Failed to create BigQuery connection"
             exit 1
@@ -301,21 +356,76 @@ create_bigquery_connection() {
     if gcloud storage buckets add-iam-policy-binding "gs://$HOMEWARD_VIDEO_BUCKET" \
         --member="serviceAccount:$SERVICE_ACCOUNT" \
         --role="roles/storage.objectViewer"; then
-        print_success "IAM policy binding added successfully"
+        print_success "Storage IAM policy binding added successfully"
     else
-        print_error "Failed to add IAM policy binding"
+        print_error "Failed to add storage IAM policy binding"
+        exit 1
+    fi
+    
+    # Grant the service account Vertex AI User role for remote model access
+    print_info "Granting aiplatform.user role to service account..."
+    if gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+        --member="serviceAccount:$SERVICE_ACCOUNT" \
+        --role="roles/aiplatform.user"; then
+        print_success "Vertex AI IAM policy binding added successfully"
+        print_info "Waiting for IAM policy propagation (30 seconds)..."
+        sleep 30
+        print_success "IAM policy propagation completed"
+    else
+        print_error "Failed to add Vertex AI IAM policy binding"
         exit 1
     fi
     
     # Store connection ID for later use
     export HOMEWARD_BQ_CONNECTION="$CONNECTION_ID"
-    echo "HOMEWARD_BQ_CONNECTION=$CONNECTION_ID" >> .env
+    if ! grep -q "^HOMEWARD_BQ_CONNECTION=" .env 2>/dev/null; then
+        echo "HOMEWARD_BQ_CONNECTION=$CONNECTION_ID" >> .env
+    fi
     print_info "Connection ID saved to environment: HOMEWARD_BQ_CONNECTION"
+}
+
+# Enable required Google Cloud APIs
+enable_required_apis() {
+    print_step "Enabling Required APIs"
+    
+    # APIs required for Homeward project
+    local required_apis=(
+        "aiplatform.googleapis.com"  # Vertex AI API (required for remote models)
+        "bigquery.googleapis.com"    # BigQuery API
+        "storage.googleapis.com"     # Cloud Storage API
+    )
+    
+    for api in "${required_apis[@]}"; do
+        print_info "Enabling API: $api"
+        if gcloud services enable "$api" --project="$PROJECT_ID"; then
+            print_success "API enabled successfully: $api"
+        else
+            print_error "Failed to enable API: $api"
+            exit 1
+        fi
+    done
+    
+    print_info "Waiting for API propagation (30 seconds)..."
+    sleep 30
+    print_success "All required APIs have been enabled"
 }
 
 # Create BigQuery dataset
 create_bigquery_dataset() {
     print_step "Creating BigQuery Dataset"
+    
+    # Check if dataset already exists from environment
+    if [[ -n "$HOMEWARD_BQ_DATASET" ]]; then
+        DATASET_ID="$HOMEWARD_BQ_DATASET"
+        print_info "Checking existing BigQuery dataset: $DATASET_ID"
+        if bq show --dataset --project_id="$PROJECT_ID" "$DATASET_ID" > /dev/null 2>&1; then
+            print_success "Using existing BigQuery dataset: $DATASET_ID"
+            export HOMEWARD_BQ_DATASET="$DATASET_ID"
+            return 0
+        else
+            print_warning "Configured dataset no longer exists, creating new one..."
+        fi
+    fi
     
     DATASET_ID="homeward"
     
@@ -327,7 +437,7 @@ create_bigquery_dataset() {
     else
         # Check if dataset already exists
         if bq show --dataset --project_id="$PROJECT_ID" "$DATASET_ID" > /dev/null 2>&1; then
-            print_warning "BigQuery dataset already exists: $DATASET_ID"
+            print_success "Using existing BigQuery dataset: $DATASET_ID"
         else
             print_error "Failed to create BigQuery dataset"
             exit 1
@@ -336,13 +446,30 @@ create_bigquery_dataset() {
     
     # Store dataset ID for later use
     export HOMEWARD_BQ_DATASET="$DATASET_ID"
-    echo "HOMEWARD_BQ_DATASET=$DATASET_ID" >> .env
+    if ! grep -q "^HOMEWARD_BQ_DATASET=" .env 2>/dev/null; then
+        echo "HOMEWARD_BQ_DATASET=$DATASET_ID" >> .env
+    fi
     print_info "Dataset ID saved to environment: HOMEWARD_BQ_DATASET"
 }
+
 
 # Create BigQuery object table
 create_bigquery_object_table() {
     print_step "Creating BigQuery Object Table"
+    
+    # Check if table already exists from environment
+    if [[ -n "$HOMEWARD_BQ_TABLE" ]]; then
+        TABLE_NAME="$HOMEWARD_BQ_TABLE"
+        DATASET_ID="${HOMEWARD_BQ_DATASET}"
+        
+        print_info "Checking existing BigQuery object table: $DATASET_ID.$TABLE_NAME"
+        if bq show --table --project_id="$PROJECT_ID" "$DATASET_ID.$TABLE_NAME" > /dev/null 2>&1; then
+            print_success "Using existing BigQuery object table: $TABLE_NAME"
+            return 0
+        else
+            print_warning "Configured table no longer exists, creating new one..."
+        fi
+    fi
     
     TABLE_NAME="video_objects"
     CONNECTION_ID="${HOMEWARD_BQ_CONNECTION}"
@@ -368,32 +495,117 @@ create_bigquery_object_table() {
     
     # Store table name for later use
     export HOMEWARD_BQ_TABLE="$TABLE_NAME"
-    echo "HOMEWARD_BQ_TABLE=$TABLE_NAME" >> .env
+    if ! grep -q "^HOMEWARD_BQ_TABLE=" .env 2>/dev/null; then
+        echo "HOMEWARD_BQ_TABLE=$TABLE_NAME" >> .env
+    fi
     print_info "Table name saved to environment: HOMEWARD_BQ_TABLE"
 }
 
-# Parse JSON configuration and extract video metadata
+# Execute SQL scripts from a specified folder
+execute_sql_scripts_from_folder() {
+    local folder_path="$1"
+    local folder_description="$2"
+    
+    print_step "Executing SQL Scripts from $folder_description"
+    
+    # Check if folder exists
+    if [[ ! -d "$folder_path" ]]; then
+        print_warning "Folder not found: $folder_path"
+        print_info "Skipping $folder_description SQL script execution"
+        return 0
+    fi
+    
+    # Find SQL files and sort them alphabetically
+    local sql_files=()
+    while IFS= read -r -d '' file; do
+        sql_files+=("$file")
+    done < <(find "$folder_path" -name "*.sql" -type f -print0 | sort -z)
+    
+    if [[ ${#sql_files[@]} -eq 0 ]]; then
+        print_warning "No SQL files found in: $folder_path"
+        print_info "Skipping $folder_description SQL script execution"
+        return 0
+    fi
+    
+    print_info "Found ${#sql_files[@]} SQL files to execute in $folder_description"
+    
+    local success_count=0
+    local failure_count=0
+    
+    # Execute each SQL file in alphabetical order
+    for sql_file in "${sql_files[@]}"; do
+        local filename=$(basename "$sql_file")
+        print_info "Executing SQL script: $filename"
+        
+        # Read SQL file content
+        local sql_content
+        if ! sql_content=$(cat "$sql_file"); then
+            print_error "Failed to read SQL file: $sql_file"
+            ((failure_count++))
+            continue
+        fi
+        
+        # Execute SQL using bq query
+        if bq query --use_legacy_sql=false --project_id="$PROJECT_ID" "$sql_content"; then
+            print_success "Successfully executed: $filename"
+            ((success_count++))
+        else
+            print_error "Failed to execute SQL script: $filename"
+            ((failure_count++))
+        fi
+        
+        echo ""
+    done
+    
+    print_step "$folder_description SQL Execution Summary"
+    print_success "Successfully executed: $success_count scripts"
+    if [[ $failure_count -gt 0 ]]; then
+        print_warning "Failed to execute: $failure_count scripts"
+    fi
+    
+    if [[ $success_count -eq 0 && ${#sql_files[@]} -gt 0 ]]; then
+        print_error "No SQL scripts were successfully executed in $folder_description"
+        exit 1
+    fi
+}
+
+# Parse JSON configuration and extract video metadata (only if demo folder is specified)
 parse_video_config() {
+    # Skip if no demo folder specified
+    if [[ -z "$DEMO_FOLDER" ]]; then
+        print_info "No demo folder specified - skipping video configuration parsing"
+        return 0
+    fi
+    
     print_step "Parsing Video Configuration"
     
+    # Set path to video sources JSON file
+    local video_config_file="$DEMO_FOLDER/videos/metadata/video_sources.json"
+    
+    # Validate JSON file exists
+    if [[ ! -f "$video_config_file" ]]; then
+        print_error "Video sources configuration not found: $video_config_file"
+        exit 1
+    fi
+    
     # Validate JSON structure
-    if ! jq -e '.videos' "$INPUT_JSON" > /dev/null 2>&1; then
-        print_error "Invalid JSON structure: missing 'videos' array"
+    if ! jq -e '.videos' "$video_config_file" > /dev/null 2>&1; then
+        print_error "Invalid JSON structure: missing 'videos' array in $video_config_file"
         exit 1
     fi
     
     # Count videos in configuration
-    VIDEO_COUNT=$(jq '.videos | length' "$INPUT_JSON")
+    VIDEO_COUNT=$(jq '.videos | length' "$video_config_file")
     print_info "Found $VIDEO_COUNT videos to process"
     
     # Validate required fields for each video
     local missing_fields=()
     for i in $(seq 0 $((VIDEO_COUNT-1))); do
-        local video_id=$(jq -r ".videos[$i].id" "$INPUT_JSON")
+        local video_id=$(jq -r ".videos[$i].id" "$video_config_file")
         
         # Check required fields
         for field in "download_url" "camera_id" "timestamp" "latitude" "longitude" "camera_type" "resolution" "mime_type"; do
-            if [[ $(jq -r ".videos[$i].$field" "$INPUT_JSON") == "null" ]]; then
+            if [[ $(jq -r ".videos[$i].$field" "$video_config_file") == "null" ]]; then
                 missing_fields+=("Video $video_id: missing $field")
             fi
         done
@@ -407,11 +619,20 @@ parse_video_config() {
         exit 1
     fi
     
+    # Store the video config file path for later use
+    export VIDEO_CONFIG_FILE="$video_config_file"
+    
     print_success "Video configuration validated successfully"
 }
 
-# Download and upload videos to GCS
+# Download and upload videos to GCS (only if demo folder is specified)
 process_videos() {
+    # Skip if no demo folder specified or no video config
+    if [[ -z "$DEMO_FOLDER" || -z "$VIDEO_CONFIG_FILE" ]]; then
+        print_info "No demo folder or video configuration - skipping video processing"
+        return 0
+    fi
+    
     print_step "Processing and Uploading Videos"
     
     # Create temporary directory for downloads
@@ -426,15 +647,15 @@ process_videos() {
     
     for i in $(seq 0 $((VIDEO_COUNT-1))); do
         # Extract video metadata
-        local video_id=$(jq -r ".videos[$i].id" "$INPUT_JSON")
-        local download_url=$(jq -r ".videos[$i].download_url" "$INPUT_JSON")
-        local camera_id=$(jq -r ".videos[$i].camera_id" "$INPUT_JSON")
-        local timestamp=$(jq -r ".videos[$i].timestamp" "$INPUT_JSON")
-        local latitude=$(jq -r ".videos[$i].latitude" "$INPUT_JSON")
-        local longitude=$(jq -r ".videos[$i].longitude" "$INPUT_JSON")
-        local camera_type=$(jq -r ".videos[$i].camera_type" "$INPUT_JSON")
-        local resolution=$(jq -r ".videos[$i].resolution" "$INPUT_JSON")
-        local mime_type=$(jq -r ".videos[$i].mime_type" "$INPUT_JSON")
+        local video_id=$(jq -r ".videos[$i].id" "$VIDEO_CONFIG_FILE")
+        local download_url=$(jq -r ".videos[$i].download_url" "$VIDEO_CONFIG_FILE")
+        local camera_id=$(jq -r ".videos[$i].camera_id" "$VIDEO_CONFIG_FILE")
+        local timestamp=$(jq -r ".videos[$i].timestamp" "$VIDEO_CONFIG_FILE")
+        local latitude=$(jq -r ".videos[$i].latitude" "$VIDEO_CONFIG_FILE")
+        local longitude=$(jq -r ".videos[$i].longitude" "$VIDEO_CONFIG_FILE")
+        local camera_type=$(jq -r ".videos[$i].camera_type" "$VIDEO_CONFIG_FILE")
+        local resolution=$(jq -r ".videos[$i].resolution" "$VIDEO_CONFIG_FILE")
+        local mime_type=$(jq -r ".videos[$i].mime_type" "$VIDEO_CONFIG_FILE")
         
         # Generate filename according to Homeward naming convention
         local filename="${camera_id}_${timestamp}_${latitude}_${longitude}_${camera_type}_${resolution}.mp4"
@@ -466,7 +687,7 @@ process_videos() {
                   -h "x-goog-meta-resolution:$resolution" \
                   -h "x-goog-meta-upload-date:$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                   -h "x-goog-meta-processed-by:homeward-setup-script" \
-                  -h "x-goog-meta-source-dataset:$(jq -r '.metadata.dataset' "$INPUT_JSON")" \
+                  -h "x-goog-meta-source-dataset:$(jq -r '.metadata.dataset' "$VIDEO_CONFIG_FILE")" \
                   cp "$temp_file" "gs://$HOMEWARD_VIDEO_BUCKET/$filename"; then
             print_success "  Video uploaded successfully with metadata"
         else
@@ -509,8 +730,8 @@ main() {
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --input)
-                INPUT_JSON="$2"
+            --demo-folder)
+                DEMO_FOLDER="$2"
                 shift 2
                 ;;
             --project-id)
@@ -536,13 +757,25 @@ main() {
     # Execute setup steps
     validate_parameters
     check_prerequisites
+    load_existing_environment
     authenticate_gcloud
+    enable_required_apis
     create_storage_bucket
     create_bigquery_connection
     create_bigquery_dataset
     parse_video_config
     process_videos
     create_bigquery_object_table
+    
+    # Execute SQL scripts in required order
+    # 1. Core SQL scripts (mandatory)
+    execute_sql_scripts_from_folder "sql" "Core SQL Scripts"
+    
+    # 2. Demo-specific SQL scripts (only if demo folder specified)
+    if [[ -n "$DEMO_FOLDER" ]]; then
+        execute_sql_scripts_from_folder "$DEMO_FOLDER/reports/missings" "Missing Persons Reports"
+        execute_sql_scripts_from_folder "$DEMO_FOLDER/reports/sightings" "Sightings Reports"
+    fi
     
     print_step "Setup Complete"
     print_success "Homeward project setup completed successfully!"

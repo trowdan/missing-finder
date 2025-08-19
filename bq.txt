@@ -1,0 +1,220 @@
+SELECT
+    uri,
+    ml_generate_text_llm_result,
+    ml_generate_text_rai_result,
+    ml_generate_text_status
+FROM
+    ML.GENERATE_TEXT(
+        MODEL
+            `homeward.gemini_2_5_pro`,
+        TABLE `homeward.image_objects`,
+            STRUCT(
+                'Is there any dog in the image?' AS PROMPT,
+                0 AS TEMPERATURE,
+                TRUE AS FLATTEN_JSON_OUTPUT,
+                [
+                    STRUCT(
+                        'HARM_CATEGORY_HATE_SPEECH' AS category,
+                        'BLOCK_NONE' AS threshold
+                    ),
+                    STRUCT(
+                        'HARM_CATEGORY_DANGEROUS_CONTENT' AS category,
+                        'BLOCK_NONE' AS threshold
+                    ),
+                    STRUCT(
+                        'HARM_CATEGORY_HARASSMENT' AS category,
+                        'BLOCK_NONE' AS threshold
+                    )
+                ] AS safety_settings
+            )
+    );
+
+
+----
+
+CREATE MODEL IF NOT EXISTS `bq-ai-hackaton.homeward.gemini_1_5_pro`
+  REMOTE WITH CONNECTION `bq-ai-hackaton.us-central1.homeward_gcp_connection`
+  OPTIONS (
+    endpoint = 'gemini-1.5-pro-002'
+  );
+
+
+CREATE OR REPLACE EXTERNAL TABLE `bq-ai-hackaton.homeward.image_objects`
+WITH CONNECTION `bq-ai-hackaton.us-central1.homeward_gcp_connection`
+OPTIONS (
+  object_metadata = 'SIMPLE',
+  max_staleness = INTERVAL '1' DAY,
+  metadata_cache_mode = 'AUTOMATIC',
+  uris = ['gs://homeward_photos/*.png']
+);
+
+
+------
+DECLARE VIDEO_PROMPT STRING DEFAULT '''# ROLE AND GOAL
+You are a state-of-the-art AI visual analysis system with an expert specialization in human identification within video footage.
+Your primary mission is to analyze the provided video for a critical missing person case with the highest degree of accuracy and diligence.
+You must be methodical and detail-oriented in your analysis and reporting.
+
+# TASK CONTEXT
+This is a high-priority, time-sensitive analysis.
+The provided video is a security footage from the street.
+The objective is to determine if the missing person is visible in this video, and if so, to extract all relevant information about their presence.
+
+# MISSING PERSON DATA
+Carefully analyze the following description of the missing person. Every detail is crucial.
+
+- **Gender:** `Male`
+- **Approximate Age:** `30`
+- **Build / Height:** `1.8m`
+- **Hair Color and Style:** `Brown`
+- **Clothing (Top):** `T-shirt`
+- **Clothing (Bottom):** `Jeans`
+- **Footwear:** `I don't know`
+- **Accessories:** `A bag`
+- **Distinguishing Features:** `N/A`
+
+# ANALYSIS INSTRUCTIONS
+You must perform the following steps in your analysis:
+
+1.  **Full Video Scan:** Meticulously review the entire video from start to finish. Do not stop after a potential first match; the person may appear multiple times.
+2.  **Feature Matching:** Compare every individual in the video against the `MISSING PERSON DATA`. Assess matches based on all available criteria: clothing, build, hair, accessories, and any visible distinguishing features or mannerisms.
+3.  **Confidence Score Calculation:** Based on your feature matching, calculate a confidence score from `0.0` (no match) to `1.0` (positive identification with multiple strong corroborating features). The score must be based on the quality and quantity of matching attributes. A partial clothing match is a low score; a match on clothing, build, and a distinguishing feature is a very high score.
+4.  **Justification:** You MUST provide a step-by-step justification for your confidence score. List the features that matched, the features that did not match, and any features that were ambiguous or obscured (e.g., 'Face was unclear, but clothing is a 90% match').
+5.  **Contextual Analysis (If Found):** If you identify the person with a confidence score greater than `0.5`:
+    -   Note the exact timestamp(s) (in `HH:MM:SS` format) of their appearance.
+    -   Describe their actions and behavior (e.g., 'walking quickly', 'talking on the phone', 'sitting on a bench', 'seemed distressed').
+    -   Analyze if they are with anyone else. If so, provide a detailed description of each companion (gender, estimated age, clothing, etc.).
+    -   Describe their direction of travel.
+6. You are allowed to made some guessing is the video is too far to carefully analyze the footage
+# OUTPUT FORMAT
+Your final output MUST be a single JSON object. Do not include any text or explanations outside of this JSON structure.
+
+**If the person is found (confidence > 0.5):**
+```json
+{
+  "personFound": true,
+  "confidenceScore": <float between 0.5 and 1.0>,
+  "matchJustification": "A detailed explanation of why the confidence score was given. List all matching and non-matching features. Example: 'Confidence is high due to a perfect match on the red hooded sweatshirt, blue jeans, and black backpack. Subject's build and hair color are also consistent. Face was partially obscured, preventing a 1.0 score.'",
+  "summaryOfFindings": "A concise, human-readable summary of the events. Example: 'The missing person was spotted at 00:14:32 walking east on the station platform. They appeared to be alone and were walking at a normal pace while looking at their phone.'",
+  "appearances": [
+    {
+      "timestampStart": "HH:MM:SS",
+      "timestampEnd": "HH:MM:SS",
+      "actionsAndBehavior": "Detailed description of what the subject is doing during this specific timeframe.",
+      "directionOfTravel": "e.g., Northbound, Towards the exit, Away from the camera",
+      "companions": [
+        {
+          "description": "Detailed description of companion 1: Gender, estimated age, build, hair, clothing (top, bottom, shoes), and any notable accessories or features."
+        }
+      ]
+    }
+  ]
+}
+```
+**If the person is found (confidence < 0.5):**
+```json
+{
+  "personFound": false,
+  "confidenceScore": <float between 0.0 and 0.5>,
+  "matchJustification": "Explain why the person was not found or why confidence is low. Example: 'Scanned the entire video. Several individuals matched the general build, but none matched the specific red hooded sweatshirt and white sneaker combination described. Therefore, confidence is very low.'",
+  "summaryOfFindings": "A concise statement of the negative finding. Example: 'After a thorough analysis of the entire video footage, there was no individual matching the provided description of the missing person.'",
+  "appearances": [],
+  "companions": []
+}
+```
+''';
+
+
+SELECT
+  AI.GENERATE(('Describe ', OBJ.GET_ACCESS_URL(ref, 'r'), 'carefully evaluating the following prompt:\n', VIDEO_PROMPT),
+    connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
+    endpoint => 'gemini-2.5-pro').result
+FROM `homeward.video_objects`;
+
+====
+---- Found 001
+====
+DECLARE VIDEO_PROMPT STRING DEFAULT '''# ROLE AND GOAL
+You are a state-of-the-art AI visual analysis system with an expert specialization in human identification within video footage.
+Your primary mission is to analyze the provided video for a critical missing person case with the highest degree of accuracy and diligence.
+You must be methodical and detail-oriented in your analysis and reporting.
+
+# TASK CONTEXT
+This is a high-priority, time-sensitive analysis.
+The provided video is a security footage from the street.
+The objective is to determine if the missing person is visible in this video, and if so, to extract all relevant information about their presence.
+
+# MISSING PERSON DATA
+Carefully analyze the following description of the missing person. Every detail is crucial.
+
+- **Gender:** `Female`
+- **Approximate Age:** `35`
+- **Build / Height:** `1.7m, 80kg`
+- **Hair Color and Style:** `Black hair, sporty`
+- **Clothing (Top):** `Blue Shirt`
+- **Clothing (Bottom):** `Blue Pants`
+- **Footwear:** `White snikers`
+- **Accessories:** `Dark Glasses`
+- **Distinguishing Features:** `None`
+
+# ANALYSIS INSTRUCTIONS
+You must perform the following steps in your analysis:
+
+1.  **Full Video Scan:** Meticulously review the entire video from start to finish. Do not stop after a potential first match; the person may appear multiple times.
+2.  **Feature Matching:** Compare every individual in the video against the `MISSING PERSON DATA`. Assess matches based on all available criteria: clothing, build, hair, accessories, and any visible distinguishing features or mannerisms.
+3.  **Confidence Score Calculation:** Based on your feature matching, calculate a confidence score from `0.0` (no match) to `1.0` (positive identification with multiple strong corroborating features). The score must be based on the quality and quantity of matching attributes. A partial clothing match is a low score; a match on clothing, build, and a distinguishing feature is a very high score.
+4.  **Justification:** You MUST provide a step-by-step justification for your confidence score. List the features that matched, the features that did not match, and any features that were ambiguous or obscured (e.g., 'Face was unclear, but clothing is a 90% match').
+5.  **Contextual Analysis (If Found):** If you identify the person with a confidence score greater than `0.5`:
+    -   Note the exact timestamp(s) (in `HH:MM:SS` format) of their appearance.
+    -   Describe their actions and behavior (e.g., 'walking quickly', 'talking on the phone', 'sitting on a bench', 'seemed distressed').
+    -   Analyze if they are with anyone else. If so, provide a detailed description of each companion (gender, estimated age, clothing, etc.).
+    -   Describe their direction of travel.
+
+6. You are allowed to **made some guessing** is the video has a low resolution, it is too far to carefully analyze the footage. So for example you can ignore the sex and give an higher weight to the clothings match
+
+# OUTPUT FORMAT
+Your final output MUST be a single JSON object. Do not include any text or explanations outside of this JSON structure.
+
+**If the person is found (confidence > 0.5):**
+```json
+{
+  "personFound": true,
+  "confidenceScore": <float between 0.5 and 1.0>,
+  "matchJustification": "A detailed explanation of why the confidence score was given. List all matching and non-matching features. Example: 'Confidence is high due to a perfect match on the red hooded sweatshirt, blue jeans, and black backpack. Subject's build and hair color are also consistent. Face was partially obscured, preventing a 1.0 score.'",
+  "summaryOfFindings": "A concise, human-readable summary of the events. Example: 'The missing person was spotted at 00:14:32 walking east on the station platform. They appeared to be alone and were walking at a normal pace while looking at their phone.'",
+  "appearances": [
+    {
+      "timestampStart": "HH:MM:SS",
+      "timestampEnd": "HH:MM:SS",
+      "actionsAndBehavior": "Detailed description of what the subject is doing during this specific timeframe.",
+      "directionOfTravel": "e.g., Northbound, Towards the exit, Away from the camera",
+      "companions": [
+        {
+          "description": "Detailed description of companion 1: Gender, estimated age, build, hair, clothing (top, bottom, shoes), and any notable accessories or features."
+        }
+      ]
+    }
+  ]
+}
+```
+**If the person is found (confidence < 0.5):**
+```json
+{
+  "personFound": false,
+  "confidenceScore": <float between 0.0 and 0.5>,
+  "matchJustification": "Explain why the person was not found or why confidence is low. Example: 'Scanned the entire video. Several individuals matched the general build, but none matched the specific red hooded sweatshirt and white sneaker combination described. Therefore, confidence is very low.'",
+  "summaryOfFindings": "A concise statement of the negative finding. Example: 'After a thorough analysis of the entire video footage, there was no individual matching the provided description of the missing person.'",
+  "appearances": [],
+  "companions": []
+}
+```
+''';
+
+
+SELECT
+  uri,
+  AI.GENERATE(('Describe ', OBJ.GET_ACCESS_URL(ref, 'r'), 'carefully evaluating the following prompt:\n', VIDEO_PROMPT),
+    connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
+    endpoint => 'gemini-2.5-pro',
+    model_params => JSON '{"generation_config": {"temperature": 0}}').result
+FROM `homeward.video_objects`;

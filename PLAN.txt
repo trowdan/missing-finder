@@ -1,0 +1,38 @@
+19/08 Martedì
+
+- Jupyter notebook + Prima integrazione BQ + Gemini
+[X] Datamodel Missing
+[X] 20 Mock Missing
+[X] Modifica setup per il load dei mock (flag --demo-folder)
+
+20/08 Mercoledì
+
+- Datamodel Sightings
+- 10 Mock Sighint
+- Modifica setup per il load
+- Datamodel Link
+- Datamodel Video Analytics search
+
+21/08 Giovedì
+
+- Prompt Video analytics partendo da Dettaglio Missing
+- Prompt Summary Missing
+
+22/08 Venerdì
+
+- Prompt Match Sighting -> Case
+- Prompt Match Case -> Sighting
+
+23/08 Sabato
+
+- Semantic Search
+- First integration into the Python Backend
+
+24/08 Domenica
+
+- Integration into the Python Backend
+
+25/08 Lunedì
+
+- Integration into the Python Backend
+- Review README

@@ -34,7 +34,7 @@ The system is built upon a **serverless, event-driven architecture** on the Goog
 ### 2.1. Video Ingestion and Enrichment
 
 1.  **Upload to Ingestion Bucket**: Video files are uploaded to a dedicated Google Cloud Storage (GCS) bucket named `[Project-ID]-video-ingestion`.
-    * **Strict Naming Convention**: File uploads must adhere to the following naming convention to provide initial metadata: `CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION.mp4`.
+    * **Strict Naming Convention**: File uploads must adhere to the following naming convention to provide initial metadata: `CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE.mp4`.
 2.  **Event-Driven Trigger**: Google Eventarc is configured to monitor the ingestion bucket. When a new video is successfully uploaded, Eventarc triggers a Cloud Function to begin processing.
 3.  **Metadata Enrichment (Cloud Function)**: A Python-based Cloud Function is executed to enrich the file's metadata.
     * The function parses the filename to extract the `CameraID`, `Timestamp`, and other static details.

@@ -129,6 +129,7 @@ load_environment() {
         if [[ -n "$HOMEWARD_BQ_CONNECTION" ]]; then
             print_info "Found BigQuery connection: $HOMEWARD_BQ_CONNECTION"
         fi
+        
     else
         print_warning ".env file not found. Will attempt to discover resources."
     fi
@@ -182,6 +183,7 @@ confirm_destruction() {
     else
         echo "  - BigQuery object table: video_objects"
     fi
+    
     
     if [[ -n "$HOMEWARD_BQ_DATASET" ]]; then
         echo "  - BigQuery dataset: $HOMEWARD_BQ_DATASET"
@@ -272,6 +274,7 @@ delete_bigquery_object_table() {
     fi
 }
 
+
 # Delete BigQuery dataset
 delete_bigquery_dataset() {
     print_step "Deleting BigQuery Dataset"
@@ -298,11 +301,28 @@ delete_bigquery_connection() {
     print_step "Deleting BigQuery Connection"
     
     local connection_id="${HOMEWARD_BQ_CONNECTION:-homeward_gcp_connection}"
+    local connection_full_id="${PROJECT_ID}.${REGION}.${connection_id}"
     
     # Check if connection exists
     if ! bq show --connection --location="$REGION" --project_id="$PROJECT_ID" "$connection_id" > /dev/null 2>&1; then
         print_warning "BigQuery connection does not exist: $connection_id"
         return 0
+    fi
+    
+    # Get connection details to retrieve the service account
+    print_info "Retrieving service account for cleanup..."
+    CONNECTION_DETAILS=$(bq show --format json --connection "$connection_full_id" 2>/dev/null)
+    
+    if [[ $? -eq 0 ]] && echo "$CONNECTION_DETAILS" | jq . > /dev/null 2>&1; then
+        SERVICE_ACCOUNT=$(echo "$CONNECTION_DETAILS" | jq -r '.cloudResource.serviceAccountId')
+        
+        if [[ "$SERVICE_ACCOUNT" != "null" && -n "$SERVICE_ACCOUNT" ]]; then
+            print_info "Removing Vertex AI IAM policy binding for service account..."
+            gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+                --member="serviceAccount:$SERVICE_ACCOUNT" \
+                --role="roles/aiplatform.user" 2>/dev/null || true
+            print_info "IAM policy binding cleanup attempted"
+        fi
     fi
     
     print_info "Deleting BigQuery connection: $connection_id"
