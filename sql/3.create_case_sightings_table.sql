@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `homeward.case_sightings` (
   
   /* Status and Confirmation */
   status STRING NOT NULL OPTIONS(description="Link status (Potential/Under_Review/Confirmed/Rejected)"),
-  confirmed BOOLEAN NOT NULL DEFAULT FALSE OPTIONS(description="Whether this link is confirmed as a positive match"),
+  confirmed BOOLEAN NOT NULL OPTIONS(description="Whether this link is confirmed as a positive match"),
   confirmed_by STRING OPTIONS(description="User who confirmed the match"),
   confirmed_date TIMESTAMP OPTIONS(description="Date and time when match was confirmed"),
   
@@ -27,14 +27,14 @@ CREATE TABLE IF NOT EXISTS `homeward.case_sightings` (
   geographical_match_score FLOAT64 OPTIONS(description="Score for geographical proximity"),
   
   /* Investigation Details */
-  investigated BOOLEAN NOT NULL DEFAULT FALSE OPTIONS(description="Whether this link has been investigated"),
+  investigated BOOLEAN NOT NULL OPTIONS(description="Whether this link has been investigated"),
   investigation_notes STRING OPTIONS(description="Notes from investigation of this potential match"),
   investigator_name STRING OPTIONS(description="Name of investigator who reviewed this link"),
   investigation_date TIMESTAMP OPTIONS(description="Date when investigation was completed"),
   
   /* Priority and Workflow */
   priority STRING NOT NULL OPTIONS(description="Priority level for reviewing this link (High/Medium/Low)"),
-  requires_review BOOLEAN NOT NULL DEFAULT TRUE OPTIONS(description="Whether this link requires human review"),
+  requires_review BOOLEAN NOT NULL OPTIONS(description="Whether this link requires human review"),
   review_notes STRING OPTIONS(description="Notes from reviewers"),
   
   /* Metadata */

@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS `homeward.sightings` (
   /* Status and Processing */
   status STRING NOT NULL OPTIONS(description="Sighting status (New/Under_Review/Verified/False_Positive/Archived)"),
   priority STRING NOT NULL OPTIONS(description="Priority level (High/Medium/Low)"),
-  verified BOOLEAN NOT NULL DEFAULT FALSE OPTIONS(description="Whether sighting has been verified"),
+  verified BOOLEAN NOT NULL OPTIONS(description="Whether sighting has been verified"),
   
   /* Metadata */
   created_date TIMESTAMP NOT NULL OPTIONS(description="Date and time when sighting was created"),

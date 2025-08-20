@@ -16,6 +16,7 @@
 
 21/08 Giovedì
 
+- 5 Mock Link
 - Prompt Video analytics partendo da Dettaglio Missing
 - Prompt Summary Missing
 

@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `homeward.video_analytics_results` (
   created_by STRING NOT NULL OPTIONS(description="System/service that created the result"),
 )
 PARTITION BY DATE(video_timestamp)
-CLUSTER BY status, camera_id, meets_quality_threshold, available_for_matching
+CLUSTER BY camera_id, created_date
 OPTIONS(
   description="Table storing raw AI video analysis results before conversion to sightings",
   labels=[("environment", "hackathon"), ("application", "homeward"), ("data_type", "video_analytics")]
@@ -48,14 +48,11 @@ OPTIONS(
    - overall_quality_score: 0.0-1.0 (if provided)
    - usability_score: 0.0-1.0 (if provided)
    - false_positive_probability: 0.0-1.0 (if provided)
-   - status: 'Raw', 'Reviewed', 'Converted_To_Sighting', 'Discarded'
    - apparent_gender: 'Male', 'Female', 'Other', 'Unknown'
    - lighting_conditions: 'Good', 'Fair', 'Poor', 'Night'
    - crowd_density: 'Low', 'Medium', 'High' */
 
 /* Business Rules:
-   1. Only results with meets_quality_threshold=TRUE should be shown for matching
-   2. When converted to sighting, status should be updated to 'Converted_To_Sighting'
-   3. Results can be filtered by time range, location, and quality scores
-   4. High confidence detections (>0.8) with good image quality should be prioritized
-   5. Face visibility greatly increases matching potential */
+   1. Results can be filtered by time range, location, and confidence scores
+   2. High confidence detections (>0.8) should be prioritized
+   3. This table stores raw AI analysis results before human review */
