@@ -150,12 +150,7 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check if jq is available (for JSON parsing)
-    if ! command -v jq &> /dev/null; then
-        print_error "jq is required for JSON parsing but not installed."
-        print_info "Install with: brew install jq (macOS) or apt-get install jq (Ubuntu)"
-        exit 1
-    fi
+    # jq is no longer required - using bash for CSV parsing
     
     # Check if bq is available (for BigQuery operations)
     if ! command -v bq &> /dev/null; then
@@ -569,7 +564,7 @@ execute_sql_scripts_from_folder() {
     fi
 }
 
-# Parse JSON configuration and extract video metadata (only if demo folder is specified)
+# Parse CSV configuration and extract video metadata (only if demo folder is specified)
 parse_video_config() {
     # Skip if no demo folder specified
     if [[ -z "$DEMO_FOLDER" ]]; then
@@ -579,43 +574,21 @@ parse_video_config() {
     
     print_step "Parsing Video Configuration"
     
-    # Set path to video sources JSON file
-    local video_config_file="$DEMO_FOLDER/videos/metadata/video_sources.json"
+    # Set path to video sources CSV file
+    local video_config_file="$DEMO_FOLDER/videos/metadata/video_sources.csv"
     
-    # Validate JSON file exists
+    # Validate CSV file exists
     if [[ ! -f "$video_config_file" ]]; then
         print_error "Video sources configuration not found: $video_config_file"
         exit 1
     fi
     
-    # Validate JSON structure
-    if ! jq -e '.videos' "$video_config_file" > /dev/null 2>&1; then
-        print_error "Invalid JSON structure: missing 'videos' array in $video_config_file"
-        exit 1
-    fi
-    
     # Count videos in configuration
-    VIDEO_COUNT=$(jq '.videos | length' "$video_config_file")
+    VIDEO_COUNT=$(wc -l < "$video_config_file" | tr -d ' ')
     print_info "Found $VIDEO_COUNT videos to process"
     
-    # Validate required fields for each video
-    local missing_fields=()
-    for i in $(seq 0 $((VIDEO_COUNT-1))); do
-        local video_id=$(jq -r ".videos[$i].id" "$video_config_file")
-        
-        # Check required fields
-        for field in "download_url" "camera_id" "timestamp" "latitude" "longitude" "camera_type" "resolution" "mime_type"; do
-            if [[ $(jq -r ".videos[$i].$field" "$video_config_file") == "null" ]]; then
-                missing_fields+=("Video $video_id: missing $field")
-            fi
-        done
-    done
-    
-    if [[ ${#missing_fields[@]} -gt 0 ]]; then
-        print_error "Configuration validation failed:"
-        for field in "${missing_fields[@]}"; do
-            print_error "  - $field"
-        done
+    if [[ $VIDEO_COUNT -eq 0 ]]; then
+        print_error "No video entries found in configuration file"
         exit 1
     fi
     
@@ -645,23 +618,15 @@ process_videos() {
     local success_count=0
     local failure_count=0
     
-    for i in $(seq 0 $((VIDEO_COUNT-1))); do
-        # Extract video metadata
-        local video_id=$(jq -r ".videos[$i].id" "$VIDEO_CONFIG_FILE")
-        local download_url=$(jq -r ".videos[$i].download_url" "$VIDEO_CONFIG_FILE")
-        local camera_id=$(jq -r ".videos[$i].camera_id" "$VIDEO_CONFIG_FILE")
-        local timestamp=$(jq -r ".videos[$i].timestamp" "$VIDEO_CONFIG_FILE")
-        local latitude=$(jq -r ".videos[$i].latitude" "$VIDEO_CONFIG_FILE")
-        local longitude=$(jq -r ".videos[$i].longitude" "$VIDEO_CONFIG_FILE")
-        local camera_type=$(jq -r ".videos[$i].camera_type" "$VIDEO_CONFIG_FILE")
-        local resolution=$(jq -r ".videos[$i].resolution" "$VIDEO_CONFIG_FILE")
-        local mime_type=$(jq -r ".videos[$i].mime_type" "$VIDEO_CONFIG_FILE")
+    local line_number=0
+    while IFS='|' read -r video_id download_url camera_id timestamp latitude longitude camera_type resolution location duration_seconds mime_type; do
+        ((line_number++))
         
         # Generate filename according to Homeward naming convention
         local filename="${camera_id}_${timestamp}_${latitude}_${longitude}_${camera_type}_${resolution}.mp4"
         local temp_file="$TEMP_DIR/$filename"
         
-        print_info "Processing video $((i+1))/$VIDEO_COUNT: $video_id"
+        print_info "Processing video $line_number/$VIDEO_COUNT: $video_id"
         print_info "  Filename: $filename"
         
         # Download video file
@@ -687,7 +652,7 @@ process_videos() {
                   -h "x-goog-meta-resolution:$resolution" \
                   -h "x-goog-meta-upload-date:$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                   -h "x-goog-meta-processed-by:homeward-setup-script" \
-                  -h "x-goog-meta-source-dataset:$(jq -r '.metadata.dataset' "$VIDEO_CONFIG_FILE")" \
+                  -h "x-goog-meta-source-dataset:VIRAT Video and Image Dataset Release 2.0" \
                   cp "$temp_file" "gs://$HOMEWARD_VIDEO_BUCKET/$filename"; then
             print_success "  Video uploaded successfully with metadata"
         else
@@ -701,9 +666,9 @@ process_videos() {
         rm -f "$temp_file"
         
         ((success_count++))
-        print_success "  Video $video_id processed successfully ($success_count/$VIDEO_COUNT completed)"
+        print_success "  Video $video_id processed successfully ($line_number/$VIDEO_COUNT completed)"
         echo ""
-    done
+    done < "$VIDEO_CONFIG_FILE"
     
     print_step "Video Processing Summary"
     print_success "Successfully processed: $success_count videos"

@@ -309,14 +309,22 @@ delete_bigquery_connection() {
         return 0
     fi
     
-    # Get connection details to retrieve the service account
+    # Get connection details to retrieve the service account using Python
     print_info "Retrieving service account for cleanup..."
     CONNECTION_DETAILS=$(bq show --format json --connection "$connection_full_id" 2>/dev/null)
     
-    if [[ $? -eq 0 ]] && echo "$CONNECTION_DETAILS" | jq . > /dev/null 2>&1; then
-        SERVICE_ACCOUNT=$(echo "$CONNECTION_DETAILS" | jq -r '.cloudResource.serviceAccountId')
+    if [[ $? -eq 0 ]]; then
+        # Use Python to parse JSON instead of jq
+        SERVICE_ACCOUNT=$(python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    print(data.get('cloudResource', {}).get('serviceAccountId', ''))
+except:
+    print('')
+" <<< "$CONNECTION_DETAILS")
         
-        if [[ "$SERVICE_ACCOUNT" != "null" && -n "$SERVICE_ACCOUNT" ]]; then
+        if [[ -n "$SERVICE_ACCOUNT" && "$SERVICE_ACCOUNT" != "null" ]]; then
             print_info "Removing Vertex AI IAM policy binding for service account..."
             gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
                 --member="serviceAccount:$SERVICE_ACCOUNT" \

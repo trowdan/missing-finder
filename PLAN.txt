@@ -1,17 +1,18 @@
 19/08 Martedì
 
-- Jupyter notebook + Prima integrazione BQ + Gemini
+[X] Jupyter notebook + Prima integrazione BQ + Gemini
 [X] Datamodel Missing
 [X] 20 Mock Missing
 [X] Modifica setup per il load dei mock (flag --demo-folder)
 
 20/08 Mercoledì
 
-- Datamodel Sightings
-- 10 Mock Sighint
-- Modifica setup per il load
-- Datamodel Link
-- Datamodel Video Analytics search
+[X] Datamodel Sightings
+[X] 10 Mock Sighint
+[X] Modifica setup per il load
+[X] Datamodel Link
+[X] Datamodel Video Analytics search
+[X] Rimuovere dipendenza da jq cambiando il json in csv
 
 21/08 Giovedì
 
