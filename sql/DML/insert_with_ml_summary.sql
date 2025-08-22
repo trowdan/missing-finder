@@ -98,7 +98,7 @@ USING (
         'Reported by: ', @reporter_name, ' (', @relationship, ').'
       ),
       connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
-      endpoint => 'gemini-2.5-pro',
+      endpoint => 'gemini-2.5-flash',
       model_params => JSON '{"generation_config": {"temperature": 0}}'
     ).result AS ml_summary
 ) AS source

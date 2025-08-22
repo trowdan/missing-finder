@@ -733,8 +733,8 @@ main() {
     create_bigquery_object_table
     
     # Execute SQL scripts in required order
-    # 1. Core SQL scripts (mandatory)
-    execute_sql_scripts_from_folder "sql" "Core SQL Scripts"
+    # 1. DDL SQL scripts (mandatory)
+    execute_sql_scripts_from_folder "sql/DDL" "DDL SQL Scripts"
     
     # 2. Demo-specific SQL scripts (only if demo folder specified)
     if [[ -n "$DEMO_FOLDER" ]]; then

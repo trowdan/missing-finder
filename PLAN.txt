@@ -13,12 +13,12 @@
 [X] Datamodel Link
 [X] Datamodel Video Analytics search
 [X] Rimuovere dipendenza da jq cambiando il json in csv
+[X] 5 Mock Link
 
 21/08 Giovedì
 
-- 5 Mock Link
-- Prompt Video analytics partendo da Dettaglio Missing
-- Prompt Summary Missing
+[X] Prompt Video analytics partendo da Dettaglio Missing
+[X] Prompt Summary Missing
 
 22/08 Venerdì
 
