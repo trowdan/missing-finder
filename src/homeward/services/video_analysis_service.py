@@ -7,7 +7,9 @@ class VideoAnalysisService(ABC):
     """Abstract base class for video analysis services"""
 
     @abstractmethod
-    def analyze_videos(self, request: VideoAnalysisRequest) -> list[VideoAnalysisResult]:
+    def analyze_videos(
+        self, request: VideoAnalysisRequest
+    ) -> list[VideoAnalysisResult]:
         """
         Perform AI video analysis and return results
 

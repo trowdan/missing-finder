@@ -22,7 +22,7 @@ def sample_location():
         country="Italy",
         postal_code="20121",
         latitude=45.4654,
-        longitude=9.1859
+        longitude=9.1859,
     )
 
 
@@ -39,7 +39,7 @@ def sample_case(sample_location):
         last_seen_location=sample_location,
         status=CaseStatus.ACTIVE,
         description="Test case description",
-        priority=CasePriority.HIGH
+        priority=CasePriority.HIGH,
     )
 
 
@@ -48,18 +48,20 @@ def sample_cases(sample_location):
     """Create a list of sample cases for testing"""
     cases = []
     for i in range(12):
-        cases.append(MissingPersonCase(
-            id=f"MP{i+1:03d}",
-            name=f"Person{i+1}",
-            surname=f"Surname{i+1}",
-            age=20 + i,
-            gender="Male" if i % 2 == 0 else "Female",
-            last_seen_date=datetime.now() - timedelta(days=i+1),
-            last_seen_location=sample_location,
-            status=CaseStatus.ACTIVE,
-            description=f"Test case {i+1} description",
-            priority=CasePriority.HIGH if i % 3 == 0 else CasePriority.MEDIUM
-        ))
+        cases.append(
+            MissingPersonCase(
+                id=f"MP{i + 1:03d}",
+                name=f"Person{i + 1}",
+                surname=f"Surname{i + 1}",
+                age=20 + i,
+                gender="Male" if i % 2 == 0 else "Female",
+                last_seen_date=datetime.now() - timedelta(days=i + 1),
+                last_seen_location=sample_location,
+                status=CaseStatus.ACTIVE,
+                description=f"Test case {i + 1} description",
+                priority=CasePriority.HIGH if i % 3 == 0 else CasePriority.MEDIUM,
+            )
+        )
     return cases
 
 
@@ -72,7 +74,7 @@ def sample_kpi_data():
         resolved_cases=85,
         sightings_today=5,
         success_rate=85.0,
-        avg_resolution_days=3.2
+        avg_resolution_days=3.2,
     )
 
 
@@ -85,7 +87,7 @@ def test_config():
         bigquery_project_id="test-project",
         bigquery_dataset="test_dataset",
         gcs_bucket_ingestion="test-ingestion",
-        gcs_bucket_processed="test-processed"
+        gcs_bucket_processed="test-processed",
     )
 
 
@@ -106,6 +108,6 @@ def empty_data_service():
         resolved_cases=0,
         sightings_today=0,
         success_rate=0.0,
-        avg_resolution_days=0.0
+        avg_resolution_days=0.0,
     )
     return service

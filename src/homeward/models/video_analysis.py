@@ -5,6 +5,7 @@ from datetime import datetime
 @dataclass
 class VideoAnalysisResult:
     """Data model for AI video analysis results"""
+
     id: str
     timestamp: datetime
     latitude: float
@@ -32,6 +33,7 @@ class VideoAnalysisResult:
 @dataclass
 class VideoAnalysisRequest:
     """Data model for video analysis request parameters"""
+
     case_id: str
     start_date: datetime
     end_date: datetime

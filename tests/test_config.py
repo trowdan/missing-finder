@@ -30,10 +30,7 @@ class TestAppConfig:
 
     def test_app_config_creation_minimal(self):
         """Test creating AppConfig with minimal required fields"""
-        config = AppConfig(
-            data_source=DataSource.MOCK,
-            version="1.0.0"
-        )
+        config = AppConfig(data_source=DataSource.MOCK, version="1.0.0")
 
         assert config.data_source == DataSource.MOCK
         assert config.version == "1.0.0"
@@ -50,7 +47,7 @@ class TestAppConfig:
             bigquery_project_id="test-project",
             bigquery_dataset="test_dataset",
             gcs_bucket_ingestion="test-ingestion-bucket",
-            gcs_bucket_processed="test-processed-bucket"
+            gcs_bucket_processed="test-processed-bucket",
         )
 
         assert config.data_source == DataSource.BIGQUERY
@@ -65,28 +62,22 @@ class TestAppConfig:
         config1 = AppConfig(
             data_source=DataSource.MOCK,
             version="1.0.0",
-            bigquery_project_id="test-project"
+            bigquery_project_id="test-project",
         )
 
         config2 = AppConfig(
             data_source=DataSource.MOCK,
             version="1.0.0",
-            bigquery_project_id="test-project"
+            bigquery_project_id="test-project",
         )
 
         assert config1 == config2
 
     def test_app_config_inequality(self):
         """Test AppConfig inequality comparison"""
-        config1 = AppConfig(
-            data_source=DataSource.MOCK,
-            version="1.0.0"
-        )
+        config1 = AppConfig(data_source=DataSource.MOCK, version="1.0.0")
 
-        config2 = AppConfig(
-            data_source=DataSource.BIGQUERY,
-            version="1.0.0"
-        )
+        config2 = AppConfig(data_source=DataSource.BIGQUERY, version="1.0.0")
 
         assert config1 != config2
 
@@ -109,12 +100,12 @@ class TestLoadConfig:
     def test_load_config_from_environment(self):
         """Test loading config from environment variables"""
         env_vars = {
-            'HOMEWARD_DATA_SOURCE': 'bigquery',
-            'HOMEWARD_VERSION': '2.1.0',
-            'HOMEWARD_BIGQUERY_PROJECT_ID': 'my-test-project',
-            'HOMEWARD_BIGQUERY_DATASET': 'my_dataset',
-            'HOMEWARD_GCS_BUCKET_INGESTION': 'my-ingestion-bucket',
-            'HOMEWARD_GCS_BUCKET_PROCESSED': 'my-processed-bucket'
+            "HOMEWARD_DATA_SOURCE": "bigquery",
+            "HOMEWARD_VERSION": "2.1.0",
+            "HOMEWARD_BIGQUERY_PROJECT_ID": "my-test-project",
+            "HOMEWARD_BIGQUERY_DATASET": "my_dataset",
+            "HOMEWARD_GCS_BUCKET_INGESTION": "my-ingestion-bucket",
+            "HOMEWARD_GCS_BUCKET_PROCESSED": "my-processed-bucket",
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -130,9 +121,9 @@ class TestLoadConfig:
     def test_load_config_partial_environment(self):
         """Test loading config with some environment variables set"""
         env_vars = {
-            'HOMEWARD_DATA_SOURCE': 'bigquery',
-            'HOMEWARD_VERSION': '1.5.0',
-            'HOMEWARD_BIGQUERY_PROJECT_ID': 'partial-project'
+            "HOMEWARD_DATA_SOURCE": "bigquery",
+            "HOMEWARD_VERSION": "1.5.0",
+            "HOMEWARD_BIGQUERY_PROJECT_ID": "partial-project",
             # Other variables not set
         }
 
@@ -148,9 +139,7 @@ class TestLoadConfig:
 
     def test_load_config_invalid_data_source(self):
         """Test loading config with invalid data source"""
-        env_vars = {
-            'HOMEWARD_DATA_SOURCE': 'invalid_source'
-        }
+        env_vars = {"HOMEWARD_DATA_SOURCE": "invalid_source"}
 
         with patch.dict(os.environ, env_vars, clear=True):
             config = load_config()
@@ -161,16 +150,16 @@ class TestLoadConfig:
     def test_load_config_case_insensitive_data_source(self):
         """Test that data source is case insensitive"""
         test_cases = [
-            ('MOCK', DataSource.MOCK),
-            ('mock', DataSource.MOCK),
-            ('Mock', DataSource.MOCK),
-            ('BIGQUERY', DataSource.BIGQUERY),
-            ('bigquery', DataSource.BIGQUERY),
-            ('BigQuery', DataSource.BIGQUERY)
+            ("MOCK", DataSource.MOCK),
+            ("mock", DataSource.MOCK),
+            ("Mock", DataSource.MOCK),
+            ("BIGQUERY", DataSource.BIGQUERY),
+            ("bigquery", DataSource.BIGQUERY),
+            ("BigQuery", DataSource.BIGQUERY),
         ]
 
         for env_value, expected_source in test_cases:
-            env_vars = {'HOMEWARD_DATA_SOURCE': env_value}
+            env_vars = {"HOMEWARD_DATA_SOURCE": env_value}
 
             with patch.dict(os.environ, env_vars, clear=True):
                 config = load_config()
@@ -179,12 +168,12 @@ class TestLoadConfig:
     def test_load_config_empty_strings(self):
         """Test loading config with empty string environment variables"""
         env_vars = {
-            'HOMEWARD_DATA_SOURCE': '',
-            'HOMEWARD_VERSION': '',
-            'HOMEWARD_BIGQUERY_PROJECT_ID': '',
-            'HOMEWARD_BIGQUERY_DATASET': '',
-            'HOMEWARD_GCS_BUCKET_INGESTION': '',
-            'HOMEWARD_GCS_BUCKET_PROCESSED': ''
+            "HOMEWARD_DATA_SOURCE": "",
+            "HOMEWARD_VERSION": "",
+            "HOMEWARD_BIGQUERY_PROJECT_ID": "",
+            "HOMEWARD_BIGQUERY_DATASET": "",
+            "HOMEWARD_GCS_BUCKET_INGESTION": "",
+            "HOMEWARD_GCS_BUCKET_PROCESSED": "",
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -207,9 +196,9 @@ class TestLoadConfig:
     def test_load_config_whitespace_handling(self):
         """Test that whitespace in environment variables is handled"""
         env_vars = {
-            'HOMEWARD_DATA_SOURCE': '  bigquery  ',
-            'HOMEWARD_VERSION': '  1.0.0  ',
-            'HOMEWARD_BIGQUERY_PROJECT_ID': '  test-project  '
+            "HOMEWARD_DATA_SOURCE": "  bigquery  ",
+            "HOMEWARD_VERSION": "  1.0.0  ",
+            "HOMEWARD_BIGQUERY_PROJECT_ID": "  test-project  ",
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -231,11 +220,11 @@ class TestLoadConfig:
             "2.1.3-beta.1",
             "3.0.0-rc.1+build.123",
             "dev",
-            "latest"
+            "latest",
         ]
 
         for version in version_tests:
-            env_vars = {'HOMEWARD_VERSION': version}
+            env_vars = {"HOMEWARD_VERSION": version}
 
             with patch.dict(os.environ, env_vars, clear=True):
                 config = load_config()
@@ -244,9 +233,9 @@ class TestLoadConfig:
     def test_load_config_reproducibility(self):
         """Test that load_config returns the same result when called multiple times"""
         env_vars = {
-            'HOMEWARD_DATA_SOURCE': 'bigquery',
-            'HOMEWARD_VERSION': '1.0.0',
-            'HOMEWARD_BIGQUERY_PROJECT_ID': 'test-project'
+            "HOMEWARD_DATA_SOURCE": "bigquery",
+            "HOMEWARD_VERSION": "1.0.0",
+            "HOMEWARD_BIGQUERY_PROJECT_ID": "test-project",
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -269,7 +258,7 @@ class TestConfigurationValidation:
             data_source=DataSource.BIGQUERY,
             version="1.0.0",
             bigquery_project_id="test-project",
-            bigquery_dataset="test_dataset"
+            bigquery_dataset="test_dataset",
         )
 
         assert config.data_source == DataSource.BIGQUERY
@@ -278,10 +267,7 @@ class TestConfigurationValidation:
 
     def test_mock_config_minimal_requirements(self):
         """Test that mock configuration works with minimal fields"""
-        config = AppConfig(
-            data_source=DataSource.MOCK,
-            version="1.0.0"
-        )
+        config = AppConfig(data_source=DataSource.MOCK, version="1.0.0")
 
         assert config.data_source == DataSource.MOCK
         # BigQuery fields can be None for mock configuration
@@ -296,7 +282,7 @@ class TestConfigurationValidation:
             bigquery_project_id="homeward-prod-12345",
             bigquery_dataset="homeward_production",
             gcs_bucket_ingestion="homeward-prod-12345-video-ingestion",
-            gcs_bucket_processed="homeward-prod-12345-video-processed"
+            gcs_bucket_processed="homeward-prod-12345-video-processed",
         )
 
         assert config.data_source == DataSource.BIGQUERY

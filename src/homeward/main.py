@@ -19,25 +19,34 @@ def main():
     data_service = create_data_service(config)
     video_analysis_service = create_video_analysis_service(config)
 
-    @ui.page('/')
+    @ui.page("/")
     def index():
         create_dashboard(data_service, config)
 
-    @ui.page('/new-report')
+    @ui.page("/new-report")
     def new_report():
-        create_new_report_page(data_service, config, lambda: ui.navigate.to('/'))
+        create_new_report_page(data_service, config, lambda: ui.navigate.to("/"))
 
-    @ui.page('/case/{case_id}')
+    @ui.page("/case/{case_id}")
     def case_detail(case_id: str):
-        create_case_detail_page(case_id, data_service, video_analysis_service, config, lambda: ui.navigate.to('/'))
+        create_case_detail_page(
+            case_id,
+            data_service,
+            video_analysis_service,
+            config,
+            lambda: ui.navigate.to("/"),
+        )
 
-    @ui.page('/new-sighting')
+    @ui.page("/new-sighting")
     def new_sighting():
-        create_new_sighting_page(data_service, config, lambda: ui.navigate.to('/'))
+        create_new_sighting_page(data_service, config, lambda: ui.navigate.to("/"))
 
-    @ui.page('/sighting/{sighting_id}')
+    @ui.page("/sighting/{sighting_id}")
     def sighting_detail(sighting_id: str):
-        create_sighting_detail_page(sighting_id, data_service, config, lambda: ui.navigate.to('/'))
+        create_sighting_detail_page(
+            sighting_id, data_service, config, lambda: ui.navigate.to("/")
+        )
+
 
 main()
-ui.run(title='Homeward - Missing Persons Finder', port=8080)
+ui.run(title="Homeward - Missing Persons Finder", port=8080)

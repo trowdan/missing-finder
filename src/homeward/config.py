@@ -34,5 +34,5 @@ def load_config() -> AppConfig:
         bigquery_project_id=os.getenv("HOMEWARD_BIGQUERY_PROJECT_ID"),
         bigquery_dataset=os.getenv("HOMEWARD_BIGQUERY_DATASET", "homeward"),
         gcs_bucket_ingestion=os.getenv("HOMEWARD_GCS_BUCKET_INGESTION"),
-        gcs_bucket_processed=os.getenv("HOMEWARD_GCS_BUCKET_PROCESSED")
+        gcs_bucket_processed=os.getenv("HOMEWARD_GCS_BUCKET_PROCESSED"),
     )

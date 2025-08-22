@@ -20,7 +20,7 @@ class TestLocation:
             country="Italy",
             postal_code="20121",
             latitude=45.4654,
-            longitude=9.1859
+            longitude=9.1859,
         )
 
         assert location.address == "Via Roma 15"
@@ -38,7 +38,7 @@ class TestLocation:
             country="Test Country",
             postal_code="12345",
             latitude=-45.4654,
-            longitude=-9.1859
+            longitude=-9.1859,
         )
 
         assert location.latitude == -45.4654
@@ -52,7 +52,7 @@ class TestLocation:
             country="Italy",
             postal_code="20121",
             latitude=45.4654,
-            longitude=9.1859
+            longitude=9.1859,
         )
 
         location2 = Location(
@@ -61,7 +61,7 @@ class TestLocation:
             country="Italy",
             postal_code="20121",
             latitude=45.4654,
-            longitude=9.1859
+            longitude=9.1859,
         )
 
         assert location1 == location2
@@ -119,7 +119,7 @@ class TestMissingPersonCase:
             description="Test case",
             photo_url="http://example.com/photo.jpg",
             created_date=created_date,
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         )
 
         assert case.id == "MP001"
@@ -148,7 +148,7 @@ class TestMissingPersonCase:
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
-            description="Test case"
+            description="Test case",
         )
 
         assert case.photo_url is None
@@ -169,7 +169,7 @@ class TestMissingPersonCase:
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
-            description="Child case"
+            description="Child case",
         )
 
         # Adult case
@@ -182,7 +182,7 @@ class TestMissingPersonCase:
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
-            description="Adult case"
+            description="Adult case",
         )
 
         # Senior case
@@ -195,7 +195,7 @@ class TestMissingPersonCase:
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
-            description="Senior case"
+            description="Senior case",
         )
 
         assert child_case.age == 12
@@ -215,7 +215,7 @@ class TestMissingPersonCase:
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
-            description="Test case"
+            description="Test case",
         )
 
         case2 = MissingPersonCase(
@@ -227,7 +227,7 @@ class TestMissingPersonCase:
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
-            description="Test case"
+            description="Test case",
         )
 
         assert case1 == case2
@@ -244,7 +244,7 @@ class TestKPIData:
             resolved_cases=85,
             sightings_today=5,
             success_rate=85.0,
-            avg_resolution_days=3.2
+            avg_resolution_days=3.2,
         )
 
         assert kpi.total_cases == 100
@@ -262,7 +262,7 @@ class TestKPIData:
             resolved_cases=0,
             sightings_today=0,
             success_rate=0.0,
-            avg_resolution_days=0.0
+            avg_resolution_days=0.0,
         )
 
         assert kpi.total_cases == 0
@@ -280,7 +280,7 @@ class TestKPIData:
             resolved_cases=85,
             sightings_today=5,
             success_rate=85.0,
-            avg_resolution_days=3.2
+            avg_resolution_days=3.2,
         )
 
         # Total should equal active + resolved
@@ -298,7 +298,7 @@ class TestKPIData:
             resolved_cases=85,
             sightings_today=5,
             success_rate=85.0,
-            avg_resolution_days=3.2
+            avg_resolution_days=3.2,
         )
 
         kpi2 = KPIData(
@@ -307,7 +307,7 @@ class TestKPIData:
             resolved_cases=85,
             sightings_today=5,
             success_rate=85.0,
-            avg_resolution_days=3.2
+            avg_resolution_days=3.2,
         )
 
         assert kpi1 == kpi2

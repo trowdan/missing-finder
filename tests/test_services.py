@@ -139,7 +139,9 @@ class TestBigQueryDataService:
         with pytest.raises(NotImplementedError):
             service.get_case_by_id("MP001")
 
-        with pytest.raises(NotImplementedError, match="BigQuery implementation not yet available"):
+        with pytest.raises(
+            NotImplementedError, match="BigQuery implementation not yet available"
+        ):
             service.create_case(None)
 
 
@@ -148,10 +150,7 @@ class TestServiceFactory:
 
     def test_create_mock_data_service(self):
         """Test creating mock data service via factory"""
-        config = AppConfig(
-            data_source=DataSource.MOCK,
-            version="0.1.0"
-        )
+        config = AppConfig(data_source=DataSource.MOCK, version="0.1.0")
 
         service = create_data_service(config)
 
@@ -162,7 +161,7 @@ class TestServiceFactory:
         config = AppConfig(
             data_source=DataSource.BIGQUERY,
             version="0.1.0",
-            bigquery_project_id="test-project"
+            bigquery_project_id="test-project",
         )
 
         service = create_data_service(config)
@@ -175,7 +174,7 @@ class TestServiceFactory:
         # This would require modifying the enum, so we'll test the error handling
         config = AppConfig(
             data_source=DataSource.MOCK,  # Use valid source
-            version="0.1.0"
+            version="0.1.0",
         )
 
         # Temporarily modify the data source to an invalid value
@@ -193,10 +192,10 @@ class TestDataServiceInterface:
         service = MockDataService()
 
         # Check that all abstract methods are implemented
-        assert hasattr(service, 'get_cases')
-        assert hasattr(service, 'get_kpi_data')
-        assert hasattr(service, 'get_case_by_id')
-        assert hasattr(service, 'create_case')
+        assert hasattr(service, "get_cases")
+        assert hasattr(service, "get_kpi_data")
+        assert hasattr(service, "get_case_by_id")
+        assert hasattr(service, "create_case")
 
         # Check that methods are callable
         assert callable(service.get_cases)
@@ -209,10 +208,10 @@ class TestDataServiceInterface:
         service = BigQueryDataService(test_config)
 
         # Check that all abstract methods are implemented
-        assert hasattr(service, 'get_cases')
-        assert hasattr(service, 'get_kpi_data')
-        assert hasattr(service, 'get_case_by_id')
-        assert hasattr(service, 'create_case')
+        assert hasattr(service, "get_cases")
+        assert hasattr(service, "get_kpi_data")
+        assert hasattr(service, "get_case_by_id")
+        assert hasattr(service, "create_case")
 
         # Check that methods are callable (even if not implemented)
         assert callable(service.get_cases)

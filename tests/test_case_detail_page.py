@@ -7,8 +7,8 @@ from homeward.models.case import CasePriority, CaseStatus, Location, MissingPers
 class TestCaseDetailPage:
     """Test cases for the case detail page"""
 
-    @patch('homeward.ui.pages.case_detail.ui')
-    @patch('homeward.ui.pages.case_detail.create_footer')
+    @patch("homeward.ui.pages.case_detail.ui")
+    @patch("homeward.ui.pages.case_detail.create_footer")
     def test_create_case_detail_page_with_mock_case(self, mock_footer, mock_ui):
         """Test case detail page creation with mock case data"""
         from homeward.ui.pages.case_detail import create_case_detail_page
@@ -33,7 +33,13 @@ class TestCaseDetailPage:
 
         mock_video_analysis_service = Mock()
 
-        create_case_detail_page("MP001", mock_data_service, mock_video_analysis_service, mock_config, mock_callback)
+        create_case_detail_page(
+            "MP001",
+            mock_data_service,
+            mock_video_analysis_service,
+            mock_config,
+            mock_callback,
+        )
 
         # Verify dark mode is enabled
         mock_ui.dark_mode().enable.assert_called_once()
@@ -43,12 +49,12 @@ class TestCaseDetailPage:
 
         # Verify UI structure
         assert mock_ui.column.call_count >= 5  # Multiple columns for layout
-        assert mock_ui.card.call_count >= 5    # Multiple cards for sections
+        assert mock_ui.card.call_count >= 5  # Multiple cards for sections
         assert mock_ui.label.call_count >= 10  # Multiple labels for content
         assert mock_ui.button.call_count >= 5  # Action buttons
 
-    @patch('homeward.ui.pages.case_detail.ui')
-    @patch('homeward.ui.pages.case_detail.create_footer')
+    @patch("homeward.ui.pages.case_detail.ui")
+    @patch("homeward.ui.pages.case_detail.create_footer")
     def test_create_case_detail_page_with_real_case(self, mock_footer, mock_ui):
         """Test case detail page creation with real case data"""
         from homeward.ui.pages.case_detail import create_case_detail_page
@@ -78,13 +84,13 @@ class TestCaseDetailPage:
                 country="Canada",
                 postal_code="V6B 1A1",
                 latitude=49.2827,
-                longitude=-123.1207
+                longitude=-123.1207,
             ),
             status=CaseStatus.ACTIVE,
             description="Missing after work shift ended.",
             photo_url=None,
             created_date=datetime(2023, 12, 5, 20, 0),
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         )
 
         mock_data_service = Mock()
@@ -96,7 +102,13 @@ class TestCaseDetailPage:
 
         mock_video_analysis_service = Mock()
 
-        create_case_detail_page("MP123", mock_data_service, mock_video_analysis_service, mock_config, mock_callback)
+        create_case_detail_page(
+            "MP123",
+            mock_data_service,
+            mock_video_analysis_service,
+            mock_config,
+            mock_callback,
+        )
 
         # Verify data service was called
         mock_data_service.get_case_by_id.assert_called_once_with("MP123")
@@ -113,7 +125,7 @@ class TestCaseDetailPage:
 class TestCaseDetailHelpers:
     """Test helper functions for case detail page"""
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_open_link_sighting_modal(self, mock_ui):
         """Test link sighting modal opening"""
         from homeward.services.mock_data_service import MockDataService
@@ -142,12 +154,14 @@ class TestCaseDetailHelpers:
             assert True
         except Exception as e:
             # If there's an exception, fail the test
-            raise AssertionError(f"open_link_sighting_modal raised exception: {e}") from e
+            raise AssertionError(
+                f"open_link_sighting_modal raised exception: {e}"
+            ) from e
 
         # Verify dialog was created
         mock_ui.dialog.assert_called_once()
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_handle_analyze_video(self, mock_ui):
         """Test analyze video handler"""
         from datetime import datetime
@@ -174,13 +188,13 @@ class TestCaseDetailHelpers:
                 country="Canada",
                 postal_code="M5V 3A8",
                 latitude=43.6532,
-                longitude=-79.3832
+                longitude=-79.3832,
             ),
             status=CaseStatus.ACTIVE,
             description="Missing person",
             photo_url=None,
             created_date=datetime(2023, 12, 1, 18, 0),
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         )
 
         mock_video_analysis_service = Mock()
@@ -191,49 +205,61 @@ class TestCaseDetailHelpers:
         mock_results_container.__enter__ = Mock(return_value=mock_results_container)
         mock_results_container.__exit__ = Mock(return_value=None)
 
-        handle_analyze_video("MP001", mock_video_analysis_service, case, mock_results_container)
+        handle_analyze_video(
+            "MP001", mock_video_analysis_service, case, mock_results_container
+        )
 
         # Verify notifications - should have initial info and final warning
         assert mock_ui.notify.call_count == 2
 
         # Check first call (initial notification)
         first_call = mock_ui.notify.call_args_list[0]
-        assert first_call == (('🤖 Starting AI-powered video analysis for case MP001...',), {'type': 'info'})
+        assert first_call == (
+            ("🤖 Starting AI-powered video analysis for case MP001...",),
+            {"type": "info"},
+        )
 
         # Check second call (no results warning)
         second_call = mock_ui.notify.call_args_list[1]
-        assert second_call == (('No matches found in the specified criteria',), {'type': 'warning'})
+        assert second_call == (
+            ("No matches found in the specified criteria",),
+            {"type": "warning"},
+        )
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_handle_edit_case(self, mock_ui):
         """Test edit case handler"""
         from homeward.ui.pages.case_detail import handle_edit_case
 
         handle_edit_case("MP001")
-        mock_ui.notify.assert_called_once_with('Edit case MP001', type='info')
+        mock_ui.notify.assert_called_once_with("Edit case MP001", type="info")
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_handle_resolve_case(self, mock_ui):
         """Test resolve case handler"""
         from homeward.ui.pages.case_detail import handle_resolve_case
 
         handle_resolve_case("MP001")
-        mock_ui.notify.assert_called_once_with('Mark case MP001 as resolved', type='positive')
+        mock_ui.notify.assert_called_once_with(
+            "Mark case MP001 as resolved", type="positive"
+        )
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_handle_view_sighting(self, mock_ui):
         """Test view sighting handler"""
         from homeward.ui.pages.case_detail import handle_view_sighting
 
-        sighting = {'location': 'Union Station', 'date': '2023-12-02 10:30'}
+        sighting = {"location": "Union Station", "date": "2023-12-02 10:30"}
         handle_view_sighting(sighting)
-        mock_ui.notify.assert_called_once_with('View sighting at Union Station', type='info')
+        mock_ui.notify.assert_called_once_with(
+            "View sighting at Union Station", type="info"
+        )
 
 
 class TestCaseDetailComponents:
     """Test case detail page components"""
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_create_info_field(self, mock_ui):
         """Test info field creation"""
         from homeward.ui.pages.case_detail import create_info_field
@@ -257,7 +283,7 @@ class TestCaseDetailComponents:
         second_call = mock_ui.label.call_args_list[1]
         assert second_call[0][0] == "Test Value"
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_create_sightings_table_with_data(self, mock_ui):
         """Test sightings table creation with data"""
         from homeward.ui.pages.case_detail import create_sightings_table
@@ -271,10 +297,10 @@ class TestCaseDetailComponents:
 
         # Verify table structure is created
         assert mock_ui.element.called  # div elements for grid layout
-        assert mock_ui.label.called     # table headers and content
-        assert mock_ui.button.called    # action buttons
+        assert mock_ui.label.called  # table headers and content
+        assert mock_ui.button.called  # action buttons
 
-    @patch('homeward.ui.pages.case_detail.ui')
+    @patch("homeward.ui.pages.case_detail.ui")
     def test_create_video_analysis_section(self, mock_ui):
         """Test video analysis section creation"""
         from homeward.ui.pages.case_detail import create_video_analysis_section
@@ -295,4 +321,4 @@ class TestCaseDetailComponents:
         assert mock_ui.input.called  # Date inputs
         assert mock_ui.number.called  # Radius input
         assert mock_ui.select.called  # Dropdown selections
-        assert mock_ui.label.called   # Labels
+        assert mock_ui.label.called  # Labels

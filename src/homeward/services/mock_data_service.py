@@ -57,7 +57,11 @@ class MockDataService(DataService):
 
         try:
             status_enum = SightingStatus(status_filter)
-            return [sighting for sighting in self._sightings if sighting.status == status_enum]
+            return [
+                sighting
+                for sighting in self._sightings
+                if sighting.status == status_enum
+            ]
         except ValueError:
             return self._sightings
 

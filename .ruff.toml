@@ -1,0 +1,15 @@
+# Exclude specific notebook files with primarily SQL content
+extend-exclude = ["limitations.ipynb"]
+
+[lint]
+# Ignore specific error codes that are common in notebooks
+ignore = [
+    "F821",  # Undefined name (common in notebooks due to cell dependencies)
+    "E703",  # Statement ends with unnecessary semicolon (common in SQL)
+    "W291",  # Trailing whitespace
+    "W293",  # Blank line contains whitespace
+]
+
+# Allow multiline strings to contain SQL syntax
+[lint.per-file-ignores]
+"*.ipynb" = ["F821", "E703", "W291", "W293"]

@@ -19,7 +19,9 @@ def create_dashboard(data_service: DataService, config: AppConfig):
     # Sort by creation date descending to show latest first (with safety check for sorting)
     try:
         latest_cases = sorted(all_cases, key=lambda x: x.created_date, reverse=True)
-        latest_sightings = sorted(all_sightings, key=lambda x: x.created_date, reverse=True)
+        latest_sightings = sorted(
+            all_sightings, key=lambda x: x.created_date, reverse=True
+        )
     except (AttributeError, TypeError):
         # Fallback for test mocks or missing created_date attribute
         latest_cases = all_cases
@@ -28,54 +30,79 @@ def create_dashboard(data_service: DataService, config: AppConfig):
     # Set dark theme
     ui.dark_mode().enable()
 
-    with ui.column().classes('w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen'):
+    with ui.column().classes(
+        "w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen"
+    ):
         # Container with max width and centered
-        with ui.column().classes('max-w-7xl mx-auto p-8 w-full'):
+        with ui.column().classes("max-w-7xl mx-auto p-8 w-full"):
             # Header - app name only
-            with ui.column().classes('items-center text-center mb-12'):
-                ui.label('Homeward').classes('text-6xl font-extralight text-white tracking-tight mb-8')
+            with ui.column().classes("items-center text-center mb-12"):
+                ui.label("Homeward").classes(
+                    "text-6xl font-extralight text-white tracking-tight mb-8"
+                )
 
             # KPI Section
             create_kpi_grid(kpi_data)
 
             # Panel Selector - Material 3 Segmented Control
-            with ui.column().classes('w-full items-center mt-12 mb-8'):
-                with ui.row().classes('bg-gray-900/20 p-1 rounded-full border border-gray-700/30 backdrop-blur-md'):
+            with ui.column().classes("w-full items-center mt-12 mb-8"):
+                with ui.row().classes(
+                    "bg-gray-900/20 p-1 rounded-full border border-gray-700/30 backdrop-blur-md"
+                ):
                     missing_persons_btn = ui.button(
-                        'Missing Persons',
-                        on_click=lambda: show_panel('missing_persons')
-                    ).classes('px-5 py-2 rounded-full transition-all duration-200 font-normal text-sm bg-gray-600/60 text-white border-0 hover:bg-gray-600/80 shadow-none')
+                        "Missing Persons",
+                        on_click=lambda: show_panel("missing_persons"),
+                    ).classes(
+                        "px-5 py-2 rounded-full transition-all duration-200 font-normal text-sm bg-gray-600/60 text-white border-0 hover:bg-gray-600/80 shadow-none"
+                    )
 
                     sightings_btn = ui.button(
-                        'Sightings',
-                        on_click=lambda: show_panel('sightings')
-                    ).classes('px-5 py-2 rounded-full transition-all duration-200 font-normal text-sm bg-transparent text-gray-400 border-0 hover:bg-gray-700/30 shadow-none')
+                        "Sightings", on_click=lambda: show_panel("sightings")
+                    ).classes(
+                        "px-5 py-2 rounded-full transition-all duration-200 font-normal text-sm bg-transparent text-gray-400 border-0 hover:bg-gray-700/30 shadow-none"
+                    )
 
             # Panel Container
-            with ui.column().classes('w-full'):
+            with ui.column().classes("w-full"):
                 # Missing Persons Panel (shown by default)
-                with ui.column().classes('w-full') as missing_persons_panel:
+                with ui.column().classes("w-full") as missing_persons_panel:
                     create_missing_persons_panel(data_service, latest_cases)
 
                 # Sightings Panel (hidden by default)
-                with ui.column().classes('w-full').style('display: none') as sightings_panel:
+                with (
+                    ui.column()
+                    .classes("w-full")
+                    .style("display: none") as sightings_panel
+                ):
                     create_sightings_panel(data_service, latest_sightings)
 
             # Store panel references for switching
             def show_panel(panel_type):
                 """Switch between panels with smooth transition"""
-                if panel_type == 'missing_persons':
-                    missing_persons_panel.style('display: block')
-                    sightings_panel.style('display: none')
+                if panel_type == "missing_persons":
+                    missing_persons_panel.style("display: block")
+                    sightings_panel.style("display: none")
                     # Update button styles - active state with lighter background
-                    missing_persons_btn.classes(remove='bg-transparent text-gray-400 hover:bg-gray-700/30').classes(add='bg-gray-600/60 text-white hover:bg-gray-600/80')
-                    sightings_btn.classes(remove='bg-gray-600/60 text-white hover:bg-gray-600/80').classes(add='bg-transparent text-gray-400 hover:bg-gray-700/30')
+                    missing_persons_btn.classes(
+                        remove="bg-transparent text-gray-400 hover:bg-gray-700/30"
+                    ).classes(add="bg-gray-600/60 text-white hover:bg-gray-600/80")
+                    sightings_btn.classes(
+                        remove="bg-gray-600/60 text-white hover:bg-gray-600/80"
+                    ).classes(add="bg-transparent text-gray-400 hover:bg-gray-700/30")
                 else:
-                    missing_persons_panel.style('display: none')
-                    sightings_panel.style('display: block')
+                    missing_persons_panel.style("display: none")
+                    sightings_panel.style("display: block")
                     # Update button styles - active state with lighter background
-                    missing_persons_btn.classes(remove='bg-gray-600/60 text-white hover:bg-gray-600/80 shadow-none').classes(add='bg-transparent text-gray-400 hover:bg-gray-700/30 shadow-none')
-                    sightings_btn.classes(remove='bg-transparent text-gray-400 hover:bg-gray-700/30 shadow-none').classes(add='bg-gray-600/60 text-white hover:bg-gray-600/80 shadow-none')
+                    missing_persons_btn.classes(
+                        remove="bg-gray-600/60 text-white hover:bg-gray-600/80 shadow-none"
+                    ).classes(
+                        add="bg-transparent text-gray-400 hover:bg-gray-700/30 shadow-none"
+                    )
+                    sightings_btn.classes(
+                        remove="bg-transparent text-gray-400 hover:bg-gray-700/30 shadow-none"
+                    ).classes(
+                        add="bg-gray-600/60 text-white hover:bg-gray-600/80 shadow-none"
+                    )
 
             # Footer
             create_footer(config.version)
@@ -83,155 +110,195 @@ def create_dashboard(data_service: DataService, config: AppConfig):
 
 def handle_new_case_click():
     """Handle new case button click"""
-    ui.navigate.to('/new-report')
+    ui.navigate.to("/new-report")
 
 
 def handle_sightings_click():
     """Handle new sighting button click"""
-    ui.navigate.to('/new-sighting')
+    ui.navigate.to("/new-sighting")
 
 
 def handle_case_click(case):
     """Handle case row click"""
-    ui.navigate.to(f'/case/{case.id}')
+    ui.navigate.to(f"/case/{case.id}")
 
 
 def handle_view_all_cases_click():
     """Handle view all cases link click"""
-    ui.notify('Navigate to all cases page')
+    ui.notify("Navigate to all cases page")
 
 
 def handle_sighting_click(sighting):
     """Handle sighting row click"""
-    ui.navigate.to(f'/sighting/{sighting.id}')
+    ui.navigate.to(f"/sighting/{sighting.id}")
 
 
 def handle_view_all_sightings_click():
     """Handle view all sightings link click"""
-    ui.notify('Navigate to all sightings page')
+    ui.notify("Navigate to all sightings page")
 
 
 def create_missing_persons_panel(data_service: DataService, latest_cases: list):
     """Create the Missing Persons panel with search and table"""
 
-    with ui.card().classes('w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl'):
+    with ui.card().classes(
+        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
+    ):
         # Panel header with title and New button
-        with ui.row().classes('w-full items-center justify-between mb-6'):
-            with ui.row().classes('items-center'):
-                ui.icon('person_search', size='1.5rem').classes('text-blue-400 mr-3')
-                ui.label('Missing Persons').classes('text-2xl font-light text-white')
+        with ui.row().classes("w-full items-center justify-between mb-6"):
+            with ui.row().classes("items-center"):
+                ui.icon("person_search", size="1.5rem").classes("text-blue-400 mr-3")
+                ui.label("Missing Persons").classes("text-2xl font-light text-white")
 
-            ui.button(
-                '',
-                icon='add',
-                on_click=lambda: handle_new_case_click()
-            ).classes('bg-white/5 text-white w-10 h-10 rounded-full border border-white/60 hover:border-white hover:bg-white/15 backdrop-blur-sm transition-all duration-300 shadow-none').props('round dense flat')
+            ui.button("", icon="add", on_click=lambda: handle_new_case_click()).classes(
+                "bg-white/5 text-white w-10 h-10 rounded-full border border-white/60 hover:border-white hover:bg-white/15 backdrop-blur-sm transition-all duration-300 shadow-none"
+            ).props("round dense flat")
 
         # Search section
-        create_search_form(data_service, latest_cases, 'missing_persons')
+        create_search_form(data_service, latest_cases, "missing_persons")
 
         # Results table
-        with ui.column().classes('w-full mt-6'):
-            create_cases_table(latest_cases, on_case_click=handle_case_click, on_view_all_click=handle_view_all_cases_click)
+        with ui.column().classes("w-full mt-6"):
+            create_cases_table(
+                latest_cases,
+                on_case_click=handle_case_click,
+                on_view_all_click=handle_view_all_cases_click,
+            )
 
 
 def create_sightings_panel(data_service: DataService, latest_sightings: list):
     """Create the Sightings panel with search and table"""
 
-    with ui.card().classes('w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl'):
+    with ui.card().classes(
+        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
+    ):
         # Panel header with title and New button
-        with ui.row().classes('w-full items-center justify-between mb-6'):
-            with ui.row().classes('items-center'):
-                ui.icon('visibility', size='1.5rem').classes('text-green-400 mr-3')
-                ui.label('Sightings').classes('text-2xl font-light text-white')
+        with ui.row().classes("w-full items-center justify-between mb-6"):
+            with ui.row().classes("items-center"):
+                ui.icon("visibility", size="1.5rem").classes("text-green-400 mr-3")
+                ui.label("Sightings").classes("text-2xl font-light text-white")
 
             ui.button(
-                '',
-                icon='add',
-                on_click=lambda: handle_sightings_click()
-            ).classes('bg-white/5 text-white w-10 h-10 rounded-full border border-white/60 hover:border-white hover:bg-white/15 backdrop-blur-sm transition-all duration-300 shadow-none').props('round dense flat')
+                "", icon="add", on_click=lambda: handle_sightings_click()
+            ).classes(
+                "bg-white/5 text-white w-10 h-10 rounded-full border border-white/60 hover:border-white hover:bg-white/15 backdrop-blur-sm transition-all duration-300 shadow-none"
+            ).props("round dense flat")
 
         # Search section
-        create_search_form(data_service, latest_sightings, 'sightings')
+        create_search_form(data_service, latest_sightings, "sightings")
 
         # Results table with real sightings data
-        with ui.column().classes('w-full mt-6'):
-            create_sightings_table(latest_sightings, on_sighting_click=handle_sighting_click, on_view_all_click=handle_view_all_sightings_click)
+        with ui.column().classes("w-full mt-6"):
+            create_sightings_table(
+                latest_sightings,
+                on_sighting_click=handle_sighting_click,
+                on_view_all_click=handle_view_all_sightings_click,
+            )
 
 
 def create_search_form(data_service: DataService, data_source: list, panel_type: str):
     """Create search form for a specific panel"""
 
     # Search controls row
-    with ui.row().classes('w-full gap-4 mb-4'):
+    with ui.row().classes("w-full gap-4 mb-4"):
         # Search type selector
-        search_type_select = ui.select(
-            options=['keyword', 'geographic', 'semantic'],
-            label='Search Type',
-            value='keyword'
-        ).classes('w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+        search_type_select = (
+            ui.select(
+                options=["keyword", "geographic", "semantic"],
+                label="Search Type",
+                value="keyword",
+            )
+            .classes("w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg")
+            .props("outlined dense")
+        )
 
         # Search and Reset buttons
         search_button = ui.button(
-            'Search',
-            on_click=lambda: None  # Will be updated after field containers are defined
-        ).classes('bg-transparent text-blue-300 px-4 py-2 rounded-full border border-blue-400/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide')
+            "Search",
+            on_click=lambda: None,  # Will be updated after field containers are defined
+        ).classes(
+            "bg-transparent text-blue-300 px-4 py-2 rounded-full border border-blue-400/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide"
+        )
 
         reset_button = ui.button(
-            'Reset',
-            on_click=lambda: None  # Will be updated after field containers are defined
-        ).classes('bg-transparent text-gray-300 px-4 py-2 rounded-full border border-gray-400/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-xs tracking-wide')
+            "Reset",
+            on_click=lambda: None,  # Will be updated after field containers are defined
+        ).classes(
+            "bg-transparent text-gray-300 px-4 py-2 rounded-full border border-gray-400/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-xs tracking-wide"
+        )
 
     # Conditional search fields container
-    with ui.column().classes('w-full'):
-
+    with ui.column().classes("w-full"):
         # Keyword search fields
-        with ui.column().classes('w-full') as keyword_fields:
-            with ui.row().classes('w-full gap-4'):
-                keyword_search_input = ui.input(
-                    'Search Term',
-                    placeholder='Enter ID or full name...'
-                ).classes('flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+        with ui.column().classes("w-full") as keyword_fields:
+            with ui.row().classes("w-full gap-4"):
+                keyword_search_input = (
+                    ui.input("Search Term", placeholder="Enter ID or full name...")
+                    .classes(
+                        "flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                    )
+                    .props("outlined dense")
+                )
 
-                keyword_field_select = ui.select(
-                    options=['all', 'id', 'full name'],
-                    label='Field',
-                    value='all'
-                ).classes('w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+                keyword_field_select = (
+                    ui.select(
+                        options=["all", "id", "full name"], label="Field", value="all"
+                    )
+                    .classes(
+                        "w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                    )
+                    .props("outlined dense")
+                )
 
         # Geographic search fields
-        with ui.column().classes('w-full').style('display: none') as geographic_fields:
-            with ui.row().classes('w-full gap-4'):
-                geographic_latitude_input = ui.input(
-                    'Latitude',
-                    placeholder='e.g., 45.4642'
-                ).classes('w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+        with ui.column().classes("w-full").style("display: none") as geographic_fields:
+            with ui.row().classes("w-full gap-4"):
+                geographic_latitude_input = (
+                    ui.input("Latitude", placeholder="e.g., 45.4642")
+                    .classes(
+                        "w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                    )
+                    .props("outlined dense")
+                )
 
-                geographic_longitude_input = ui.input(
-                    'Longitude',
-                    placeholder='e.g., 9.1900'
-                ).classes('w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+                geographic_longitude_input = (
+                    ui.input("Longitude", placeholder="e.g., 9.1900")
+                    .classes(
+                        "w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                    )
+                    .props("outlined dense")
+                )
 
-                geographic_radius_input = ui.number(
-                    'Radius (km)',
-                    value=5.0,
-                    min=0.1,
-                    max=100.0,
-                    step=0.5
-                ).classes('w-24 bg-gray-700/50 text-white border-gray-500 rounded-lg').props('outlined dense')
+                geographic_radius_input = (
+                    ui.number("Radius (km)", value=5.0, min=0.1, max=100.0, step=0.5)
+                    .classes(
+                        "w-24 bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                    )
+                    .props("outlined dense")
+                )
 
         # Semantic search fields
-        with ui.column().classes('w-full').style('display: none') as semantic_fields:
-            with ui.row().classes('w-full gap-2 items-center mb-2'):
-                with ui.element('div').classes('w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg'):
-                    ui.icon('psychology', size='0.875rem').classes('text-white')
-                ui.label('AI-Powered').classes('text-xs text-purple-400 font-medium')
-                ui.label('Powered by Google BigQuery').classes('text-purple-400 text-xs ml-auto font-medium')
+        with ui.column().classes("w-full").style("display: none") as semantic_fields:
+            with ui.row().classes("w-full gap-2 items-center mb-2"):
+                with ui.element("div").classes(
+                    "w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg"
+                ):
+                    ui.icon("psychology", size="0.875rem").classes("text-white")
+                ui.label("AI-Powered").classes("text-xs text-purple-400 font-medium")
+                ui.label("Powered by Google BigQuery").classes(
+                    "text-purple-400 text-xs ml-auto font-medium"
+                )
 
-            semantic_description_input = ui.textarea(
-                'Description',
-                placeholder='Describe appearance, clothing, or characteristics...'
-            ).classes('w-full bg-gray-700/50 text-white border-gray-500 rounded-lg min-h-16').props('outlined')
+            semantic_description_input = (
+                ui.textarea(
+                    "Description",
+                    placeholder="Describe appearance, clothing, or characteristics...",
+                )
+                .classes(
+                    "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg min-h-16"
+                )
+                .props("outlined")
+            )
 
     # Store field references for handlers
     keyword_fields.search_input = keyword_search_input
@@ -246,65 +313,99 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
         search_type = search_type_select.value
 
         # Hide all fields first
-        keyword_fields.style('display: none')
-        geographic_fields.style('display: none')
-        semantic_fields.style('display: none')
+        keyword_fields.style("display: none")
+        geographic_fields.style("display: none")
+        semantic_fields.style("display: none")
 
         # Show relevant fields
-        if search_type == 'keyword':
-            keyword_fields.style('display: block')
-        elif search_type == 'geographic':
-            geographic_fields.style('display: block')
-        elif search_type == 'semantic':
-            semantic_fields.style('display: block')
+        if search_type == "keyword":
+            keyword_fields.style("display: block")
+        elif search_type == "geographic":
+            geographic_fields.style("display: block")
+        elif search_type == "semantic":
+            semantic_fields.style("display: block")
 
     # Bind visibility update to search type change
-    search_type_select.on('update:model-value', lambda: update_field_visibility())
+    search_type_select.on("update:model-value", lambda: update_field_visibility())
 
     # Update button handlers now that containers are defined
-    search_button.on('click', lambda: perform_panel_search(data_service, data_source, panel_type, search_type_select, keyword_fields, geographic_fields, semantic_fields))
-    reset_button.on('click', lambda: reset_panel_search(data_service, data_source, panel_type, search_type_select, keyword_fields, geographic_fields, semantic_fields))
+    search_button.on(
+        "click",
+        lambda: perform_panel_search(
+            data_service,
+            data_source,
+            panel_type,
+            search_type_select,
+            keyword_fields,
+            geographic_fields,
+            semantic_fields,
+        ),
+    )
+    reset_button.on(
+        "click",
+        lambda: reset_panel_search(
+            data_service,
+            data_source,
+            panel_type,
+            search_type_select,
+            keyword_fields,
+            geographic_fields,
+            semantic_fields,
+        ),
+    )
 
     # Initialize with keyword fields visible
     update_field_visibility()
 
 
-def perform_dynamic_search(data_service, all_cases, report_type_select, search_type_select, keyword_fields, geographic_fields, semantic_fields):
+def perform_dynamic_search(
+    data_service,
+    all_cases,
+    report_type_select,
+    search_type_select,
+    keyword_fields,
+    geographic_fields,
+    semantic_fields,
+):
     """Perform search based on report type, search type, and dynamic field inputs"""
     try:
         report_type = report_type_select.value
         search_type = search_type_select.value
 
         # Get the appropriate data based on report type
-        if report_type == 'missing persons':
+        if report_type == "missing persons":
             data_source = all_cases
-            report_label = 'missing person reports'
-        elif report_type == 'sightings':
+            report_label = "missing person reports"
+        elif report_type == "sightings":
             # For now, we'll use an empty list for sightings since we don't have a sighting service yet
             # In a real implementation, this would call data_service.get_sightings()
             data_source = []
-            report_label = 'sightings'
+            report_label = "sightings"
         else:
             data_source = all_cases
-            report_label = 'reports'
+            report_label = "reports"
 
         results = []
 
-        if search_type == 'keyword':
+        if search_type == "keyword":
             query = keyword_fields.search_input.value
             field = keyword_fields.field_select.value
             results = perform_keyword_search(data_source, query, field)
-        elif search_type == 'geographic':
+        elif search_type == "geographic":
             latitude = geographic_fields.latitude_input.value
             longitude = geographic_fields.longitude_input.value
             radius = geographic_fields.radius_input.value
-            results = perform_geographic_search(data_source, latitude, longitude, radius)
-        elif search_type == 'semantic':
+            results = perform_geographic_search(
+                data_source, latitude, longitude, radius
+            )
+        elif search_type == "semantic":
             description = semantic_fields.description_input.value
             results = perform_semantic_search_dynamic(data_source, description)
         else:
             try:
-                results = sorted(data_source, key=lambda x: x.created_date, reverse=True)
+                results = sorted(
+                    data_source, key=lambda x: x.created_date, reverse=True
+                )
             except (AttributeError, TypeError):
                 results = data_source
 
@@ -312,13 +413,13 @@ def perform_dynamic_search(data_service, all_cases, report_type_select, search_t
         # This is a simplified approach - in production we'd use reactive state
 
         # Find the table container and update it
-        ui.notify(f'🔍 Found {len(results)} matching {report_label}', type='positive')
+        ui.notify(f"🔍 Found {len(results)} matching {report_label}", type="positive")
 
         # In a real implementation, we would update the table reactively
         # For now, we'll just show the notification
 
     except Exception as e:
-        ui.notify(f'❌ Search failed: {str(e)}', type='negative')
+        ui.notify(f"❌ Search failed: {str(e)}", type="negative")
 
 
 def perform_keyword_search(cases: list, query: str, field: str) -> list:
@@ -332,11 +433,11 @@ def perform_keyword_search(cases: list, query: str, field: str) -> list:
     for case in cases:
         match = False
 
-        if field == 'all' or field == 'id':
+        if field == "all" or field == "id":
             if query in case.id.lower():
                 match = True
 
-        if field == 'all' or field == 'full name':
+        if field == "all" or field == "full name":
             full_name = f"{case.name} {case.surname}".lower()
             if query in full_name:
                 match = True
@@ -347,10 +448,15 @@ def perform_keyword_search(cases: list, query: str, field: str) -> list:
     return results
 
 
-def perform_geographic_search(cases: list, latitude: str, longitude: str, radius: float) -> list:
+def perform_geographic_search(
+    cases: list, latitude: str, longitude: str, radius: float
+) -> list:
     """Perform geographic search with radius using geospatial calculations"""
     if not latitude or not longitude:
-        ui.notify('Please enter both latitude and longitude for geographic search', type='warning')
+        ui.notify(
+            "Please enter both latitude and longitude for geographic search",
+            type="warning",
+        )
         return cases
 
     try:
@@ -365,27 +471,34 @@ def perform_geographic_search(cases: list, latitude: str, longitude: str, radius
                 # Calculate distance using simplified distance formula
                 # In production, use proper geospatial libraries like geopy
                 distance = calculate_distance(
-                    search_lat, search_lon,
-                    case.last_seen_location.latitude, case.last_seen_location.longitude
+                    search_lat,
+                    search_lon,
+                    case.last_seen_location.latitude,
+                    case.last_seen_location.longitude,
                 )
 
                 if distance <= search_radius:
                     results.append(case)
 
-        return sorted(results, key=lambda x: calculate_distance(
-            search_lat, search_lon,
-            x.last_seen_location.latitude, x.last_seen_location.longitude
-        ))
+        return sorted(
+            results,
+            key=lambda x: calculate_distance(
+                search_lat,
+                search_lon,
+                x.last_seen_location.latitude,
+                x.last_seen_location.longitude,
+            ),
+        )
 
     except ValueError:
-        ui.notify('Invalid coordinates entered', type='negative')
+        ui.notify("Invalid coordinates entered", type="negative")
         return cases
 
 
 def perform_semantic_search_dynamic(cases: list, description: str) -> list:
     """Perform AI-powered semantic search on case descriptions"""
     if not description:
-        ui.notify('Please enter a description for semantic search', type='warning')
+        ui.notify("Please enter a description for semantic search", type="warning")
         return cases
 
     description = description.lower().strip()
@@ -425,7 +538,10 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     # Haversine formula
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
     c = 2 * math.asin(math.sqrt(a))
 
     # Radius of earth in kilometers
@@ -434,18 +550,26 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return c * r
 
 
-def reset_dynamic_search(data_service, all_cases, report_type_select, search_type_select, keyword_fields, geographic_fields, semantic_fields):
+def reset_dynamic_search(
+    data_service,
+    all_cases,
+    report_type_select,
+    search_type_select,
+    keyword_fields,
+    geographic_fields,
+    semantic_fields,
+):
     """Reset all search fields and show default results"""
     try:
         # Clear all input fields
-        keyword_fields.search_input.value = ''
-        keyword_fields.field_select.value = 'all'
-        geographic_fields.latitude_input.value = ''
-        geographic_fields.longitude_input.value = ''
+        keyword_fields.search_input.value = ""
+        keyword_fields.field_select.value = "all"
+        geographic_fields.latitude_input.value = ""
+        geographic_fields.longitude_input.value = ""
         geographic_fields.radius_input.value = 5.0
-        semantic_fields.description_input.value = ''
-        search_type_select.value = 'keyword'
-        report_type_select.value = 'missing persons'
+        semantic_fields.description_input.value = ""
+        search_type_select.value = "keyword"
+        report_type_select.value = "missing persons"
 
         # Show latest cases
         try:
@@ -453,59 +577,81 @@ def reset_dynamic_search(data_service, all_cases, report_type_select, search_typ
         except (AttributeError, TypeError):
             pass
 
-        ui.notify('🔄 Search reset - showing all missing person reports', type='info')
+        ui.notify("🔄 Search reset - showing all missing person reports", type="info")
 
     except Exception as e:
-        ui.notify(f'❌ Reset failed: {str(e)}', type='negative')
+        ui.notify(f"❌ Reset failed: {str(e)}", type="negative")
 
 
-def perform_panel_search(data_service: DataService, data_source: list, panel_type: str, search_type_select, keyword_fields, geographic_fields, semantic_fields):
+def perform_panel_search(
+    data_service: DataService,
+    data_source: list,
+    panel_type: str,
+    search_type_select,
+    keyword_fields,
+    geographic_fields,
+    semantic_fields,
+):
     """Perform search within a specific panel"""
     try:
         search_type = search_type_select.value
-        panel_label = 'missing person reports' if panel_type == 'missing_persons' else 'sightings'
+        panel_label = (
+            "missing person reports" if panel_type == "missing_persons" else "sightings"
+        )
 
         results = []
 
-        if search_type == 'keyword':
+        if search_type == "keyword":
             query = keyword_fields.search_input.value
             field = keyword_fields.field_select.value
             results = perform_keyword_search(data_source, query, field)
-        elif search_type == 'geographic':
+        elif search_type == "geographic":
             latitude = geographic_fields.latitude_input.value
             longitude = geographic_fields.longitude_input.value
             radius = geographic_fields.radius_input.value
-            results = perform_geographic_search(data_source, latitude, longitude, radius)
-        elif search_type == 'semantic':
+            results = perform_geographic_search(
+                data_source, latitude, longitude, radius
+            )
+        elif search_type == "semantic":
             description = semantic_fields.description_input.value
             results = perform_semantic_search_dynamic(data_source, description)
         else:
             try:
-                results = sorted(data_source, key=lambda x: x.created_date, reverse=True)
+                results = sorted(
+                    data_source, key=lambda x: x.created_date, reverse=True
+                )
             except (AttributeError, TypeError):
                 results = data_source
 
         # Update notification
-        ui.notify(f'🔍 Found {len(results)} matching {panel_label}', type='positive')
+        ui.notify(f"🔍 Found {len(results)} matching {panel_label}", type="positive")
 
         # In a real implementation, we would update the table reactively
         # For now, we'll just show the notification
 
     except Exception as e:
-        ui.notify(f'❌ Search failed: {str(e)}', type='negative')
+        ui.notify(f"❌ Search failed: {str(e)}", type="negative")
 
 
-def reset_panel_search(data_service: DataService, data_source: list, panel_type: str, search_type_select, keyword_fields, geographic_fields, semantic_fields):
+def reset_panel_search(
+    data_service: DataService,
+    data_source: list,
+    panel_type: str,
+    search_type_select,
+    keyword_fields,
+    geographic_fields,
+    semantic_fields,
+):
     """Reset search fields within a specific panel"""
     try:
         # Clear all input fields
-        keyword_fields.search_input.value = ''
-        keyword_fields.field_select.value = 'all'
-        geographic_fields.latitude_input.value = ''
-        geographic_fields.longitude_input.value = ''
+        keyword_fields.search_input.value = ""
+        keyword_fields.field_select.value = "all"
+        geographic_fields.latitude_input.value = ""
+        geographic_fields.longitude_input.value = ""
         geographic_fields.radius_input.value = 5.0
-        semantic_fields.description_input.value = ''
-        search_type_select.value = 'keyword'
+        semantic_fields.description_input.value = ""
+        search_type_select.value = "keyword"
 
         # Show latest data
         try:
@@ -513,8 +659,10 @@ def reset_panel_search(data_service: DataService, data_source: list, panel_type:
         except (AttributeError, TypeError):
             pass
 
-        panel_label = 'missing person reports' if panel_type == 'missing_persons' else 'sightings'
-        ui.notify(f'🔄 Search reset - showing all {panel_label}', type='info')
+        panel_label = (
+            "missing person reports" if panel_type == "missing_persons" else "sightings"
+        )
+        ui.notify(f"🔄 Search reset - showing all {panel_label}", type="info")
 
     except Exception as e:
-        ui.notify(f'❌ Reset failed: {str(e)}', type='negative')
+        ui.notify(f"❌ Reset failed: {str(e)}", type="negative")

@@ -23,17 +23,28 @@ class MockVideoAnalysisService(VideoAnalysisService):
             "Individual matching description seen walking with unidentified companion. Height, build, and clothing style correspond to missing person parameters. Both subjects proceed toward residential area.",
             "Person detected near commercial district showing behavior consistent with seeking assistance. Physical characteristics match case profile. Subject approaches multiple pedestrians before continuing.",
             "Individual observed at public transit station consulting information displays. Age, gender, and physical attributes align with missing person description. Subject appears uncertain about direction.",
-            "Person matching case parameters identified near healthcare facility. Physical stature and clothing partially match witness descriptions. Subject walks purposefully toward main entrance."
+            "Person matching case parameters identified near healthcare facility. Physical stature and clothing partially match witness descriptions. Subject walks purposefully toward main entrance.",
         ]
 
         self._camera_types = ["Traffic", "Security", "CCTV", "Mobile"]
         self._street_names = [
-            "Main Street", "King Street", "Queen Street", "University Avenue",
-            "Bay Street", "Yonge Street", "College Street", "Dundas Street",
-            "Bloor Street", "Front Street", "Adelaide Street", "Richmond Street"
+            "Main Street",
+            "King Street",
+            "Queen Street",
+            "University Avenue",
+            "Bay Street",
+            "Yonge Street",
+            "College Street",
+            "Dundas Street",
+            "Bloor Street",
+            "Front Street",
+            "Adelaide Street",
+            "Richmond Street",
         ]
 
-    def analyze_videos(self, request: VideoAnalysisRequest) -> list[VideoAnalysisResult]:
+    def analyze_videos(
+        self, request: VideoAnalysisRequest
+    ) -> list[VideoAnalysisResult]:
         """Perform mock AI video analysis and return realistic results"""
         results = []
 
@@ -51,7 +62,7 @@ class MockVideoAnalysisService(VideoAnalysisService):
             lat, lon, address, distance = self._generate_location_within_radius(
                 request.last_seen_latitude,
                 request.last_seen_longitude,
-                request.search_radius_km
+                request.search_radius_km,
             )
 
             # Generate realistic confidence score (higher confidence = closer to last seen)
@@ -66,7 +77,7 @@ class MockVideoAnalysisService(VideoAnalysisService):
             video_url = f"https://storage.googleapis.com/homeward-videos/{camera_id}_{random_time.strftime('%Y%m%d_%H%M%S')}.mp4"
 
             result = VideoAnalysisResult(
-                id=f"VA-{request.case_id}-{i+1:03d}",
+                id=f"VA-{request.case_id}-{i + 1:03d}",
                 timestamp=random_time,
                 latitude=lat,
                 longitude=lon,
@@ -76,7 +87,7 @@ class MockVideoAnalysisService(VideoAnalysisService):
                 confidence_score=confidence,
                 ai_description=random.choice(self._ai_descriptions),
                 camera_id=camera_id,
-                camera_type=camera_type
+                camera_type=camera_type,
             )
 
             results.append(result)
@@ -97,7 +108,9 @@ class MockVideoAnalysisService(VideoAnalysisService):
         # In a real implementation, this would query the database
         return f"https://storage.googleapis.com/homeward-videos/video_{result_id}.mp4"
 
-    def _generate_location_within_radius(self, center_lat: float, center_lon: float, radius_km: float):
+    def _generate_location_within_radius(
+        self, center_lat: float, center_lon: float, radius_km: float
+    ):
         """Generate a random location within the specified radius"""
         # Generate random distance and bearing
         distance = random.uniform(0.1, radius_km)
@@ -113,13 +126,13 @@ class MockVideoAnalysisService(VideoAnalysisService):
 
         # Calculate new coordinates
         lat2 = math.asin(
-            math.sin(lat1) * math.cos(distance / R) +
-            math.cos(lat1) * math.sin(distance / R) * math.cos(bearing_rad)
+            math.sin(lat1) * math.cos(distance / R)
+            + math.cos(lat1) * math.sin(distance / R) * math.cos(bearing_rad)
         )
 
         lon2 = lon1 + math.atan2(
             math.sin(bearing_rad) * math.sin(distance / R) * math.cos(lat1),
-            math.cos(distance / R) - math.sin(lat1) * math.sin(lat2)
+            math.cos(distance / R) - math.sin(lat1) * math.sin(lat2),
         )
 
         # Convert back to degrees

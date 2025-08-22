@@ -1,4 +1,3 @@
-
 from homeward.models.video_analysis import VideoAnalysisRequest, VideoAnalysisResult
 from homeward.services.video_analysis_service import VideoAnalysisService
 
@@ -11,7 +10,9 @@ class BigQueryVideoAnalysisService(VideoAnalysisService):
         self.dataset_id = dataset_id
         # In a real implementation, initialize BigQuery client here
 
-    def analyze_videos(self, request: VideoAnalysisRequest) -> list[VideoAnalysisResult]:
+    def analyze_videos(
+        self, request: VideoAnalysisRequest
+    ) -> list[VideoAnalysisResult]:
         """
         Perform AI video analysis using BigQuery and Gemini
         Real implementation would:

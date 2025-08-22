@@ -28,11 +28,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4654,
-                longitude=9.1859
+                longitude=9.1859,
             ),
             status=CaseStatus.ACTIVE,
             description="Last seen wearing blue jeans and red jacket",
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         ),
         MissingPersonCase(
             id="MP002",
@@ -47,11 +47,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20124",
                 latitude=45.4773,
-                longitude=9.2009
+                longitude=9.2009,
             ),
             status=CaseStatus.ACTIVE,
             description="Wearing black coat and white sneakers",
-            priority=CasePriority.MEDIUM
+            priority=CasePriority.MEDIUM,
         ),
         MissingPersonCase(
             id="MP003",
@@ -66,11 +66,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20122",
                 latitude=45.4640,
-                longitude=9.1895
+                longitude=9.1895,
             ),
             status=CaseStatus.ACTIVE,
             description="Elderly man with walking stick, wearing brown coat",
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         ),
         MissingPersonCase(
             id="MP004",
@@ -85,11 +85,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20123",
                 latitude=45.4612,
-                longitude=9.1844
+                longitude=9.1844,
             ),
             status=CaseStatus.ACTIVE,
             description="Teenager with backpack, wearing school uniform",
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         ),
         MissingPersonCase(
             id="MP005",
@@ -104,11 +104,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4654,
-                longitude=9.1859
+                longitude=9.1859,
             ),
             status=CaseStatus.ACTIVE,
             description="Wearing grey suit and black shoes",
-            priority=CasePriority.MEDIUM
+            priority=CasePriority.MEDIUM,
         ),
         MissingPersonCase(
             id="MP006",
@@ -123,11 +123,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20127",
                 latitude=45.4773,
-                longitude=9.2009
+                longitude=9.2009,
             ),
             status=CaseStatus.ACTIVE,
             description="Red hair, wearing green dress",
-            priority=CasePriority.LOW
+            priority=CasePriority.LOW,
         ),
         MissingPersonCase(
             id="MP007",
@@ -142,11 +142,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4640,
-                longitude=9.1895
+                longitude=9.1895,
             ),
             status=CaseStatus.ACTIVE,
             description="Tall, athletic build, wearing sports clothes",
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         ),
         MissingPersonCase(
             id="MP008",
@@ -161,11 +161,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20124",
                 latitude=45.4612,
-                longitude=9.1844
+                longitude=9.1844,
             ),
             status=CaseStatus.ACTIVE,
             description="University student, carrying purple backpack",
-            priority=CasePriority.HIGH
+            priority=CasePriority.HIGH,
         ),
         MissingPersonCase(
             id="MP009",
@@ -180,11 +180,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20123",
                 latitude=45.4654,
-                longitude=9.1859
+                longitude=9.1859,
             ),
             status=CaseStatus.ACTIVE,
             description="Business man, wearing dark blue coat",
-            priority=CasePriority.MEDIUM
+            priority=CasePriority.MEDIUM,
         ),
         MissingPersonCase(
             id="MP010",
@@ -199,11 +199,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20122",
                 latitude=45.4773,
-                longitude=9.2009
+                longitude=9.2009,
             ),
             status=CaseStatus.ACTIVE,
             description="Blonde hair, wearing yellow jacket",
-            priority=CasePriority.MEDIUM
+            priority=CasePriority.MEDIUM,
         ),
         MissingPersonCase(
             id="MP011",
@@ -218,11 +218,11 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4640,
-                longitude=9.1895
+                longitude=9.1895,
             ),
             status=CaseStatus.ACTIVE,
             description="Beard, wearing leather jacket",
-            priority=CasePriority.LOW
+            priority=CasePriority.LOW,
         ),
         MissingPersonCase(
             id="MP012",
@@ -237,12 +237,12 @@ def get_mock_cases():
                 country="Italy",
                 postal_code="20124",
                 latitude=45.4612,
-                longitude=9.1844
+                longitude=9.1844,
             ),
             status=CaseStatus.ACTIVE,
             description="Short brown hair, wearing white coat",
-            priority=CasePriority.HIGH
-        )
+            priority=CasePriority.HIGH,
+        ),
     ]
 
 
@@ -254,7 +254,7 @@ def get_mock_kpi_data():
         resolved_cases=235,
         sightings_today=8,
         success_rate=95.2,
-        avg_resolution_days=3.4
+        avg_resolution_days=3.4,
     )
 
 
@@ -271,7 +271,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4685,
-                longitude=9.1951
+                longitude=9.1951,
             ),
             individual_age=34,
             individual_gender="Male",
@@ -280,7 +280,7 @@ def get_mock_sightings():
             status=SightingStatus.UNVERIFIED,
             linked_case_id="MP001",
             reporter_email="luca.bianchi@email.com",
-            reporter_phone="+39 345 1234567"
+            reporter_phone="+39 345 1234567",
         ),
         Sighting(
             id="S002",
@@ -292,7 +292,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20124",
                 latitude=45.4798,
-                longitude=9.2076
+                longitude=9.2076,
             ),
             individual_age=28,
             individual_gender="Female",
@@ -300,7 +300,7 @@ def get_mock_sightings():
             confidence=ConfidenceLevel.MEDIUM,
             status=SightingStatus.VERIFIED,
             linked_case_id="MP002",
-            reporter_email="giulia.rossi@email.com"
+            reporter_email="giulia.rossi@email.com",
         ),
         Sighting(
             id="S003",
@@ -312,7 +312,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20122",
                 latitude=45.4640,
-                longitude=9.1895
+                longitude=9.1895,
             ),
             individual_age=67,
             individual_gender="Male",
@@ -321,7 +321,7 @@ def get_mock_sightings():
             status=SightingStatus.VERIFIED,
             linked_case_id="MP003",
             reporter_email="marco.verdi@email.com",
-            reporter_phone="+39 331 9876543"
+            reporter_phone="+39 331 9876543",
         ),
         Sighting(
             id="S004",
@@ -333,7 +333,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20124",
                 latitude=45.4864,
-                longitude=9.2058
+                longitude=9.2058,
             ),
             individual_age=16,
             individual_gender="Female",
@@ -341,7 +341,7 @@ def get_mock_sightings():
             confidence=ConfidenceLevel.HIGH,
             status=SightingStatus.UNVERIFIED,
             linked_case_id="MP004",
-            reporter_email="elena.ferrari@email.com"
+            reporter_email="elena.ferrari@email.com",
         ),
         Sighting(
             id="S005",
@@ -353,7 +353,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4720,
-                longitude=9.1881
+                longitude=9.1881,
             ),
             individual_age=25,
             individual_gender="Male",
@@ -362,7 +362,7 @@ def get_mock_sightings():
             status=SightingStatus.UNVERIFIED,
             linked_case_id="MP007",
             reporter_email="alessandro.russo@email.com",
-            reporter_phone="+39 333 4567890"
+            reporter_phone="+39 333 4567890",
         ),
         Sighting(
             id="S006",
@@ -374,7 +374,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20121",
                 latitude=45.4752,
-                longitude=9.1886
+                longitude=9.1886,
             ),
             individual_age=19,
             individual_gender="Female",
@@ -382,7 +382,7 @@ def get_mock_sightings():
             confidence=ConfidenceLevel.VERY_HIGH,
             status=SightingStatus.UNVERIFIED,
             linked_case_id="MP008",
-            reporter_email="anna.lombardi@email.com"
+            reporter_email="anna.lombardi@email.com",
         ),
         Sighting(
             id="S007",
@@ -394,7 +394,7 @@ def get_mock_sightings():
                 country="Italy",
                 postal_code="20124",
                 latitude=45.4852,
-                longitude=9.1877
+                longitude=9.1877,
             ),
             individual_age=None,
             individual_gender="Unknown",
@@ -402,6 +402,6 @@ def get_mock_sightings():
             confidence=ConfidenceLevel.LOW,
             status=SightingStatus.FALSE_POSITIVE,
             reporter_email="roberto.galli@email.com",
-            reporter_phone="+39 347 2468135"
-        )
+            reporter_phone="+39 347 2468135",
+        ),
     ]
