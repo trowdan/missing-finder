@@ -22,8 +22,8 @@
 
 22/08 Venerdì
 
-- Prompt Match Sighting -> Case
-- Prompt Match Case -> Sighting
+- Similarity Match Sighting -> Case
+- Similarity Match Case -> Sighting
 
 23/08 Sabato
 

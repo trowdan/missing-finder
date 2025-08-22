@@ -56,9 +56,10 @@ CREATE TABLE IF NOT EXISTS `homeward.missing_persons` (
   updated_date TIMESTAMP NOT NULL OPTIONS(description="Date and time when case was last updated"),
   
   /* AI-Generated Content */
-  ml_summary STRING OPTIONS(description="AI-generated comprehensive summary of the missing person case for analysis and matching")
+  ml_summary STRING OPTIONS(description="AI-generated comprehensive summary of the missing person case for analysis and matching"),
+  ml_summary_embedding ARRAY<FLOAT64> OPTIONS(description="Embedding vector of the AI-generated summary for similarity search and matching")
 
-  --TODO Add Missing Photo + Summary Embedding
+  --TODO Add Missing Photo Embedding
 )
 PARTITION BY DATE(created_date)
 CLUSTER BY status, priority, last_seen_city
