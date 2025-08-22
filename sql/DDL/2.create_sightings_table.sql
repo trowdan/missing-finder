@@ -51,7 +51,11 @@ CREATE TABLE IF NOT EXISTS `homeward.sightings` (
   created_date TIMESTAMP NOT NULL OPTIONS(description="Date and time when sighting was created"),
   updated_date TIMESTAMP NOT NULL OPTIONS(description="Date and time when sighting was last updated"),
   created_by STRING OPTIONS(description="User or system that created the sighting"),
-  notes STRING OPTIONS(description="Additional notes or comments about the sighting")
+  notes STRING OPTIONS(description="Additional notes or comments about the sighting"),
+  
+  /* AI-Generated Content */
+  ml_summary STRING OPTIONS(description="AI-generated comprehensive summary of the sighting for analysis and matching"),
+  ml_summary_embedding ARRAY<FLOAT64> OPTIONS(description="Embedding vector of the AI-generated summary for similarity search and matching")
 )
 PARTITION BY DATE(created_date)
 CLUSTER BY status, priority, sighted_city, source_type

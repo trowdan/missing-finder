@@ -9,7 +9,7 @@ INSERT INTO `homeward.missing_persons` (
   last_seen_postal_code, last_seen_latitude, last_seen_longitude, last_seen_geo,
   circumstances, priority, status, description, medical_conditions, additional_info,
   photo_url, reporter_name, reporter_phone, reporter_email, relationship,
-  created_date, updated_date
+  created_date, updated_date, ml_summary
 ) VALUES
   ('MP001', 'CASE-2024-001', 'Emma', 'Johnson', '1995-03-15', 'Female',
    165.0, 58.0, 'Brown', 'Blue', 'Small scar on left cheek', 'Blue jeans, white t-shirt, red backpack',
@@ -18,7 +18,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left home for work but never arrived at office', 'High', 'Active', 'Missing software engineer',
    'None known', 'Very punctual person, never misses work without notice',
    'https://example.com/photos/emma_johnson.jpg', 'Michael Johnson', '4155551234', 'michael.j@email.com', 'Brother',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Emma Johnson, a 29-year-old female software engineer from San Francisco, disappeared on August 15, 2024, at 2:30 PM while traveling from her home at 123 Main Street to work. Standing 165cm tall and weighing 58kg, she has brown hair, blue eyes, and a distinctive small scar on her left cheek. She was last seen wearing blue jeans, a white t-shirt, and carrying a red backpack. Emma is known to be very punctual and never misses work without notice, making her disappearance particularly concerning. The circumstances surrounding her disappearance involve leaving home for work but never arriving at her office, which is highly unusual for someone with her reliable work patterns. This is a high-priority active case reported by her brother Michael Johnson.'),
+
 
   ('MP002', 'CASE-2024-002', 'David', 'Chen', '1988-07-22', 'Male',
    178.0, 75.0, 'Black', 'Brown', 'Dragon tattoo on right arm', 'Dark suit, blue tie, leather briefcase',
@@ -27,7 +29,9 @@ INSERT INTO `homeward.missing_persons` (
    'Did not return from business meeting', 'Medium', 'Active', 'Missing business executive',
    'Diabetes, requires daily medication', 'Was stressed about upcoming merger',
    'https://example.com/photos/david_chen.jpg', 'Lisa Chen', '2135554567', 'lisa.chen@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'David Chen, a 36-year-old male business executive from Los Angeles, went missing on August 10, 2024, at 9:15 AM after not returning from a business meeting at 456 Business Ave. He is 178cm tall, weighs 75kg, has black hair and brown eyes, with a distinctive dragon tattoo on his right arm. David was last seen wearing a dark suit, blue tie, and carrying a leather briefcase. He suffers from diabetes and requires daily medication, adding urgency to his case. The circumstances involve his failure to return from a business meeting, which was unusual as he was reportedly stressed about an upcoming merger. This medium-priority active case was reported by his wife Lisa Chen, highlighting concerns about his medical condition and recent work stress.'),
+
 
   ('MP003', 'CASE-2024-003', 'Sarah', 'Williams', '2001-12-08', 'Female',
    160.0, 52.0, 'Blonde', 'Green', 'Pierced ears, small birthmark on neck', 'College hoodie, jeans, sneakers',
@@ -36,7 +40,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left dorm to meet friends but never showed up', 'High', 'Active', 'Missing college student',
    'Anxiety disorder', 'Was excited about summer internship',
    'https://example.com/photos/sarah_williams.jpg', 'Robert Williams', '6175557890', 'r.williams@email.com', 'Father',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Sarah Williams, a 22-year-old female college student from Boston, disappeared on August 12, 2024, at 8:45 PM after leaving her dorm at 789 University Drive to meet friends but never showing up. She is 160cm tall, weighs 52kg, has blonde hair and green eyes, with pierced ears and a small birthmark on her neck. Sarah was last seen wearing a college hoodie, jeans, and sneakers. She suffers from anxiety disorder, which may be relevant to her disappearance. The circumstances involve her leaving to meet friends while being excited about a summer internship, making her failure to appear highly unusual. This high-priority active case was reported by her father Robert Williams, who is concerned about her mental health condition and the uncharacteristic nature of her disappearance.'),
+
 
   ('MP004', 'CASE-2024-004', 'Marcus', 'Thompson', '1992-05-30', 'Male',
    185.0, 82.0, 'Brown', 'Hazel', 'Visible scar on forehead from accident', 'Running gear, blue shorts, white tank top',
@@ -45,7 +51,9 @@ INSERT INTO `homeward.missing_persons` (
    'Went for morning jog and did not return', 'Medium', 'Active', 'Missing marathon runner',
    'Previous head injury from car accident', 'Training for upcoming marathon',
    'https://example.com/photos/marcus_thompson.jpg', 'Jennifer Thompson', '4155552468', 'jen.thompson@email.com', 'Sister',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Marcus Thompson, a 32-year-old male marathon runner from San Francisco, went missing on August 8, 2024, at 6:00 AM during his morning jog from Golden Gate Park Entrance. He is 185cm tall, weighs 82kg, has brown hair and hazel eyes, with a visible scar on his forehead from a previous car accident. Marcus was last seen wearing running gear consisting of blue shorts and a white tank top. He has a medical history of a previous head injury from a car accident, which adds concern to his case. The circumstances involve him going for his routine morning jog while training for an upcoming marathon, but he never returned home. This medium-priority active case was reported by his sister Jennifer Thompson, who notes his reliability and dedication to his training routine.'),
+
 
   ('MP005', 'CASE-2024-005', 'Maria', 'Rodriguez', '1978-11-14', 'Female',
    155.0, 62.0, 'Black', 'Brown', 'Flower tattoo on left wrist', 'Nurse scrubs, white shoes, hospital ID badge',
@@ -54,7 +62,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left work after night shift but car found abandoned', 'High', 'Active', 'Missing hospital nurse',
    'High blood pressure medication', 'Recently divorced, going through custody battle',
    'https://example.com/photos/maria_rodriguez.jpg', 'Carlos Rodriguez', '3055553691', 'carlos.r@email.com', 'Ex-husband',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Maria Rodriguez, a 45-year-old female hospital nurse from Miami, disappeared on August 14, 2024, at 11:30 PM after leaving work following her night shift at 321 Hospital Way, with her car found abandoned. She is 155cm tall, weighs 62kg, has black hair and brown eyes, with a distinctive flower tattoo on her left wrist. Maria was last seen wearing nurse scrubs, white shoes, and her hospital ID badge. She takes medication for high blood pressure and was recently divorced while going through a custody battle. The circumstances involve her leaving work after completing her night shift, but her vehicle was discovered abandoned, suggesting potential foul play. This high-priority active case was reported by her ex-husband Carlos Rodriguez, with the recent divorce and custody proceedings adding complexity to the investigation.'),
+
 
   ('MP006', 'CASE-2024-006', 'James', 'Anderson', '1965-09-03', 'Male',
    172.0, 68.0, 'Gray', 'Blue', 'Uses walking cane, has limp', 'Khaki pants, plaid shirt, brown jacket',
@@ -63,7 +73,9 @@ INSERT INTO `homeward.missing_persons` (
    'Went to pharmacy for prescription pickup', 'Medium', 'Active', 'Missing elderly man with mobility issues',
    'Early stage dementia, heart condition', 'Sometimes gets confused about locations',
    'https://example.com/photos/james_anderson.jpg', 'Patricia Anderson', '6025554815', 'pat.anderson@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'James Anderson, a 59-year-old male from Phoenix with mobility issues, went missing on July 28, 2024, at 4:20 PM while going to pharmacy for prescription pickup at 654 Retirement Lane. He is 172cm tall, weighs 68kg, has gray hair and blue eyes, uses a walking cane and has a noticeable limp. James was last seen wearing khaki pants, a plaid shirt, and brown jacket. He suffers from early stage dementia and heart condition, and sometimes gets confused about locations. The circumstances involve him going to pick up his prescription but never returning home, which is concerning given his medical conditions. This medium-priority active case was reported by his wife Patricia Anderson, with his dementia and mobility issues making him particularly vulnerable.'),
+
 
   ('MP007', 'CASE-2024-007', 'Ashley', 'Taylor', '1999-04-18', 'Female',
    168.0, 55.0, 'Red', 'Blue', 'Freckles, multiple ear piercings', 'Black dress, high heels, silver jewelry',
@@ -72,7 +84,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left nightclub alone after argument with friends', 'High', 'Active', 'Missing young woman last seen at nightclub',
    'None known', 'Was celebrating birthday with friends',
    'https://example.com/photos/ashley_taylor.jpg', 'Michelle Taylor', '7025556037', 'michelle.t@email.com', 'Mother',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Ashley Taylor, a 25-year-old female from Las Vegas, disappeared on August 11, 2024, at 9:00 PM after leaving a nightclub alone following an argument with friends at 987 Nightlife District. She is 168cm tall, weighs 55kg, has red hair and blue eyes, with distinctive freckles and multiple ear piercings. Ashley was last seen wearing a black dress, high heels, and silver jewelry while celebrating her birthday. The circumstances involve her leaving the nightclub alone after having an argument with friends during her birthday celebration. This high-priority active case was reported by her mother Michelle Taylor, with concerns about her being alone in the nightlife district after an emotional incident.'),
+
 
   ('MP008', 'CASE-2024-008', 'Robert', 'Davis', '1983-01-25', 'Male',
    180.0, 77.0, 'Brown', 'Green', 'Military service tattoo on shoulder', 'Camouflage jacket, jeans, combat boots',
@@ -81,7 +95,9 @@ INSERT INTO `homeward.missing_persons` (
    'Suffering from PTSD episode, left home upset', 'High', 'Active', 'Missing military veteran',
    'PTSD, depression', 'Recent job loss, struggling with mental health',
    'https://example.com/photos/robert_davis.jpg', 'Susan Davis', '3035557259', 'susan.davis@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Robert Davis, a 41-year-old male military veteran from Denver, went missing on August 5, 2024, at 12:00 PM during a PTSD episode after leaving home upset from 147 Veterans Memorial Park. He is 180cm tall, weighs 77kg, has brown hair and green eyes, with a military service tattoo on his shoulder. Robert was last seen wearing a camouflage jacket, jeans, and combat boots. He suffers from PTSD and depression, and recently experienced job loss while struggling with his mental health. The circumstances involve him suffering from a PTSD episode and leaving home in a distressed state, which is particularly concerning given his mental health struggles and recent unemployment. This high-priority active case was reported by his wife Susan Davis.'),
+
 
   ('MP009', 'CASE-2024-009', 'Jessica', 'Brown', '1990-06-12', 'Female',
    162.0, 59.0, 'Black', 'Brown', 'Distinctive mole on right cheek', 'Business suit, laptop bag, diamond ring',
@@ -90,7 +106,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left office building but never made it to subway', 'Medium', 'Active', 'Missing financial analyst',
    'None known', 'Working on important merger deal',
    'https://example.com/photos/jessica_brown.jpg', 'Mark Brown', '2125558147', 'mark.brown@email.com', 'Husband',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Jessica Brown, a 34-year-old female financial analyst from New York, disappeared on August 13, 2024, at 6:45 PM after leaving her office building at 258 Financial District but never making it to the subway. She is 162cm tall, weighs 59kg, has black hair and brown eyes, with a distinctive mole on her right cheek. Jessica was last seen wearing a business suit, carrying a laptop bag, and wearing a diamond ring. She was working on an important merger deal at the time of her disappearance. The circumstances involve her leaving her office building but failing to reach the subway station during her normal commute home. This medium-priority active case was reported by her husband Mark Brown, with her involvement in high-stakes financial work potentially relevant to the investigation.'),
+
 
   ('MP010', 'CASE-2024-010', 'Christopher', 'Miller', '2002-10-07', 'Male',
    175.0, 65.0, 'Blonde', 'Blue', 'Braces, acne scars', 'School uniform, backpack with gaming stickers',
@@ -99,7 +117,9 @@ INSERT INTO `homeward.missing_persons` (
    'Did not come home after school dismissal', 'High', 'Active', 'Missing high school student',
    'ADHD medication', 'Had been bullied at school recently',
    'https://example.com/photos/christopher_miller.jpg', 'Amanda Miller', '2065559863', 'amanda.miller@email.com', 'Mother',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Christopher Miller, a 22-year-old male high school student from Seattle, went missing on August 9, 2024, at 3:30 PM after school dismissal and did not come home from 369 High School Road. He is 175cm tall, weighs 65kg, has blonde hair and blue eyes, with braces and acne scars. Christopher was last seen wearing his school uniform and carrying a backpack with gaming stickers. He takes ADHD medication and had been experiencing bullying at school recently. The circumstances involve him not returning home after normal school dismissal, which is concerning given his recent bullying experiences. This high-priority active case was reported by his mother Amanda Miller, with the bullying situation potentially connected to his disappearance.'),
+
 
   ('MP011', 'CASE-2024-011', 'Nicole', 'Wilson', '1987-08-19', 'Female',
    157.0, 54.0, 'Brown', 'Hazel', 'Surgical scar on abdomen', 'Yoga pants, sports bra, running shoes',
@@ -108,7 +128,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left gym after workout but car still in parking lot', 'Medium', 'Active', 'Missing fitness instructor',
    'Recent surgery recovery', 'Going through difficult divorce proceedings',
    'https://example.com/photos/nicole_wilson.jpg', 'Brian Wilson', '5125550741', 'brian.wilson@email.com', 'Ex-husband',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Nicole Wilson, a 37-year-old female fitness instructor from Austin, disappeared on August 7, 2024, at 7:30 AM after leaving the gym following her workout at 741 Fitness Center, with her car still found in the parking lot. She is 157cm tall, weighs 54kg, has brown hair and hazel eyes, with a surgical scar on her abdomen. Nicole was last seen wearing yoga pants, a sports bra, and running shoes. She was recovering from recent surgery and going through difficult divorce proceedings. The circumstances involve her leaving the gym after her workout but her vehicle remaining in the parking lot, suggesting she may have left with someone else or encountered trouble. This medium-priority active case was reported by her ex-husband Brian Wilson, with the ongoing divorce proceedings potentially relevant to her disappearance.'),
+
 
   ('MP012', 'CASE-2024-012', 'Kevin', 'Moore', '1975-12-31', 'Male',
    183.0, 85.0, 'Bald', 'Brown', 'Full beard, gold tooth', 'Construction clothes, hard hat, tool belt',
@@ -117,7 +139,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left work site but never picked up children from school', 'High', 'Active', 'Missing construction foreman',
    'Back problems from work injury', 'Recently had custody agreement changed',
    'https://example.com/photos/kevin_moore.jpg', 'Linda Moore', '7135552963', 'linda.moore@email.com', 'Ex-wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Kevin Moore, a 48-year-old male construction foreman from Houston, went missing on August 6, 2024, at 5:00 PM after leaving his construction site at 852 Construction Site but never picking up his children from school as scheduled. He is 183cm tall, weighs 85kg, is bald with brown eyes, has a full beard and gold tooth. Kevin was last seen wearing construction clothes, a hard hat, and tool belt. He suffers from back problems from a work injury and recently had his custody agreement changed. The circumstances involve him failing to pick up his children from school after work, which is highly unusual for someone with custody responsibilities. This high-priority active case was reported by his ex-wife Linda Moore, with the recent custody changes potentially relevant to the investigation.'),
+
 
   ('MP013', 'CASE-2024-013', 'Stephanie', 'Garcia', '1993-02-28', 'Female',
    164.0, 61.0, 'Black', 'Brown', 'Heart-shaped birthmark on neck', 'Server uniform, comfortable shoes, name tag',
@@ -126,7 +150,9 @@ INSERT INTO `homeward.missing_persons` (
    'Finished late shift at diner, walked to bus stop', 'Medium', 'Active', 'Missing restaurant server',
    'Asthma, carries inhaler', 'Saving money for nursing school',
    'https://example.com/photos/stephanie_garcia.jpg', 'Rosa Garcia', '3125554185', 'rosa.garcia@email.com', 'Mother',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Stephanie Garcia, a 31-year-old female restaurant server from Chicago, disappeared on August 4, 2024, at 2:15 AM after finishing her late shift at the diner on 963 Diner Street and walking to the bus stop. She is 164cm tall, weighs 61kg, has black hair and brown eyes, with a distinctive heart-shaped birthmark on her neck. Stephanie was last seen wearing her server uniform, comfortable shoes, and name tag. She has asthma and carries an inhaler, and was saving money for nursing school. The circumstances involve her completing her late shift at the diner and walking to catch the bus home, but she never arrived. This medium-priority active case was reported by her mother Rosa Garcia, with concerns about her safety during late-night commuting and her aspiration to become a nurse.'),
+
 
   ('MP014', 'CASE-2024-014', 'Timothy', 'Lee', '1980-04-05', 'Male',
    176.0, 72.0, 'Black', 'Brown', 'Glasses, small mustache', 'Teacher clothes, briefcase, school ID',
@@ -135,7 +161,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left school after parent conference, never arrived home', 'Medium', 'Active', 'Missing elementary school teacher',
    'Type 1 diabetes', 'Dedicated teacher, very reliable',
    'https://example.com/photos/timothy_lee.jpg', 'Grace Lee', '5035557406', 'grace.lee@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Timothy Lee, a 44-year-old male elementary school teacher from Portland, went missing on August 3, 2024, at 4:30 PM after leaving school following a parent conference at 174 Elementary School Ave but never arriving home. He is 176cm tall, weighs 72kg, has black hair and brown eyes, wears glasses and has a small mustache. Timothy was last seen wearing teacher clothes, carrying a briefcase, and wearing his school ID. He has Type 1 diabetes, which adds urgency to his case. The circumstances involve him leaving school after completing parent conferences, which was part of his normal routine, but failing to arrive home. This medium-priority active case was reported by his wife Grace Lee, who describes him as a dedicated and very reliable teacher, making his disappearance particularly concerning.'),
+
 
   ('MP015', 'CASE-2024-015', 'Rachel', 'Martinez', '1996-09-16', 'Female',
    159.0, 56.0, 'Brown', 'Green', 'Nose piercing, multiple tattoos on arms', 'Art smock, paint-stained jeans, canvas bag',
@@ -144,7 +172,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left art opening event early, seemed distressed', 'Low', 'Active', 'Missing artist',
    'Depression, bipolar disorder', 'Had recent breakup with longtime partner',
    'https://example.com/photos/rachel_martinez.jpg', 'Carlos Martinez', '5055558629', 'carlos.martinez@email.com', 'Brother',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Rachel Martinez, a 28-year-old female artist from Santa Fe, disappeared on August 2, 2024, at 7:20 PM after leaving an art gallery opening event early while appearing distressed at 285 Art Gallery District. She is 159cm tall, weighs 56kg, has brown hair and green eyes, with a nose piercing and multiple tattoos on her arms. Rachel was last seen wearing an art smock, paint-stained jeans, and carrying a canvas bag. She suffers from depression and bipolar disorder, and had recently experienced a breakup with her longtime partner. The circumstances involve her leaving an art opening event early while seeming distressed, which is concerning given her mental health conditions and recent relationship difficulties. This low-priority active case was reported by her brother Carlos Martinez.'),
+
 
   ('MP016', 'CASE-2024-016', 'Brandon', 'White', '1989-07-11', 'Male',
    182.0, 79.0, 'Brown', 'Blue', 'Tribal tattoo on left arm', 'Mechanic coveralls, steel-toed boots',
@@ -153,7 +183,9 @@ INSERT INTO `homeward.missing_persons` (
    'Closed shop normally but never went to meet friends', 'Low', 'Active', 'Missing auto mechanic',
    'None known', 'Reliable person, owns successful garage',
    'https://example.com/photos/brandon_white.jpg', 'Kelly White', '3135550147', 'kelly.white@email.com', 'Sister',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Brandon White, a 35-year-old male auto mechanic from Detroit, went missing on August 1, 2024, at 6:00 PM after closing his shop normally at 396 Auto Shop Lane but never meeting friends as planned. He is 182cm tall, weighs 79kg, has brown hair and blue eyes, with a tribal tattoo on his left arm. Brandon was last seen wearing mechanic coveralls and steel-toed boots. He has no known medical conditions and owns a successful garage, making his disappearance particularly puzzling. The circumstances involve him closing his auto shop following his normal routine but failing to meet friends as arranged. This low-priority active case was reported by his sister Kelly White, who describes him as a reliable person who successfully runs his own business.'),
+
 
   ('MP017', 'CASE-2024-017', 'Megan', 'Jackson', '1985-11-23', 'Female',
    166.0, 63.0, 'Blonde', 'Blue', 'C-section scar, wedding ring tan line', 'Casual mom clothes, diaper bag, stroller',
@@ -162,7 +194,9 @@ INSERT INTO `homeward.missing_persons` (
    'At park with toddler, child found alone two hours later', 'High', 'Active', 'Missing mother with young child',
    'Postpartum depression', 'Recent separation from husband',
    'https://example.com/photos/megan_jackson.jpg', 'Tom Jackson', '6125553852', 'tom.jackson@email.com', 'Estranged husband',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Megan Jackson, a 39-year-old female from Minneapolis, disappeared on July 31, 2024, at 10:30 AM while at a playground park at 507 Playground Park, with her toddler found alone two hours later. She is 166cm tall, weighs 63kg, has blonde hair and blue eyes, with a C-section scar and wedding ring tan line. Megan was last seen wearing casual mom clothes and had a diaper bag and stroller with her. She suffers from postpartum depression and was recently separated from her husband. The circumstances are particularly concerning as she was caring for her young child when she disappeared, with the toddler being found alone at the park. This high-priority active case was reported by her estranged husband Tom Jackson, with her mental health condition and recent separation adding urgency to the search.'),
+
 
   ('MP018', 'CASE-2024-018', 'Anthony', 'Harris', '1972-03-09', 'Male',
    174.0, 71.0, 'Gray', 'Green', 'Prosthetic left leg', 'Business casual, briefcase, medical alert bracelet',
@@ -171,7 +205,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left medical appointment but never returned to work', 'Medium', 'Active', 'Missing insurance agent',
    'Diabetic, amputee, heart condition', 'Recently received concerning test results',
    'https://example.com/photos/anthony_harris.jpg', 'Dorothy Harris', '2165557394', 'dorothy.harris@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Anthony Harris, a 52-year-old male insurance agent from Cleveland, went missing on July 30, 2024, at 2:15 PM after leaving his medical appointment at 618 Medical Center but never returning to work. He is 174cm tall, weighs 71kg, has gray hair and green eyes, with a prosthetic left leg. Anthony was last seen wearing business casual attire, carrying a briefcase, and wearing a medical alert bracelet. He is diabetic, an amputee with heart condition, and had recently received concerning test results. The circumstances involve him leaving his medical appointment but failing to return to work, which is unusual given his professional reliability. This medium-priority active case was reported by his wife Dorothy Harris, with his multiple medical conditions and recent concerning test results adding complexity to the situation.'),
+
 
   ('MP019', 'CASE-2024-019', 'Crystal', 'Clark', '1991-01-17', 'Female',
    161.0, 57.0, 'Red', 'Hazel', 'Distinctive laugh lines, dimples', 'Pharmacy tech uniform, name badge, car keys',
@@ -180,7 +216,9 @@ INSERT INTO `homeward.missing_persons` (
    'Locked up pharmacy after closing but never made it to car', 'Medium', 'Active', 'Missing pharmacy technician',
    'None known', 'Studying to become pharmacist',
    'https://example.com/photos/crystal_clark.jpg', 'James Clark', '6155559517', 'james.clark@email.com', 'Father',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Crystal Clark, a 33-year-old female pharmacy technician from Nashville, disappeared on July 29, 2024, at 10:45 PM after locking up the pharmacy following closing at 729 Pharmacy Plaza but never making it to her car. She is 161cm tall, weighs 57kg, has red hair and hazel eyes, with distinctive laugh lines and dimples. Crystal was last seen wearing her pharmacy tech uniform, name badge, and carrying car keys. She has no known medical conditions and was studying to become a pharmacist. The circumstances involve her completing her closing duties at the pharmacy but never reaching her vehicle in the parking area. This medium-priority active case was reported by her father James Clark, with her educational aspirations and professional responsibilities making her disappearance concerning.'),
+
 
   ('MP020', 'CASE-2024-020', 'Gregory', 'Lewis', '1979-06-04', 'Male',
    179.0, 76.0, 'Brown', 'Brown', 'Beard, wedding ring, watch tan line', 'Delivery uniform, company truck keys',
@@ -189,7 +227,9 @@ INSERT INTO `homeward.missing_persons` (
    'Making regular delivery stops, truck found abandoned', 'High', 'Active', 'Missing delivery driver',
    'Sleep apnea', 'Perfect attendance record, very reliable',
    'https://example.com/photos/gregory_lewis.jpg', 'Maria Lewis', '9165558063', 'maria.lewis@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Gregory Lewis, a 45-year-old male delivery driver from Sacramento, went missing on July 28, 2024, at 11:30 AM while making regular delivery stops on Delivery Route 15, with his company truck found abandoned at 840 Delivery Route 15. He is 179cm tall, weighs 76kg, has brown hair and brown eyes, with a beard, wedding ring, and watch tan line. Gregory was last seen wearing his delivery uniform and carrying company truck keys. He has sleep apnea but maintains a perfect attendance record and is known as very reliable. The circumstances involve his truck being found abandoned during his normal delivery route, which is highly unusual for someone with his exemplary work record. This high-priority active case was reported by his wife Maria Lewis.'),
+
 
   ('MP021', 'CASE-2024-021', 'Samantha', 'Walker', '1998-08-26', 'Female',
    163.0, 53.0, 'Black', 'Brown', 'Braces, school spirit tattoo', 'College sweatshirt, leggings, backpack',
@@ -198,7 +238,9 @@ INSERT INTO `homeward.missing_persons` (
    'Studying for finals, left library to get food', 'Medium', 'Active', 'Missing college student during finals',
    'Eating disorder recovery', 'Stressed about grades and graduation',
    'https://example.com/photos/samantha_walker.jpg', 'Paul Walker', '5205556284', 'paul.walker@email.com', 'Father',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Samantha Walker, a 26-year-old female college student from Tucson, went missing on July 27, 2024, at 1:20 PM after leaving the university library at 951 University Library to get food while studying for finals. She is 163cm tall, weighs 53kg, has black hair and brown eyes, with braces and a school spirit tattoo. Samantha was last seen wearing a college sweatshirt, leggings, and carrying a backpack. She is in recovery from an eating disorder and was stressed about grades and graduation. The circumstances involve her leaving the library during finals week to get food, which shows positive behavior regarding her eating disorder recovery, but she never returned. This medium-priority active case was reported by her father Paul Walker, with concerns about her stress levels and eating disorder history.'),
+
 
   ('MP022', 'CASE-2024-022', 'Daniel', 'Young', '1984-12-13', 'Male',
    177.0, 73.0, 'Blonde', 'Blue', 'Fitness tracker, protein shake bottle', 'Gym clothes, running shoes, water bottle',
@@ -207,7 +249,9 @@ INSERT INTO `homeward.missing_persons` (
    'Went hiking alone on familiar trail', 'High', 'Active', 'Missing hiker on mountain trail',
    'None known', 'Experienced hiker, always tells someone his route',
    'https://example.com/photos/daniel_young.jpg', 'Sarah Young', '8015557405', 'sarah.young@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Daniel Young, a 39-year-old male hiker from Salt Lake City, disappeared on July 26, 2024, at 5:45 AM while hiking alone on a familiar trail at 162 Mountain Trail Head. He is 177cm tall, weighs 73kg, has blonde hair and blue eyes, and was wearing a fitness tracker and carrying a protein shake bottle. Daniel was last seen wearing gym clothes, running shoes, and carrying a water bottle. He has no known medical conditions and is an experienced hiker who always informs someone of his planned route. The circumstances involve him going hiking alone on a trail he knows well, but his failure to return is concerning given his experience and safety practices. This high-priority active case was reported by his wife Sarah Young, who emphasizes his reliability and hiking expertise.'),
+
 
   ('MP023', 'CASE-2024-023', 'Amanda', 'King', '1977-10-02', 'Female',
    158.0, 60.0, 'Brown', 'Green', 'Reading glasses, professional demeanor', 'Librarian cardigan, long skirt, book bag',
@@ -216,7 +260,9 @@ INSERT INTO `homeward.missing_persons` (
    'Stayed late cataloging books, car found in parking lot', 'Low', 'Active', 'Missing head librarian',
    'None known', 'Dedicated to community literacy programs',
    'https://example.com/photos/amanda_king.jpg', 'David King', '8045559628', 'david.king@email.com', 'Husband',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Amanda King, a 47-year-old female head librarian from Richmond, went missing on July 25, 2024, at 8:00 PM after staying late to catalog books at 273 Public Library, with her car found in the parking lot. She is 158cm tall, weighs 60kg, has brown hair and green eyes, wears reading glasses, and has a professional demeanor. Amanda was last seen wearing a librarian cardigan, long skirt, and carrying a book bag. She has no known medical conditions and is dedicated to community literacy programs. The circumstances involve her working late at the library, which was normal for her dedication to the job, but her car being found in the parking lot suggests she never left the premises or left with someone else. This low-priority active case was reported by her husband David King.'),
+
 
   ('MP024', 'CASE-2024-024', 'Justin', 'Scott', '1986-05-15', 'Male',
    181.0, 78.0, 'Brown', 'Hazel', 'Chef tattoos on forearms', 'Chef whites, knife roll, apron',
@@ -225,7 +271,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left restaurant after cleanup, walking to nearby bar', 'Medium', 'Active', 'Missing restaurant chef',
    'None known', 'Working to open own restaurant',
    'https://example.com/photos/justin_scott.jpg', 'Michelle Scott', '5045551749', 'michelle.scott@email.com', 'Sister',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Justin Scott, a 38-year-old male restaurant chef from New Orleans, disappeared on July 24, 2024, at 1:30 AM after leaving his restaurant following cleanup at 384 Restaurant Row while walking to a nearby bar. He is 181cm tall, weighs 78kg, has brown hair and hazel eyes, with chef tattoos on his forearms. Justin was last seen wearing chef whites, carrying his knife roll, and wearing an apron. He has no known medical conditions and was working toward opening his own restaurant. The circumstances involve him completing his normal closing duties at the restaurant and walking to a nearby bar, which was part of his routine for unwinding after work. This medium-priority active case was reported by his sister Michelle Scott, with his entrepreneurial ambitions and normal routine making the disappearance concerning.'),
+
 
   ('MP025', 'CASE-2024-025', 'Lisa', 'Green', '1994-04-21', 'Female',
    165.0, 58.0, 'Blonde', 'Blue', 'Small scar on chin, painted nails', 'Salon uniform, styling tools, car keys',
@@ -234,7 +282,9 @@ INSERT INTO `homeward.missing_persons` (
    'Finished last client, locked salon, never went to dinner plans', 'Low', 'Active', 'Missing hair stylist',
    'None known', 'Popular stylist with regular clientele',
    'https://example.com/photos/lisa_green.jpg', 'Jennifer Green', '8135552860', 'jennifer.green@email.com', 'Sister',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Lisa Green, a 30-year-old female hair stylist from Tampa, went missing on July 23, 2024, at 7:30 PM after finishing her last client and locking the salon at 495 Beauty Salon Street but never going to her planned dinner. She is 165cm tall, weighs 58kg, has blonde hair and blue eyes, with a small scar on her chin and painted nails. Lisa was last seen wearing her salon uniform, with styling tools, and carrying car keys. She has no known medical conditions and is a popular stylist with regular clientele. The circumstances involve her completing her normal work routine and locking up the salon but never making it to her dinner plans. This low-priority active case was reported by her sister Jennifer Green, with her professional success and reliability making her absence unusual.'),
+
 
   ('MP026', 'CASE-2024-026', 'Matthew', 'Adams', '1981-11-08', 'Male',
    175.0, 74.0, 'Black', 'Brown', 'Coaching whistle, team polo shirt', 'Athletic wear, clipboard, gym bag',
@@ -243,7 +293,9 @@ INSERT INTO `homeward.missing_persons` (
    'Finished coaching practice, sent players home safely', 'Medium', 'Active', 'Missing youth sports coach',
    'Previous knee surgery', 'Devoted coach, background checked regularly',
    'https://example.com/photos/matthew_adams.jpg', 'Rebecca Adams', '8165554073', 'rebecca.adams@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Matthew Adams, a 43-year-old male youth sports coach from Kansas City, went missing on July 22, 2024, at 9:15 PM after finishing coaching practice and ensuring all players got home safely from 606 Sports Complex. He is 175cm tall, weighs 74kg, has black hair and brown eyes, and was wearing a coaching whistle and team polo shirt. Matthew was last seen wearing athletic wear, carrying a clipboard, and had his gym bag. He had previous knee surgery but is a devoted coach with regular background checks. The circumstances involve him completing his coaching duties and confirming all players were safely picked up, which shows his dedication to the children in his care. This medium-priority active case was reported by his wife Rebecca Adams.'),
+
 
   ('MP027', 'CASE-2024-027', 'Kimberly', 'Baker', '1976-07-14', 'Female',
    160.0, 62.0, 'Gray', 'Blue', 'Reading glasses chain, sensible shoes', 'Accountant attire, calculator, briefcase',
@@ -252,7 +304,9 @@ INSERT INTO `homeward.missing_persons` (
    'Working late during tax season, building security shows her leaving', 'Low', 'Active', 'Missing senior accountant',
    'None known', 'Meticulous worker, handles sensitive financial data',
    'https://example.com/photos/kimberly_baker.jpg', 'Steve Baker', '4055556295', 'steve.baker@email.com', 'Husband',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Kimberly Baker, a 48-year-old female senior accountant from Oklahoma City, disappeared on July 21, 2024, at 5:45 PM while working late during tax season at 717 Accounting Firm Ave, with building security showing her leaving the building. She is 160cm tall, weighs 62kg, has gray hair and blue eyes, wears reading glasses on a chain, and favors sensible shoes. Kimberly was last seen wearing accountant attire, carrying a calculator, and her briefcase. She has no known medical conditions and is a meticulous worker who handles sensitive financial data. The circumstances involve her working late during the busy tax season, which was normal for her dedication, and security cameras confirm she left the building. This low-priority active case was reported by her husband Steve Baker.'),
+
 
   ('MP028', 'CASE-2024-028', 'Ryan', 'Nelson', '1995-02-03', 'Male',
    184.0, 80.0, 'Red', 'Green', 'Firefighter physique, emergency radio', 'Off-duty clothes, department t-shirt',
@@ -261,7 +315,9 @@ INSERT INTO `homeward.missing_persons` (
    'Left station after shift change, never arrived home', 'High', 'Active', 'Missing firefighter/paramedic',
    'None known', 'Decorated firefighter with commendations',
    'https://example.com/photos/ryan_nelson.jpg', 'Ashley Nelson', '9195557518', 'ashley.nelson@email.com', 'Girlfriend',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Ryan Nelson, a 29-year-old male firefighter and paramedic from Raleigh, went missing on July 20, 2024, at 8:00 AM after leaving the fire station following his shift change at 828 Fire Station Road but never arriving home. He is 184cm tall, weighs 80kg, has red hair and green eyes, with a firefighter physique and emergency radio. Ryan was last seen wearing off-duty clothes and a department t-shirt. He has no known medical conditions and is a decorated firefighter with commendations for his service. The circumstances involve him leaving the fire station after a normal shift change but failing to arrive home, which is highly unusual for someone with his sense of duty and reliability. This high-priority active case was reported by his girlfriend Ashley Nelson.'),
+
 
   ('MP029', 'CASE-2024-029', 'Heather', 'Carter', '1988-09-27', 'Female',
    162.0, 59.0, 'Brown', 'Hazel', 'Veterinary scrubs, animal hair on clothes', 'Vet clinic uniform, stethoscope, car keys',
@@ -270,7 +326,9 @@ INSERT INTO `homeward.missing_persons` (
    'Finished emergency surgery on animal, left clinic alone', 'Medium', 'Active', 'Missing veterinarian',
    'None known', 'Dedicated to animal welfare, works long hours',
    'https://example.com/photos/heather_carter.jpg', 'Michael Carter', '5015558741', 'michael.carter@email.com', 'Brother',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()),
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Heather Carter, a 36-year-old female veterinarian from Little Rock, disappeared on July 19, 2024, at 10:30 PM after finishing an emergency surgery on an animal and leaving the clinic alone at 939 Animal Hospital Drive. She is 162cm tall, weighs 59kg, has brown hair and hazel eyes, and is typically seen wearing veterinary scrubs with animal hair on her clothes. Heather was last seen wearing her vet clinic uniform, stethoscope, and carrying car keys. She has no known medical conditions and is dedicated to animal welfare, often working long hours. The circumstances involve her completing an emergency surgery, which demonstrates her commitment to animal care, but leaving the clinic alone late at night. This medium-priority active case was reported by her brother Michael Carter.'),
+
 
   ('MP030', 'CASE-2024-030', 'Jonathan', 'Mitchell', '1983-06-18', 'Male',
    178.0, 75.0, 'Brown', 'Blue', 'Police officer bearing, duty belt tan line', 'Civilian clothes, off-duty weapon permit',
@@ -279,4 +337,5 @@ INSERT INTO `homeward.missing_persons` (
    'Finished court testimony, left courthouse in personal vehicle', 'High', 'Active', 'Missing police detective',
    'None known', 'Working sensitive organized crime case',
    'https://example.com/photos/jonathan_mitchell.jpg', 'Laura Mitchell', '9015552963', 'laura.mitchell@email.com', 'Wife',
-   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP());
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+   'Jonathan Mitchell, a 41-year-old male police detective from Memphis, went missing on July 18, 2024, at 3:40 PM after finishing court testimony and leaving the courthouse in his personal vehicle at 150 Police Station Plaza. He is 178cm tall, weighs 75kg, has brown hair and blue eyes, with a police officer bearing and duty belt tan line. Jonathan was last seen wearing civilian clothes and carrying his off-duty weapon permit. He has no known medical conditions but was working a sensitive organized crime case. The circumstances involve him completing his court testimony, which was part of his professional duties, but never returning home afterward, which is particularly concerning given his involvement in organized crime investigations. This high-priority active case was reported by his wife Laura Mitchell.');
