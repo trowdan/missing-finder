@@ -27,6 +27,11 @@ class DataService(ABC):
         pass
 
     @abstractmethod
+    def update_case(self, case: MissingPersonCase) -> bool:
+        """Update an existing case and return success status"""
+        pass
+
+    @abstractmethod
     def get_sightings(self, status_filter: str = None) -> list[Sighting]:
         """Get sighting reports, optionally filtered by status"""
         pass

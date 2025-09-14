@@ -3,11 +3,12 @@ from datetime import datetime
 from nicegui import ui
 
 from homeward.config import AppConfig
-from homeward.models.case import CaseStatus, MissingPersonCase
+from homeward.models.case import CaseStatus, CasePriority, MissingPersonCase, Location
 from homeward.models.video_analysis import VideoAnalysisRequest, VideoAnalysisResult
 from homeward.services.data_service import DataService
 from homeward.services.video_analysis_service import VideoAnalysisService
 from homeward.ui.components.footer import create_footer
+from homeward.ui.components.missing_person_form import create_missing_person_form
 
 
 def create_case_detail_page(
@@ -427,7 +428,7 @@ def create_case_detail_page(
                 # Action Buttons Section
                 with ui.row().classes("w-full justify-center gap-6 mt-12"):
                     ui.button(
-                        "Edit Case", on_click=lambda: handle_edit_case(case.id)
+                        "Edit Case", on_click=lambda: handle_edit_case(case.id, case, data_service)
                     ).classes(
                         "bg-transparent text-gray-300 px-8 py-4 rounded-full border-2 border-gray-400/80 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-gray-400/20 hover:ring-gray-200/40 hover:ring-4"
                     )
@@ -1062,11 +1063,159 @@ def handle_add_evidence(
         ui.notify(f"❌ Error adding evidence: {str(e)}", type="negative")
 
 
-def handle_edit_case(case_id: str):
+def handle_edit_case(case_id: str, case: MissingPersonCase, data_service: DataService):
     """Handle editing the case"""
-    ui.notify(f"Edit case {case_id}", type="info")
+    open_edit_case_modal(case_id, case, data_service)
 
 
 def handle_resolve_case(case_id: str):
     """Handle resolving the case"""
     ui.notify(f"Mark case {case_id} as resolved", type="positive")
+
+
+def open_edit_case_modal(case_id: str, case: MissingPersonCase, data_service: DataService):
+    """Open modal to edit case information using the reusable form component"""
+    with ui.dialog().props("persistent maximized") as dialog:
+        with ui.card().classes("w-full max-w-7xl mx-auto bg-gray-900 text-white min-h-screen overflow-y-auto"):
+            # Modal Header
+            with ui.row().classes("w-full items-center justify-between p-6 border-b border-gray-800 sticky top-0 bg-gray-900 z-10"):
+                with ui.row().classes("items-center"):
+                    ui.icon("edit", size="1.5rem").classes("text-blue-400 mr-3")
+                    ui.label(f"Edit Case: {case.name} {case.surname}").classes("text-xl font-light text-white")
+                ui.button("✕", on_click=dialog.close).classes("bg-transparent text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-all")
+
+            # Modal Content - Use the reusable form component
+            with ui.column().classes("w-full"):
+                create_missing_person_form(
+                    on_submit=lambda form_data, reset_loading_callback=None: handle_edit_case_submission(
+                        case, form_data, data_service, dialog, reset_loading_callback
+                    ),
+                    on_cancel=dialog.close,
+                    edit_mode=True,
+                    existing_case=case
+                )
+
+    dialog.open()
+
+
+def handle_edit_case_submission(
+    original_case: MissingPersonCase,
+    form_data: dict,
+    data_service: DataService,
+    dialog,
+    reset_loading_callback: callable = None
+):
+    """Handle the case edit form submission"""
+    try:
+        from homeward.utils.form_utils import sanitize_form_data
+
+        # Sanitize form data - convert empty strings to None
+        sanitized_data = sanitize_form_data(form_data)
+
+        # Validate required fields
+        required_fields = ["name", "surname", "date_of_birth", "gender", "circumstances", "reporter_name", "reporter_phone", "relationship"]
+        for field in required_fields:
+            if not sanitized_data.get(field):
+                raise ValueError(f"Missing required field: {field}")
+
+        # Update the original case object with form data
+        original_case.name = sanitized_data.get("name", "")
+        original_case.surname = sanitized_data.get("surname", "")
+
+        # Parse date of birth
+        if sanitized_data.get("date_of_birth"):
+            try:
+                original_case.date_of_birth = datetime.fromisoformat(sanitized_data["date_of_birth"])
+            except ValueError:
+                raise ValueError("Invalid date of birth format")
+
+        original_case.gender = sanitized_data.get("gender", "")
+
+        # Parse height and weight as floats
+        original_case.height = None
+        original_case.weight = None
+        if sanitized_data.get("height"):
+            try:
+                original_case.height = float(sanitized_data["height"])
+            except (ValueError, TypeError):
+                pass
+        if sanitized_data.get("weight"):
+            try:
+                original_case.weight = float(sanitized_data["weight"])
+            except (ValueError, TypeError):
+                pass
+
+        original_case.hair_color = sanitized_data.get("hair_color")
+        original_case.eye_color = sanitized_data.get("eye_color")
+        original_case.distinguishing_marks = sanitized_data.get("distinguishing_marks")
+
+        # Update last seen information
+        # Parse last seen date and time
+        last_seen_date = datetime.now()
+        if sanitized_data.get("last_seen_date"):
+            try:
+                date_str = sanitized_data["last_seen_date"]
+                if sanitized_data.get("last_seen_time"):
+                    date_str += f" {sanitized_data['last_seen_time']}"
+                    last_seen_date = datetime.fromisoformat(date_str)
+                else:
+                    last_seen_date = datetime.fromisoformat(f"{date_str} 00:00:00")
+            except ValueError:
+                pass  # Use current time if parsing fails
+
+        original_case.last_seen_date = last_seen_date
+
+        # Update location
+        original_case.last_seen_location.address = sanitized_data.get("last_seen_address", "")
+        original_case.last_seen_location.city = sanitized_data.get("city", "")
+        original_case.last_seen_location.country = sanitized_data.get("country", "")
+        original_case.last_seen_location.postal_code = sanitized_data.get("postal_code")
+
+        # Update case details
+        original_case.circumstances = sanitized_data.get("circumstances", "")
+        original_case.description = sanitized_data.get("description")
+        original_case.clothing_description = sanitized_data.get("clothing_description")
+
+        # Map priority
+        priority_map = {
+            "High": CasePriority.HIGH,
+            "Medium": CasePriority.MEDIUM,
+            "Low": CasePriority.LOW,
+        }
+        original_case.priority = priority_map.get(
+            sanitized_data.get("priority", "Medium"), CasePriority.MEDIUM
+        )
+
+        # Update additional information
+        original_case.medical_conditions = sanitized_data.get("medical_conditions")
+        original_case.additional_info = sanitized_data.get("additional_info")
+
+        # Update contact information
+        original_case.reporter_name = sanitized_data.get("reporter_name", "")
+        original_case.reporter_phone = sanitized_data.get("reporter_phone", "")
+        original_case.relationship = sanitized_data.get("relationship", "")
+        original_case.reporter_email = sanitized_data.get("reporter_email")
+
+        # Note: case_number should not be changed in edit mode (it's readonly in the form)
+
+        # Save updated case using data service
+        success = data_service.update_case(original_case)
+
+        if not success:
+            raise ValueError("Failed to update case in database")
+
+        ui.notify("✅ Case updated successfully! ML summary regenerated.", type="positive")
+
+        # Reset loading state on success
+        if reset_loading_callback:
+            reset_loading_callback()
+
+        # Close dialog and optionally refresh the page
+        dialog.close()
+        ui.notify("🔄 Please refresh the page to see updated information.", type="info")
+
+    except Exception as e:
+        ui.notify(f"❌ Error updating case: {str(e)}", type="negative")
+        # Reset loading state on error
+        if reset_loading_callback:
+            reset_loading_callback()

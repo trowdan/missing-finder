@@ -1,7 +1,10 @@
 import re
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 
 from nicegui import ui
+
+if TYPE_CHECKING:
+    from homeward.models.case import MissingPersonCase
 
 
 def validate_name_field(field, field_name):
@@ -46,7 +49,10 @@ def validate_phone_field(field):
 
 
 def create_missing_person_form(
-    on_submit: Callable[[dict], None], on_cancel: Callable[[], None]
+    on_submit: Callable[[dict], None],
+    on_cancel: Callable[[], None],
+    edit_mode: bool = False,
+    existing_case: 'MissingPersonCase' = None
 ):
     """Create comprehensive missing person registration form"""
 
@@ -61,12 +67,12 @@ def create_missing_person_form(
         with ui.column().classes(
             "items-center justify-center text-center gap-4 w-full mb-8"
         ):
-            ui.icon("search", size="3rem").classes("text-blue-400")
-            ui.label("Missing Person Report").classes(
+            ui.icon("edit" if edit_mode else "search", size="3rem").classes("text-blue-400")
+            ui.label("Edit Missing Person Case" if edit_mode else "Missing Person Report").classes(
                 "text-3xl sm:text-4xl lg:text-5xl font-extralight text-white tracking-wide"
             )
             ui.label(
-                "Please provide detailed information to help locate the missing person"
+                "Update the case information below" if edit_mode else "Please provide detailed information to help locate the missing person"
             ).classes("text-gray-400 text-base sm:text-lg font-light px-4 text-center")
 
         # Required fields explanation
@@ -93,7 +99,7 @@ def create_missing_person_form(
                     ):
                         with ui.column():
                             form_data["name"] = (
-                                ui.input("First Name*")
+                                ui.input("First Name*", value=existing_case.name if existing_case else "")
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -107,7 +113,7 @@ def create_missing_person_form(
                             )
                         with ui.column():
                             form_data["surname"] = (
-                                ui.input("Last Name*")
+                                ui.input("Last Name*", value=existing_case.surname if existing_case else "")
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -122,14 +128,19 @@ def create_missing_person_form(
 
                         with ui.column():
                             with (
-                                ui.input("Date of Birth*")
+                                ui.input(
+                                    "Date of Birth*",
+                                    value=existing_case.date_of_birth.strftime("%Y-%m-%d") if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
                                 .props("outlined dense readonly") as dob_input
                             ):
                                 with ui.menu().props("no-parent-event") as dob_menu:
-                                    dob_picker = ui.date().classes("bg-gray-700")
+                                    dob_picker = ui.date(
+                                        value=existing_case.date_of_birth.strftime("%Y-%m-%d") if existing_case else None
+                                    ).classes("bg-gray-700")
                                 dob_input.props("append-icon=event")
                                 dob_input.on("click", dob_menu.open)
                                 dob_picker.on(
@@ -147,6 +158,7 @@ def create_missing_person_form(
                                 ui.select(
                                     ["Male", "Female", "Other", "Prefer not to say"],
                                     label="Gender*",
+                                    value=existing_case.gender if existing_case else None
                                 )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
@@ -167,7 +179,10 @@ def create_missing_person_form(
                     ):
                         with ui.column():
                             form_data["height"] = (
-                                ui.input("Height (cm)")
+                                ui.input(
+                                    "Height (cm)",
+                                    value=str(existing_case.height) if existing_case and existing_case.height else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -175,7 +190,10 @@ def create_missing_person_form(
                             )
                         with ui.column():
                             form_data["weight"] = (
-                                ui.input("Weight (kg)")
+                                ui.input(
+                                    "Weight (kg)",
+                                    value=str(existing_case.weight) if existing_case and existing_case.weight else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -184,7 +202,10 @@ def create_missing_person_form(
 
                         with ui.column():
                             form_data["hair_color"] = (
-                                ui.input("Hair Color")
+                                ui.input(
+                                    "Hair Color",
+                                    value=existing_case.hair_color if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -192,7 +213,10 @@ def create_missing_person_form(
                             )
                         with ui.column():
                             form_data["eye_color"] = (
-                                ui.input("Eye Color")
+                                ui.input(
+                                    "Eye Color",
+                                    value=existing_case.eye_color if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -203,6 +227,7 @@ def create_missing_person_form(
                         ui.textarea(
                             "Distinguishing Marks/Features",
                             placeholder="Scars, tattoos, birthmarks, unique features...",
+                            value=existing_case.distinguishing_marks if existing_case else ""
                         )
                         .classes(
                             "w-full min-h-20 bg-gray-700/50 text-white border-gray-500 rounded-lg mt-4"
@@ -233,14 +258,19 @@ def create_missing_person_form(
                     ):
                         with ui.column():
                             with (
-                                ui.input("Date Last Seen*")
+                                ui.input(
+                                    "Date Last Seen*",
+                                    value=existing_case.last_seen_date.strftime("%Y-%m-%d") if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
                                 .props("outlined dense readonly") as date_input
                             ):
                                 with ui.menu().props("no-parent-event") as date_menu:
-                                    date_picker = ui.date().classes("bg-gray-700")
+                                    date_picker = ui.date(
+                                        value=existing_case.last_seen_date.strftime("%Y-%m-%d") if existing_case else None
+                                    ).classes("bg-gray-700")
                                 date_input.props("append-icon=event")
                                 date_input.on("click", date_menu.open)
                                 date_picker.on(
@@ -255,14 +285,19 @@ def create_missing_person_form(
                                 form_data["last_seen_date"] = date_input
                         with ui.column():
                             with (
-                                ui.input("Time Last Seen")
+                                ui.input(
+                                    "Time Last Seen",
+                                    value=existing_case.last_seen_date.strftime("%H:%M") if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
                                 .props("outlined dense readonly") as time_input
                             ):
                                 with ui.menu().props("no-parent-event") as time_menu:
-                                    time_picker = ui.time().classes("bg-gray-700")
+                                    time_picker = ui.time(
+                                        value=existing_case.last_seen_date.strftime("%H:%M") if existing_case else None
+                                    ).classes("bg-gray-700")
                                 time_input.props("append-icon=access_time")
                                 time_input.on("click", time_menu.open)
                                 time_picker.on(
@@ -290,6 +325,7 @@ def create_missing_person_form(
                         ui.input(
                             "Last Seen Address*",
                             placeholder="e.g., 123 Main Street, Apartment 4B",
+                            value=existing_case.last_seen_location.address if existing_case else ""
                         )
                         .classes(
                             "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg mb-4"
@@ -302,7 +338,11 @@ def create_missing_person_form(
                     ):
                         with ui.column():
                             form_data["city"] = (
-                                ui.input("City*", placeholder="e.g., Toronto")
+                                ui.input(
+                                    "City*",
+                                    placeholder="e.g., Toronto",
+                                    value=existing_case.last_seen_location.city if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -310,7 +350,11 @@ def create_missing_person_form(
                             )
                         with ui.column():
                             form_data["postal_code"] = (
-                                ui.input("Postal Code", placeholder="e.g., M5V 3A8")
+                                ui.input(
+                                    "Postal Code",
+                                    placeholder="e.g., M5V 3A8",
+                                    value=existing_case.last_seen_location.postal_code if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -318,7 +362,10 @@ def create_missing_person_form(
                             )
                         with ui.column():
                             form_data["country"] = (
-                                ui.input("Country*", value="Canada")
+                                ui.input(
+                                    "Country*",
+                                    value=existing_case.last_seen_location.country if existing_case else "Canada"
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -349,6 +396,7 @@ def create_missing_person_form(
                         ui.textarea(
                             "Describe clothing and accessories",
                             placeholder="Detailed description of clothing, shoes, jewelry, or accessories worn when last seen...",
+                            value=existing_case.clothing_description if existing_case else ""
                         )
                         .classes(
                             "w-full min-h-20 bg-gray-700/50 text-white border-gray-500 rounded-lg mb-6"
@@ -370,6 +418,7 @@ def create_missing_person_form(
                         ui.textarea(
                             "Case Description",
                             placeholder="Provide a general description of the missing person case. Include key details that might help in the search...",
+                            value=existing_case.description if existing_case else ""
                         )
                         .classes(
                             "w-full min-h-20 bg-gray-700/50 text-white border-gray-500 rounded-lg mb-4"
@@ -381,6 +430,7 @@ def create_missing_person_form(
                         ui.textarea(
                             "Circumstances of Disappearance*",
                             placeholder="Describe when, where, and how the person went missing. Include details about their state of mind, planned activities, or unusual behavior...",
+                            value=existing_case.circumstances if existing_case else ""
                         )
                         .classes(
                             "w-full min-h-32 bg-gray-700/50 text-white border-gray-500 rounded-lg mb-6"
@@ -396,7 +446,7 @@ def create_missing_person_form(
                                 ui.select(
                                     ["High", "Medium", "Low"],
                                     label="Priority Level*",
-                                    value="Medium",
+                                    value=existing_case.priority.value if existing_case else "Medium",
                                 )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
@@ -408,11 +458,12 @@ def create_missing_person_form(
                                 ui.input(
                                     "Case Number (if available)",
                                     placeholder="Official case reference",
+                                    value=existing_case.case_number if existing_case else ""
                                 )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
-                                .props("outlined dense")
+                                .props("outlined dense" if not edit_mode else "outlined dense readonly")
                             )
 
                 # Additional Information Card
@@ -431,6 +482,7 @@ def create_missing_person_form(
                         ui.textarea(
                             "Medical Conditions/Mental Health Information",
                             placeholder="Any medical conditions, medications, or mental health information that might be relevant...",
+                            value=existing_case.medical_conditions if existing_case else ""
                         )
                         .classes(
                             "w-full min-h-20 bg-gray-700/50 text-white border-gray-500 rounded-lg mb-4"
@@ -442,6 +494,7 @@ def create_missing_person_form(
                         ui.textarea(
                             "Any other relevant information",
                             placeholder="Additional details that might help locate the missing person...",
+                            value=existing_case.additional_info if existing_case else ""
                         )
                         .classes(
                             "w-full min-h-20 bg-gray-700/50 text-white border-gray-500 rounded-lg"
@@ -464,7 +517,11 @@ def create_missing_person_form(
                     ):
                         with ui.column():
                             form_data["reporter_name"] = (
-                                ui.input("Reporter Name*", placeholder="Your full name")
+                                ui.input(
+                                    "Reporter Name*",
+                                    placeholder="Your full name",
+                                    value=existing_case.reporter_name if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -478,7 +535,11 @@ def create_missing_person_form(
                             )
                         with ui.column():
                             form_data["reporter_phone"] = (
-                                ui.input("Phone Number*", placeholder="(555) 123-4567")
+                                ui.input(
+                                    "Phone Number*",
+                                    placeholder="(555) 123-4567",
+                                    value=existing_case.reporter_phone if existing_case else ""
+                                )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
@@ -496,6 +557,7 @@ def create_missing_person_form(
                                 ui.input(
                                     "Email Address",
                                     placeholder="your.email@example.com",
+                                    value=existing_case.reporter_email if existing_case else ""
                                 )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
@@ -511,7 +573,9 @@ def create_missing_person_form(
                         with ui.column():
                             form_data["relationship"] = (
                                 ui.input(
-                                    "Relationship*", placeholder="Mother, Friend, etc."
+                                    "Relationship*",
+                                    placeholder="Mother, Friend, etc.",
+                                    value=existing_case.relationship if existing_case else ""
                                 )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
@@ -519,30 +583,31 @@ def create_missing_person_form(
                                 .props("outlined dense")
                             )
 
-                # Photo Upload Card
-                with ui.card().classes(
-                    "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl hover:bg-gray-800/30 transition-all duration-300"
-                ):
-                    with ui.row().classes("items-center mb-6"):
-                        ui.icon("camera_alt", size="1.5rem").classes(
-                            "text-pink-400 mr-3"
-                        )
-                        ui.label("Photo Upload").classes(
-                            "text-2xl font-light text-white"
-                        )
+                # Photo Upload Card (only show in create mode)
+                if not edit_mode:
+                    with ui.card().classes(
+                        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl hover:bg-gray-800/30 transition-all duration-300"
+                    ):
+                        with ui.row().classes("items-center mb-6"):
+                            ui.icon("camera_alt", size="1.5rem").classes(
+                                "text-pink-400 mr-3"
+                            )
+                            ui.label("Photo Upload").classes(
+                                "text-2xl font-light text-white"
+                            )
 
-                    with ui.column().classes("w-full items-center"):
-                        form_data["photo"] = ui.upload(
-                            label="Upload recent photo of missing person",
-                            multiple=False,
-                            auto_upload=True,
-                        ).classes(
-                            "w-full bg-gray-700/50 border-2 border-dashed border-gray-500 rounded-lg p-8 text-center hover:border-pink-400 transition-colors"
-                        )
+                        with ui.column().classes("w-full items-center"):
+                            form_data["photo"] = ui.upload(
+                                label="Upload recent photo of missing person",
+                                multiple=False,
+                                auto_upload=True,
+                            ).classes(
+                                "w-full bg-gray-700/50 border-2 border-dashed border-gray-500 rounded-lg p-8 text-center hover:border-pink-400 transition-colors"
+                            )
 
-                        ui.label(
-                            "Drag and drop or click to select a recent, clear photo"
-                        ).classes("text-gray-400 text-sm mt-2")
+                            ui.label(
+                                "Drag and drop or click to select a recent, clear photo"
+                            ).classes("text-gray-400 text-sm mt-2")
 
                 # Action Buttons
                 with ui.column().classes(
@@ -553,14 +618,14 @@ def create_missing_person_form(
                     )
 
                     submit_button = ui.button(
-                        "Submit Report",
-                        on_click=lambda: handle_submit(form_data, on_submit, is_loading, submit_button, cancel_button),
+                        "Update Case" if edit_mode else "Submit Report",
+                        on_click=lambda: handle_submit(form_data, on_submit, is_loading, submit_button, cancel_button, edit_mode),
                     ).classes(
                         "bg-transparent text-blue-300 px-8 py-4 rounded-full border-2 border-blue-400/80 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-blue-400/20 hover:ring-blue-200/40 hover:ring-4"
                     )
 
 
-def handle_submit(form_data: dict, on_submit: Callable[[dict], None], is_loading: dict, submit_button, cancel_button):
+def handle_submit(form_data: dict, on_submit: Callable[[dict], None], is_loading: dict, submit_button, cancel_button, edit_mode: bool = False):
     """Handle form submission with comprehensive validation"""
     import re
     from datetime import date
@@ -569,7 +634,7 @@ def handle_submit(form_data: dict, on_submit: Callable[[dict], None], is_loading
         """Reset the loading state and re-enable buttons"""
         is_loading["value"] = False
         submit_button.props(remove="loading")
-        submit_button.set_text("Submit Report")
+        submit_button.set_text("Update Case" if edit_mode else "Submit Report")
         submit_button.enable()
         cancel_button.enable()
 

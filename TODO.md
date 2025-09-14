@@ -1,0 +1,2 @@
+- Add logging (right now exceptions are logged as notifications)
+- after the modification, the ml summary and embeddings should be resetted
