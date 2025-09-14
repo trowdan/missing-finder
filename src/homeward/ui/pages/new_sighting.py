@@ -22,6 +22,9 @@ def create_new_sighting_page(
     # Form data storage
     form_data = {}
 
+    # Loading state
+    is_loading = {"value": False}
+
     with ui.column().classes(
         "w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen"
     ):
@@ -487,14 +490,14 @@ def create_new_sighting_page(
 
                         # Form Actions
                         with ui.row().classes("w-full justify-center gap-6 mt-12"):
-                            ui.button("Cancel", on_click=on_back_to_dashboard).classes(
+                            cancel_button = ui.button("Cancel", on_click=on_back_to_dashboard).classes(
                                 "bg-transparent text-gray-300 px-8 py-4 rounded-full border-2 border-gray-400/80 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-gray-400/20 hover:ring-gray-200/40 hover:ring-4"
                             )
 
-                            ui.button(
+                            submit_button = ui.button(
                                 "Submit Sighting Report",
-                                on_click=lambda: handle_form_submission(
-                                    form_data, data_service, config
+                                on_click=lambda: handle_sighting_submit(
+                                    form_data, data_service, config, is_loading, submit_button, cancel_button
                                 ),
                             ).classes(
                                 "bg-transparent text-green-300 px-8 py-4 rounded-full border-2 border-green-400/80 hover:bg-green-200 hover:text-green-900 hover:border-green-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-green-400/20 hover:ring-green-200/40 hover:ring-4"
@@ -503,6 +506,39 @@ def create_new_sighting_page(
             # Footer
             ui.element("div").classes("mt-16")  # Spacer
             create_footer(config.version)
+
+
+def handle_sighting_submit(form_data: dict, data_service: DataService, config: AppConfig, is_loading: dict, submit_button, cancel_button):
+    """Handle sighting submission with loading state management"""
+
+    def reset_loading_state():
+        """Reset the loading state and re-enable buttons"""
+        is_loading["value"] = False
+        submit_button.props(remove="loading")
+        submit_button.set_text("Submit Sighting Report")
+        submit_button.enable()
+        cancel_button.enable()
+
+    # Prevent double submission
+    if is_loading["value"]:
+        return
+
+    # Set loading state
+    is_loading["value"] = True
+    submit_button.props("loading")
+    submit_button.set_text("")
+    submit_button.disable()
+    cancel_button.disable()
+
+    # Use a timer to allow the UI to update the loading state first
+    def handle_async_submission():
+        try:
+            handle_form_submission(form_data, data_service, config, None, reset_loading_state)
+        except Exception as e:
+            ui.notify(f"An unexpected error occurred during submission: {str(e)}", type="negative")
+            reset_loading_state()
+
+    ui.timer(0.1, handle_async_submission, once=True)
 
 
 def handle_form_submission(form_data: dict, data_service: DataService, config: AppConfig, on_success: callable = None, reset_loading_callback: callable = None):
