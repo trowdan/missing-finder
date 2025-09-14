@@ -465,13 +465,16 @@ def create_new_sighting_page(
                                 .props("outlined")
                             )
 
+                            ui.label(
+                                "Rate the quality of observation conditions during the sighting"
+                            ).classes("text-gray-400 text-sm mb-2")
+
                             form_data["confidence"] = (
                                 ui.select(
                                     [
-                                        "Very High - I'm certain it was them",
-                                        "High - Very likely it was them",
-                                        "Medium - Possibly them",
-                                        "Low - Uncertain but worth reporting",
+                                        "High - Clear view, good lighting, close distance",
+                                        "Medium - Reasonable view with some limitations",
+                                        "Low - Poor visibility but notable details observed",
                                     ],
                                     label="Confidence Level",
                                 )
@@ -608,10 +611,9 @@ def handle_form_submission(form_data: dict, data_service: DataService, config: A
 
         # Map confidence level from UI to enum
         confidence_map = {
-            "Very High - I'm certain it was them": SightingConfidenceLevel.HIGH,
-            "High - Very likely it was them": SightingConfidenceLevel.HIGH,
-            "Medium - Possibly them": SightingConfidenceLevel.MEDIUM,
-            "Low - Uncertain but worth reporting": SightingConfidenceLevel.LOW,
+            "High - Clear view, good lighting, close distance": SightingConfidenceLevel.HIGH,
+            "Medium - Reasonable view with some limitations": SightingConfidenceLevel.MEDIUM,
+            "Low - Poor visibility but notable details observed": SightingConfidenceLevel.LOW,
         }
         confidence_level = confidence_map.get(
             sighting_data.get("confidence"), SightingConfidenceLevel.MEDIUM
