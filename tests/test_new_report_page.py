@@ -48,7 +48,7 @@ class TestNewReportPage:
         form_data = {
             "name": "John",
             "surname": "Doe",
-            "age": 30,
+            "date_of_birth": "1994-01-15",
             "gender": "Male",
             "last_seen_date": "2023-12-01",
             "last_seen_time": "14:30",
@@ -102,7 +102,7 @@ class TestNewReportPage:
         form_data = {
             "name": "John",
             "surname": "Doe",
-            "age": 30,
+            "date_of_birth": "1994-01-15",
             "gender": "Male",
             "last_seen_date": "2023-12-01",
             "last_seen_time": "14:30",
@@ -198,7 +198,7 @@ class TestMissingPersonForm:
         form_data = {
             "name": Mock(value="John"),
             "surname": Mock(value=""),  # Missing surname
-            "age": Mock(value=30),
+            "date_of_birth": Mock(value="1994-01-15"),
             "gender": Mock(value="Male"),
             "last_seen_date": Mock(value="2023-12-01"),
             "last_seen_address": Mock(value="123 Main St"),
@@ -232,7 +232,7 @@ class TestMissingPersonForm:
         form_data = {
             "name": Mock(value="John123"),  # Invalid name with numbers
             "surname": Mock(value="Doe"),
-            "age": Mock(value=30),
+            "date_of_birth": Mock(value="1994-01-15"),
             "gender": Mock(value="Male"),
             "last_seen_date": Mock(value="2023-12-01"),
             "last_seen_address": Mock(value="123 Main St"),
@@ -255,15 +255,15 @@ class TestMissingPersonForm:
             assert "can only contain letters" in call_args[0][0]
             assert call_args[1]["type"] == "negative"
 
-    def test_form_validation_age_range(self):
-        """Test age validation"""
+    def test_form_validation_date_of_birth_range(self):
+        """Test date of birth validation"""
         from homeward.ui.components.missing_person_form import handle_submit
 
         # Mock form data with invalid age
         form_data = {
             "name": Mock(value="John"),
             "surname": Mock(value="Doe"),
-            "age": Mock(value=200),  # Invalid age
+            "date_of_birth": Mock(value="1800-01-15"),  # Invalid date (too old)
             "gender": Mock(value="Male"),
             "last_seen_date": Mock(value="2023-12-01"),
             "last_seen_address": Mock(value="123 Main St"),
@@ -283,7 +283,7 @@ class TestMissingPersonForm:
             # Should show age validation error
             mock_ui.notify.assert_called()
             call_args = mock_ui.notify.call_args
-            assert "Age must be between 0 and 150" in call_args[0][0]
+            assert "Date of birth seems too far in the past" in call_args[0][0]
             assert call_args[1]["type"] == "negative"
 
     def test_form_validation_phone_format(self):
@@ -294,7 +294,7 @@ class TestMissingPersonForm:
         form_data = {
             "name": Mock(value="John"),
             "surname": Mock(value="Doe"),
-            "age": Mock(value=30),
+            "date_of_birth": Mock(value="1994-01-15"),
             "gender": Mock(value="Male"),
             "last_seen_date": Mock(value="2023-12-01"),
             "last_seen_address": Mock(value="123 Main Street"),
@@ -325,7 +325,7 @@ class TestMissingPersonForm:
         form_data = {
             "name": Mock(value="John"),
             "surname": Mock(value="Doe"),
-            "age": Mock(value=30),
+            "date_of_birth": Mock(value="1994-01-15"),
             "gender": Mock(value="Male"),
             "last_seen_date": Mock(value="2023-12-01"),
             "last_seen_address": Mock(value="123 Main Street"),
@@ -359,7 +359,7 @@ class TestMissingPersonForm:
         form_data = {
             "name": Mock(value="John"),
             "surname": Mock(value="Doe"),
-            "age": Mock(value=30),
+            "date_of_birth": Mock(value="1994-01-15"),
             "gender": Mock(value="Male"),
             "last_seen_date": Mock(value="2023-12-01"),
             "last_seen_address": Mock(value="123 Main Street"),
@@ -383,7 +383,7 @@ class TestMissingPersonForm:
 
             assert submitted_data["name"] == "John"
             assert submitted_data["surname"] == "Doe"
-            assert submitted_data["age"] == 30
+            assert submitted_data["date_of_birth"] == "1994-01-15"
             assert submitted_data["gender"] == "Male"
 
 
@@ -474,30 +474,4 @@ class TestFormValidationHelpers:
             'error error-message="Enter 10-15 digits (spaces, dashes, parentheses allowed)"'
         )
 
-    def test_validate_age_field_valid(self):
-        """Test age validation with valid input"""
-        from homeward.ui.components.missing_person_form import validate_age_field
-
-        mock_field = Mock()
-        mock_field.value = 25
-        mock_field.props = Mock()
-
-        validate_age_field(mock_field)
-
-        # Should remove error props for valid age
-        mock_field.props.assert_called_with(remove="error error-message")
-
-    def test_validate_age_field_invalid(self):
-        """Test age validation with invalid input"""
-        from homeward.ui.components.missing_person_form import validate_age_field
-
-        mock_field = Mock()
-        mock_field.value = 200
-        mock_field.props = Mock()
-
-        validate_age_field(mock_field)
-
-        # Should set error props for invalid age
-        mock_field.props.assert_called_with(
-            'error error-message="Age must be between 0 and 150"'
-        )
+    # Age validation tests removed since age field no longer exists - date of birth is used instead

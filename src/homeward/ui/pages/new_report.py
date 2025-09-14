@@ -57,7 +57,7 @@ def handle_form_submission(
     """Handle the form submission and create new case"""
     try:
         # Validate required fields
-        required_fields = ["name", "surname", "age", "gender"]
+        required_fields = ["name", "surname", "date_of_birth", "gender", "circumstances", "reporter_name", "reporter_phone", "relationship"]
         for field in required_fields:
             if not form_data.get(field):
                 raise ValueError(f"Missing required field: {field}")
@@ -96,80 +96,61 @@ def handle_form_submission(
             form_data.get("priority", "Medium"), CasePriority.MEDIUM
         )
 
-        # Create comprehensive description
-        description_parts = []
-        if form_data.get("circumstances"):
-            description_parts.append(f"Circumstances: {form_data['circumstances']}")
-        if form_data.get("clothing_description"):
-            description_parts.append(
-                f"Last seen wearing: {form_data['clothing_description']}"
-            )
-        if form_data.get("distinguishing_marks"):
-            description_parts.append(
-                f"Distinguishing marks: {form_data['distinguishing_marks']}"
-            )
-        if form_data.get("medical_conditions"):
-            description_parts.append(
-                f"Medical conditions: {form_data['medical_conditions']}"
-            )
-        if form_data.get("additional_info"):
-            description_parts.append(
-                f"Additional information: {form_data['additional_info']}"
-            )
+        # Parse date of birth
+        date_of_birth = None
+        if form_data.get("date_of_birth"):
+            try:
+                date_of_birth = datetime.fromisoformat(form_data["date_of_birth"])
+            except ValueError:
+                raise ValueError("Invalid date of birth format")
 
-        # Add physical description
-        physical_desc = []
+        # Parse height and weight as floats
+        height = None
+        weight = None
         if form_data.get("height"):
-            physical_desc.append(f"Height: {form_data['height']} cm")
+            try:
+                height = float(form_data["height"])
+            except (ValueError, TypeError):
+                pass
         if form_data.get("weight"):
-            physical_desc.append(f"Weight: {form_data['weight']} kg")
-        if form_data.get("hair_color"):
-            physical_desc.append(f"Hair: {form_data['hair_color']}")
-        if form_data.get("eye_color"):
-            physical_desc.append(f"Eyes: {form_data['eye_color']}")
-
-        if physical_desc:
-            description_parts.insert(
-                0, f"Physical description: {', '.join(physical_desc)}"
-            )
-
-        # Add contact information
-        contact_info = []
-        if form_data.get("reporter_name"):
-            contact_info.append(f"Reporter: {form_data['reporter_name']}")
-        if form_data.get("reporter_phone"):
-            contact_info.append(f"Phone: {form_data['reporter_phone']}")
-        if form_data.get("reporter_email"):
-            contact_info.append(f"Email: {form_data['reporter_email']}")
-        if form_data.get("relationship"):
-            contact_info.append(f"Relationship: {form_data['relationship']}")
-
-        if contact_info:
-            description_parts.append(f"Contact information: {', '.join(contact_info)}")
-
-        description = "\n\n".join(description_parts)
+            try:
+                weight = float(form_data["weight"])
+            except (ValueError, TypeError):
+                pass
 
         # Create MissingPersonCase object
         case = MissingPersonCase(
             id=form_data.get("case_number") or str(uuid.uuid4()),
             name=form_data.get("name", ""),
             surname=form_data.get("surname", ""),
-            age=int(form_data.get("age", 0)),
+            date_of_birth=date_of_birth,
             gender=form_data.get("gender", ""),
             last_seen_date=last_seen_date,
             last_seen_location=location,
             status=CaseStatus.ACTIVE,
-            description=description,
+            circumstances=form_data.get("circumstances", ""),
+            reporter_name=form_data.get("reporter_name", ""),
+            reporter_phone=form_data.get("reporter_phone", ""),
+            relationship=form_data.get("relationship", ""),
+            case_number=form_data.get("case_number"),
+            height=height,
+            weight=weight,
+            hair_color=form_data.get("hair_color"),
+            eye_color=form_data.get("eye_color"),
+            distinguishing_marks=form_data.get("distinguishing_marks"),
+            clothing_description=form_data.get("clothing_description"),
+            medical_conditions=form_data.get("medical_conditions"),
+            additional_info=form_data.get("additional_info"),
+            description=form_data.get("description"),
             photo_url=None,  # Would handle photo upload separately
+            reporter_email=form_data.get("reporter_email"),
             created_date=datetime.now(),
             priority=priority,
         )
 
         # Save case using data service
-        # Note: This assumes the data service has a method to create cases
-        # In a real implementation, you'd need to implement this method
-        # For now, we'll just verify the case was created successfully
-        if not case:
+        case_id = data_service.create_case(case)
+        if not case_id:
             raise ValueError("Failed to create case")
 
         ui.notify("Missing person report submitted successfully!", type="positive")

@@ -111,11 +111,15 @@ class TestMissingPersonCase:
             id="MP001",
             name="John",
             surname="Doe",
-            age=30,
+            date_of_birth=datetime(1994, 1, 15),
             gender="Male",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Test circumstances",
+            reporter_name="Jane Doe",
+            reporter_phone="+39 333 1234567",
+            relationship="Wife",
             description="Test case",
             photo_url="http://example.com/photo.jpg",
             created_date=created_date,
@@ -125,7 +129,7 @@ class TestMissingPersonCase:
         assert case.id == "MP001"
         assert case.name == "John"
         assert case.surname == "Doe"
-        assert case.age == 30
+        assert case.date_of_birth == datetime(1994, 1, 15)
         assert case.gender == "Male"
         assert case.last_seen_date == case_date
         assert case.last_seen_location == sample_location
@@ -143,11 +147,15 @@ class TestMissingPersonCase:
             id="MP001",
             name="John",
             surname="Doe",
-            age=30,
+            date_of_birth=datetime(1994, 1, 15),
             gender="Male",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Test circumstances",
+            reporter_name="Jane Doe",
+            reporter_phone="+39 333 1234567",
+            relationship="Wife",
             description="Test case",
         )
 
@@ -164,11 +172,15 @@ class TestMissingPersonCase:
             id="MP001",
             name="Child",
             surname="Test",
-            age=12,
+            date_of_birth=datetime(2012, 3, 10),
             gender="Male",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Child case circumstances",
+            reporter_name="Parent Test",
+            reporter_phone="+39 333 1111111",
+            relationship="Parent",
             description="Child case",
         )
 
@@ -177,11 +189,15 @@ class TestMissingPersonCase:
             id="MP002",
             name="Adult",
             surname="Test",
-            age=45,
+            date_of_birth=datetime(1979, 8, 22),
             gender="Female",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Adult case circumstances",
+            reporter_name="Spouse Test",
+            reporter_phone="+39 333 2222222",
+            relationship="Spouse",
             description="Adult case",
         )
 
@@ -190,17 +206,21 @@ class TestMissingPersonCase:
             id="MP003",
             name="Senior",
             surname="Test",
-            age=75,
+            date_of_birth=datetime(1949, 11, 5),
             gender="Male",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Senior case circumstances",
+            reporter_name="Child Test",
+            reporter_phone="+39 333 3333333",
+            relationship="Child",
             description="Senior case",
         )
 
-        assert child_case.age == 12
-        assert adult_case.age == 45
-        assert senior_case.age == 75
+        assert child_case.date_of_birth == datetime(2012, 3, 10)
+        assert adult_case.date_of_birth == datetime(1979, 8, 22)
+        assert senior_case.date_of_birth == datetime(1949, 11, 5)
 
     def test_case_equality(self, sample_location):
         """Test case equality comparison"""
@@ -210,11 +230,15 @@ class TestMissingPersonCase:
             id="MP001",
             name="John",
             surname="Doe",
-            age=30,
+            date_of_birth=datetime(1994, 1, 15),
             gender="Male",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Test circumstances",
+            reporter_name="Jane Doe",
+            reporter_phone="+39 333 1234567",
+            relationship="Wife",
             description="Test case",
         )
 
@@ -222,11 +246,15 @@ class TestMissingPersonCase:
             id="MP001",
             name="John",
             surname="Doe",
-            age=30,
+            date_of_birth=datetime(1994, 1, 15),
             gender="Male",
             last_seen_date=case_date,
             last_seen_location=sample_location,
             status=CaseStatus.ACTIVE,
+            circumstances="Test circumstances",
+            reporter_name="Jane Doe",
+            reporter_phone="+39 333 1234567",
+            relationship="Wife",
             description="Test case",
         )
 

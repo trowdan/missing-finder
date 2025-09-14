@@ -752,11 +752,6 @@ main() {
     print_info "Region: $REGION"
     print_info "Videos processed: $VIDEO_COUNT"
     echo ""
-    print_info "Next steps:"
-    print_info "1. Verify uploaded videos in GCS: gs://$HOMEWARD_VIDEO_BUCKET"
-    print_info "2. Set up BigQuery tables and external data sources"
-    print_info "3. Configure Eventarc triggers for video processing"
-    print_info "4. Initialize AI/ML pipelines for person detection"
 }
 
 # Execute main function with all arguments

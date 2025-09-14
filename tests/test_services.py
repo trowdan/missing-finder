@@ -139,9 +139,8 @@ class TestBigQueryDataService:
         with pytest.raises(NotImplementedError):
             service.get_case_by_id("MP001")
 
-        with pytest.raises(
-            NotImplementedError, match="BigQuery implementation not yet available"
-        ):
+        # create_case is now implemented, but will fail with None input
+        with pytest.raises(AttributeError):
             service.create_case(None)
 
 

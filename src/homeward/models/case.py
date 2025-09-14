@@ -44,13 +44,31 @@ class MissingPersonCase:
     id: str
     name: str
     surname: str
-    age: int
+    date_of_birth: datetime  # Required field, age will be calculated from this
     gender: str
     last_seen_date: datetime
     last_seen_location: Location
     status: CaseStatus
-    description: str
+    circumstances: str  # Required field
+    reporter_name: str  # Required field
+    reporter_phone: str  # Required field
+    relationship: str  # Required field
+
+    # Optional fields
+    case_number: Optional[str] = None
+    height: Optional[float] = None  # in cm
+    weight: Optional[float] = None  # in kg
+    hair_color: Optional[str] = None
+    eye_color: Optional[str] = None
+    distinguishing_marks: Optional[str] = None
+    clothing_description: Optional[str] = None
+    medical_conditions: Optional[str] = None
+    additional_info: Optional[str] = None
+    description: Optional[str] = None
     photo_url: Optional[str] = None
+    reporter_email: Optional[str] = None
+
+    # Metadata
     created_date: datetime = datetime.now()
     priority: CasePriority = CasePriority.MEDIUM
 

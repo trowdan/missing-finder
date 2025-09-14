@@ -44,20 +44,6 @@ def validate_phone_field(field):
         field.props(remove="error error-message")
 
 
-def validate_age_field(field):
-    """Real-time validation for age field"""
-    if field.value is not None:
-        try:
-            age = int(field.value)
-            if age < 0 or age > 150:
-                field.props('error error-message="Age must be between 0 and 150"')
-            else:
-                field.props(remove="error error-message")
-        except (ValueError, TypeError):
-            field.props('error error-message="Please enter a valid age"')
-    else:
-        field.props(remove="error error-message")
-
 
 def create_missing_person_form(
     on_submit: Callable[[dict], None], on_cancel: Callable[[], None]
@@ -132,16 +118,27 @@ def create_missing_person_form(
                             )
 
                         with ui.column():
-                            form_data["age"] = (
-                                ui.number("Age*", min=0, max=150)
+                            with (
+                                ui.input("Date of Birth*")
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                 )
-                                .props("outlined dense")
-                            )
-                            form_data["age"].on(
-                                "blur", lambda: validate_age_field(form_data["age"])
-                            )
+                                .props("outlined dense readonly") as dob_input
+                            ):
+                                with ui.menu().props("no-parent-event") as dob_menu:
+                                    dob_picker = ui.date().classes("bg-gray-700")
+                                dob_input.props("append-icon=event")
+                                dob_input.on("click", dob_menu.open)
+                                dob_picker.on(
+                                    "update:model-value",
+                                    lambda e: (
+                                        dob_input.set_value(
+                                            e.args[0] if e.args else ""
+                                        ),
+                                        dob_menu.close(),
+                                    ),
+                                )
+                                form_data["date_of_birth"] = dob_input
                         with ui.column():
                             form_data["gender"] = (
                                 ui.select(
@@ -366,6 +363,17 @@ def create_missing_person_form(
                             "text-lg font-light text-gray-200"
                         )
 
+                    form_data["description"] = (
+                        ui.textarea(
+                            "Case Description",
+                            placeholder="Provide a general description of the missing person case. Include key details that might help in the search...",
+                        )
+                        .classes(
+                            "w-full min-h-20 bg-gray-700/50 text-white border-gray-500 rounded-lg mb-4"
+                        )
+                        .props("outlined")
+                    )
+
                     form_data["circumstances"] = (
                         ui.textarea(
                             "Circumstances of Disappearance*",
@@ -558,7 +566,7 @@ def handle_submit(form_data: dict, on_submit: Callable[[dict], None]):
     required_fields = [
         "name",
         "surname",
-        "age",
+        "date_of_birth",
         "gender",
         "last_seen_date",
         "last_seen_address",
@@ -604,15 +612,20 @@ def handle_submit(form_data: dict, on_submit: Callable[[dict], None]):
         )
         return
 
-    # Age validation
-    try:
-        age = int(form_data["age"].value)
-        if age < 0 or age > 150:
-            ui.notify("Age must be between 0 and 150 years", type="negative")
+    # Date of birth validation
+    if form_data.get("date_of_birth") and form_data["date_of_birth"].value:
+        try:
+            dob = date.fromisoformat(form_data["date_of_birth"].value)
+            if dob > date.today():
+                ui.notify("Date of birth cannot be in the future", type="negative")
+                return
+            # Check if date is too far in the past (more than 150 years)
+            if dob.year < date.today().year - 150:
+                ui.notify("Date of birth seems too far in the past", type="negative")
+                return
+        except ValueError:
+            ui.notify("Please enter a valid date of birth format (YYYY-MM-DD)", type="negative")
             return
-    except (ValueError, TypeError):
-        ui.notify("Please enter a valid age", type="negative")
-        return
 
     # Height validation (if provided)
     if form_data.get("height") and form_data["height"].value:
