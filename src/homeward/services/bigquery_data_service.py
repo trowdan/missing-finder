@@ -26,8 +26,139 @@ class BigQueryDataService(DataService):
 
     def get_case_by_id(self, case_id: str) -> Optional[MissingPersonCase]:
         """Get a specific case by ID from BigQuery"""
-        # TODO: Implement BigQuery query by ID
-        raise NotImplementedError("BigQuery implementation not yet available")
+        CASE_SELECT_QUERY = """
+        SELECT
+            id,
+            case_number,
+            name,
+            surname,
+            date_of_birth,
+            gender,
+            height,
+            weight,
+            hair_color,
+            eye_color,
+            distinguishing_marks,
+            clothing_description,
+            last_seen_date,
+            last_seen_time,
+            last_seen_address,
+            last_seen_city,
+            last_seen_country,
+            last_seen_postal_code,
+            last_seen_latitude,
+            last_seen_longitude,
+            circumstances,
+            priority,
+            status,
+            description,
+            medical_conditions,
+            additional_info,
+            photo_url,
+            reporter_name,
+            reporter_phone,
+            reporter_email,
+            relationship,
+            created_date,
+            updated_date,
+            ml_summary
+        FROM `homeward.missing_persons`
+        WHERE id = @case_id
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("case_id", "STRING", case_id),
+            ]
+        )
+
+        try:
+            query_job = self.client.query(CASE_SELECT_QUERY, job_config=job_config)
+            results = list(query_job.result())
+
+            if not results:
+                return None
+
+            row = results[0]
+
+            # Combine date and time for last_seen_date
+            last_seen_date = row.last_seen_date
+            last_seen_time = row.last_seen_time
+
+            if last_seen_date and last_seen_time:
+                from datetime import datetime, time
+                if isinstance(last_seen_time, time):
+                    last_seen_datetime = datetime.combine(last_seen_date, last_seen_time)
+                else:
+                    last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time())
+            else:
+                last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time()) if last_seen_date else datetime.now()
+
+            # Create Location object
+            from homeward.models.case import Location, CaseStatus, CasePriority
+            location = Location(
+                address=row.last_seen_address or "",
+                city=row.last_seen_city or "",
+                country=row.last_seen_country or "",
+                postal_code=row.last_seen_postal_code,
+                latitude=row.last_seen_latitude,
+                longitude=row.last_seen_longitude
+            )
+
+            # Parse enum values
+            status = CaseStatus.ACTIVE
+            try:
+                status = CaseStatus(row.status)
+            except ValueError:
+                pass
+
+            priority = CasePriority.MEDIUM
+            try:
+                priority = CasePriority(row.priority)
+            except ValueError:
+                pass
+
+            # Convert date_of_birth from date to datetime
+            date_of_birth = row.date_of_birth
+            if date_of_birth and not isinstance(date_of_birth, datetime):
+                date_of_birth = datetime.combine(date_of_birth, datetime.min.time())
+
+            # Create MissingPersonCase object
+            case = MissingPersonCase(
+                id=row.id,
+                name=row.name or "",
+                surname=row.surname or "",
+                date_of_birth=date_of_birth or datetime.now(),
+                gender=row.gender or "",
+                last_seen_date=last_seen_datetime,
+                last_seen_location=location,
+                status=status,
+                circumstances=row.circumstances or "",
+                reporter_name=row.reporter_name or "",
+                reporter_phone=row.reporter_phone or "",
+                relationship=row.relationship or "",
+                case_number=row.case_number,
+                height=row.height,
+                weight=row.weight,
+                hair_color=row.hair_color,
+                eye_color=row.eye_color,
+                distinguishing_marks=row.distinguishing_marks,
+                clothing_description=row.clothing_description,
+                medical_conditions=row.medical_conditions,
+                additional_info=row.additional_info,
+                description=row.description,
+                photo_url=row.photo_url,
+                reporter_email=row.reporter_email,
+                created_date=row.created_date or datetime.now(),
+                priority=priority,
+                ml_summary=row.ml_summary,
+            )
+
+            return case
+
+        except Exception as e:
+            print(f"Error retrieving case {case_id}: {str(e)}")
+            return None
 
     def create_case(self, case: MissingPersonCase) -> str:
         """Create a new case in BigQuery"""

@@ -20,41 +20,28 @@ def create_case_detail_page(
     """Create the case detail page"""
 
     # Get case data
-    case = (
-        data_service.get_case_by_id(case_id)
-        if hasattr(data_service, "get_case_by_id")
-        else None
-    )
+    case = data_service.get_case_by_id(case_id)
 
     if not case:
-        # Create mock case for demonstration
-        from homeward.models.case import CasePriority, Location
-
-        case = MissingPersonCase(
-            id=case_id,
-            name="John",
-            surname="Doe",
-            date_of_birth=datetime(1995, 8, 15),
-            gender="Male",
-            last_seen_date=datetime(2023, 12, 1, 14, 30),
-            last_seen_location=Location(
-                address="123 Main Street",
-                city="Toronto",
-                country="Canada",
-                postal_code="M5V 3A8",
-                latitude=43.6532,
-                longitude=-79.3832,
-            ),
-            status=CaseStatus.ACTIVE,
-            circumstances="Left for work and never returned home",
-            reporter_name="Jane Doe",
-            reporter_phone="+1 416 555 0123",
-            relationship="Wife",
-            description="Left for work and never returned home. Last seen wearing blue jeans and white shirt.",
-            photo_url=None,
-            created_date=datetime(2023, 12, 1, 18, 0),
-            priority=CasePriority.HIGH,
-        )
+        # Handle case not found
+        ui.dark_mode().enable()
+        with ui.column().classes(
+            "w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen"
+        ):
+            with ui.column().classes("max-w-7xl mx-auto p-8 w-full items-center justify-center min-h-screen"):
+                ui.label("Homeward").classes(
+                    "text-6xl font-extralight text-white tracking-tight mb-4"
+                )
+                ui.label("Case Not Found").classes(
+                    "text-2xl font-light text-gray-300 tracking-wide mb-8"
+                )
+                ui.label(f"Case with ID '{case_id}' was not found in the database.").classes(
+                    "text-gray-400 mb-8"
+                )
+                ui.button("← Back to Dashboard", on_click=on_back_to_dashboard).classes(
+                    "bg-transparent text-gray-300 px-6 py-2 rounded-full border border-gray-400/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide"
+                )
+        return
 
     # Set dark theme
     ui.dark_mode().enable()
@@ -234,15 +221,107 @@ def create_case_detail_page(
                             "text-xl font-light text-white"
                         )
 
-                    with ui.column().classes("w-full space-y-4"):
-                        ui.label("Description").classes(
-                            "text-gray-400 font-medium text-sm mb-2"
-                        )
+                    with ui.column().classes("w-full space-y-6"):
+                        # Description section
+                        if case.description:
+                            ui.label("Description").classes(
+                                "text-gray-400 font-medium text-sm mb-2"
+                            )
+                            with ui.element("div").classes(
+                                "border-l-4 border-green-400/50 pl-4 mb-4"
+                            ):
+                                ui.label(case.description).classes(
+                                    "text-gray-100 leading-relaxed text-sm"
+                                )
+
+                        # Additional details in a grid
+                        with ui.row().classes("w-full gap-8"):
+                            # Left column - Physical Description
+                            with ui.column().classes("flex-1 space-y-4"):
+                                if case.clothing_description:
+                                    ui.label("Last Seen Wearing").classes(
+                                        "text-amber-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-amber-400/50 pl-4 mb-4"
+                                    ):
+                                        ui.label(case.clothing_description).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                                if case.distinguishing_marks:
+                                    ui.label("Distinguishing Marks").classes(
+                                        "text-cyan-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-cyan-400/50 pl-4"
+                                    ):
+                                        ui.label(case.distinguishing_marks).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                            # Right column - Medical & Additional Info
+                            with ui.column().classes("flex-1 space-y-4"):
+                                if case.medical_conditions:
+                                    ui.label("Medical Conditions").classes(
+                                        "text-red-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-red-400/50 pl-4 mb-4"
+                                    ):
+                                        ui.label(case.medical_conditions).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                                if case.additional_info:
+                                    ui.label("Additional Information").classes(
+                                        "text-indigo-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-indigo-400/50 pl-4"
+                                    ):
+                                        ui.label(case.additional_info).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                # AI-Generated Summary Card
+                if hasattr(case, 'ml_summary') and case.ml_summary:
+                    with ui.card().classes(
+                        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl relative"
+                    ):
+                        # AI badge in corner
                         with ui.element("div").classes(
-                            "border-l-4 border-green-400/50 pl-4"
+                            "absolute top-4 right-4 flex items-center gap-2"
                         ):
-                            ui.label(case.description).classes(
-                                "text-gray-100 leading-relaxed text-sm italic"
+                            with ui.element("div").classes(
+                                "w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg"
+                            ):
+                                ui.icon("psychology", size="1rem").classes("text-white")
+                            ui.label("AI-Generated").classes(
+                                "text-xs text-purple-400 font-medium"
+                            )
+
+                        with ui.row().classes("items-center mb-6"):
+                            ui.icon("smart_toy", size="1.5rem").classes(
+                                "text-purple-400 mr-3"
+                            )
+                            ui.label("AI Case Summary").classes(
+                                "text-xl font-light text-white"
+                            )
+
+                        with ui.column().classes("w-full"):
+                            # AI summary with special styling
+                            with ui.element("div").classes(
+                                "bg-purple-900/20 rounded-lg p-4 border border-purple-500/30"
+                            ):
+                                ui.label(case.ml_summary).classes(
+                                    "text-purple-100 leading-relaxed text-sm italic"
+                                )
+
+                        # Powered by Gemini note
+                        with ui.row().classes("justify-center mt-4"):
+                            ui.label("Powered by Google Gemini").classes(
+                                "text-xs text-purple-400 font-medium"
                             )
 
                 # Match Sightings Section
@@ -628,7 +707,6 @@ def search_and_display_sightings(
 def get_unlinked_sightings(data_service: DataService) -> list:
     """Get unlinked sightings from the data service (mock implementation)"""
     # Mock unlinked sightings data - in real implementation would query the database
-    from datetime import datetime
 
     mock_sightings = [
         {
@@ -804,7 +882,6 @@ def handle_analyze_video(
     )
 
     # Get form values (in a real implementation, these would come from the form)
-    from datetime import datetime
 
     request = VideoAnalysisRequest(
         case_id=case_id,

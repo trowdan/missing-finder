@@ -104,6 +104,17 @@ class MissingPersonCase:
     created_date: datetime = datetime.now()
     priority: CasePriority = CasePriority.MEDIUM
 
+    # AI-Generated Content - populated by BigQuery
+    ml_summary: Optional[str] = None
+
+    @property
+    def age(self) -> int:
+        """Calculate age from date of birth"""
+        from datetime import date
+        today = date.today()
+        dob = self.date_of_birth.date() if isinstance(self.date_of_birth, datetime) else self.date_of_birth
+        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
 
 class SightingSourceType(Enum):
     WITNESS = "Witness"

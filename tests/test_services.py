@@ -127,7 +127,7 @@ class TestBigQueryDataService:
         assert service.config == test_config
 
     def test_bigquery_methods_not_implemented(self, test_config):
-        """Test that BigQuery methods raise NotImplementedError"""
+        """Test that BigQuery methods raise NotImplementedError where not yet implemented"""
         service = BigQueryDataService(test_config)
 
         with pytest.raises(NotImplementedError):
@@ -136,8 +136,9 @@ class TestBigQueryDataService:
         with pytest.raises(NotImplementedError):
             service.get_kpi_data()
 
-        with pytest.raises(NotImplementedError):
-            service.get_case_by_id("MP001")
+        # get_case_by_id is now implemented but will return None for non-existent cases with invalid project
+        result = service.get_case_by_id("MP001")
+        assert result is None  # Should return None when case not found or BigQuery access fails
 
         # create_case is now implemented, but will fail with None input
         with pytest.raises(AttributeError):

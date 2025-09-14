@@ -8,24 +8,17 @@ class TestCaseDetailPage:
     """Test cases for the case detail page"""
 
     @patch("homeward.ui.pages.case_detail.ui")
-    @patch("homeward.ui.pages.case_detail.create_footer")
-    def test_create_case_detail_page_with_mock_case(self, mock_footer, mock_ui):
-        """Test case detail page creation with mock case data"""
+    def test_create_case_detail_page_with_no_case_found(self, mock_ui):
+        """Test case detail page creation when case is not found"""
         from homeward.ui.pages.case_detail import create_case_detail_page
 
         # Setup mocks
         mock_ui.column.return_value.__enter__ = Mock()
         mock_ui.column.return_value.__exit__ = Mock()
-        mock_ui.card.return_value.__enter__ = Mock()
-        mock_ui.card.return_value.__exit__ = Mock()
-        mock_ui.row.return_value.__enter__ = Mock()
-        mock_ui.row.return_value.__exit__ = Mock()
-        mock_ui.grid.return_value.__enter__ = Mock()
-        mock_ui.grid.return_value.__exit__ = Mock()
         mock_ui.dark_mode.return_value.enable = Mock()
 
         mock_data_service = Mock()
-        mock_data_service.get_case_by_id.return_value = None  # Force mock case creation
+        mock_data_service.get_case_by_id.return_value = None  # Case not found
 
         mock_config = Mock()
         mock_config.version = "1.0.0"
@@ -44,14 +37,10 @@ class TestCaseDetailPage:
         # Verify dark mode is enabled
         mock_ui.dark_mode().enable.assert_called_once()
 
-        # Verify footer is created
-        mock_footer.assert_called_once_with("1.0.0")
-
-        # Verify UI structure
-        assert mock_ui.column.call_count >= 5  # Multiple columns for layout
-        assert mock_ui.card.call_count >= 5  # Multiple cards for sections
-        assert mock_ui.label.call_count >= 10  # Multiple labels for content
-        assert mock_ui.button.call_count >= 5  # Action buttons
+        # Verify that we get a case not found page
+        assert mock_ui.column.call_count >= 2  # Layout columns
+        assert mock_ui.label.call_count >= 3  # Header, error message, and description
+        assert mock_ui.button.call_count >= 1  # Back to dashboard button
 
     @patch("homeward.ui.pages.case_detail.ui")
     @patch("homeward.ui.pages.case_detail.create_footer")
