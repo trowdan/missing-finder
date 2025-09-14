@@ -6,9 +6,10 @@ from nicegui import ui
 from homeward.config import AppConfig
 from homeward.models.case import CasePriority, CaseStatus, Location, MissingPersonCase
 from homeward.services.data_service import DataService
+from homeward.services.geocoding_service import GeocodingService
 from homeward.ui.components.footer import create_footer
 from homeward.ui.components.missing_person_form import create_missing_person_form
-from homeward.utils.form_utils import get_sanitized_form_value, sanitize_form_data
+from homeward.utils.form_utils import sanitize_form_data
 
 
 def create_new_report_page(
@@ -42,7 +43,7 @@ def create_new_report_page(
             with ui.column().classes("w-full"):
                 create_missing_person_form(
                     on_submit=lambda form_data, reset_loading_callback=None: handle_form_submission(
-                        form_data, data_service, on_back_to_dashboard, reset_loading_callback
+                        form_data, data_service, config, on_back_to_dashboard, reset_loading_callback
                     ),
                     on_cancel=on_back_to_dashboard,
                 )
@@ -53,7 +54,7 @@ def create_new_report_page(
 
 
 def handle_form_submission(
-    form_data: dict, data_service: DataService, _on_success: callable = None, reset_loading_callback: callable = None
+    form_data: dict, data_service: DataService, config: AppConfig, _on_success: callable = None, reset_loading_callback: callable = None
 ):
     """Handle the form submission and create new case"""
     try:
@@ -72,9 +73,29 @@ def handle_form_submission(
             city=sanitized_data.get("city", ""),
             country=sanitized_data.get("country", ""),
             postal_code=sanitized_data.get("postal_code"),
-            latitude=0.0,  # Would need geocoding service for real coordinates
-            longitude=0.0,
         )
+
+        # Initialize geocoding service and try to get coordinates
+        geocoding_service = GeocodingService(config)
+        try:
+            geocoding_result = geocoding_service.geocode_address(
+                address=location.address,
+                city=location.city,
+                country=location.country,
+                postal_code=location.postal_code
+            )
+
+            if geocoding_result:
+                location.update_coordinates(
+                    geocoding_result.latitude,
+                    geocoding_result.longitude
+                )
+                ui.notify("Address geocoded successfully", type="info")
+            else:
+                ui.notify("Could not geocode address - location will be saved without coordinates", type="warning")
+
+        except Exception as e:
+            ui.notify(f"Geocoding failed: {str(e)} - continuing without coordinates", type="warning")
 
         # Parse date
         last_seen_date = datetime.now()

@@ -937,6 +937,15 @@ grpc = [
 ]
 
 [[package]]
+name = "googlemaps"
+version = "4.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/26/bca4d737a9acea25e94c19940a780bbf0be64a691f7caf3a68467d3a5838/googlemaps-4.10.0.tar.gz", hash = "sha256:3055fcbb1aa262a9159b589b5e6af762b10e80634ae11c59495bd44867e47d88", size = 33056, upload_time = "2023-01-26T16:45:02.501Z" }
+
+[[package]]
 name = "grpc-google-iam-v1"
 version = "0.14.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1053,6 +1062,7 @@ dependencies = [
     { name = "google-cloud-bigquery" },
     { name = "google-cloud-logging" },
     { name = "google-cloud-storage" },
+    { name = "googlemaps" },
     { name = "nicegui" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -1085,6 +1095,7 @@ requires-dist = [
     { name = "google-cloud-bigquery", specifier = ">=3.11.0" },
     { name = "google-cloud-logging", specifier = ">=3.8.0" },
     { name = "google-cloud-storage", specifier = ">=2.10.0" },
+    { name = "googlemaps", specifier = ">=4.10.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
     { name = "nicegui", specifier = ">=1.4.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.4.0" },

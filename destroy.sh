@@ -190,7 +190,13 @@ confirm_destruction() {
     else
         echo "  - BigQuery dataset: homeward"
     fi
-    
+
+    if [[ -n "$HOMEWARD_GEOCODING_API_KEY" ]]; then
+        echo "  - Geocoding API key: $(echo "$HOMEWARD_GEOCODING_API_KEY" | cut -c1-10)..."
+    else
+        echo "  - Geocoding API key (if exists)"
+    fi
+
     echo "  - All uploaded videos and metadata"
     echo ""
     
@@ -296,6 +302,80 @@ delete_bigquery_dataset() {
     fi
 }
 
+# Delete geocoding API key
+delete_geocoding_api_key() {
+    print_step "Deleting Geocoding API Key"
+
+    # Try to find the API key by display name
+    local api_key_display_name="Homeward Geocoding API Key"
+
+    print_info "Searching for geocoding API key..."
+
+    # Find the API key by display name
+    local api_keys
+    if api_keys=$(gcloud services api-keys list \
+        --project="$PROJECT_ID" \
+        --filter="displayName:$api_key_display_name" \
+        --format="value(name)" 2>/dev/null); then
+
+        if [[ -n "$api_keys" ]]; then
+            # Process each found key (should be only one)
+            while IFS= read -r key_name; do
+                if [[ -n "$key_name" ]]; then
+                    # Extract the key ID from the full resource name
+                    local key_id=$(basename "$key_name")
+
+                    print_info "Deleting API key: $key_id"
+                    if gcloud services api-keys delete "$key_id" \
+                        --project="$PROJECT_ID" \
+                        --quiet > /dev/null 2>&1; then
+                        print_success "Geocoding API key deleted successfully"
+                    else
+                        print_warning "Failed to delete geocoding API key: $key_id"
+                    fi
+                fi
+            done <<< "$api_keys"
+        else
+            print_info "No geocoding API keys found with display name: $api_key_display_name"
+        fi
+    else
+        print_info "Could not search for API keys - they may already be deleted"
+    fi
+
+    # Also try to find any keys that might have been created with different naming
+    print_info "Searching for any API keys containing 'homeward' or 'geocoding'..."
+    local homeward_keys
+    if homeward_keys=$(gcloud services api-keys list \
+        --project="$PROJECT_ID" \
+        --filter="displayName:homeward OR displayName:geocoding" \
+        --format="value(name,displayName)" 2>/dev/null); then
+
+        if [[ -n "$homeward_keys" ]]; then
+            while IFS=$'\t' read -r key_name display_name; do
+                if [[ -n "$key_name" ]]; then
+                    local key_id=$(basename "$key_name")
+                    print_info "Found potential geocoding key: $display_name ($key_id)"
+
+                    if [[ "$display_name" == *"geocoding"* ]] || [[ "$display_name" == *"Geocoding"* ]]; then
+                        print_info "Deleting geocoding-related API key: $key_id"
+                        if gcloud services api-keys delete "$key_id" \
+                            --project="$PROJECT_ID" \
+                            --quiet > /dev/null 2>&1; then
+                            print_success "Additional geocoding API key deleted: $key_id"
+                        else
+                            print_warning "Failed to delete API key: $key_id"
+                        fi
+                    fi
+                fi
+            done <<< "$homeward_keys"
+        else
+            print_info "No additional homeward or geocoding API keys found"
+        fi
+    fi
+
+    print_success "Geocoding API key cleanup completed"
+}
+
 # Delete BigQuery connection
 delete_bigquery_connection() {
     print_step "Deleting BigQuery Connection"
@@ -356,12 +436,14 @@ cleanup_environment() {
             sed -i '' '/^HOMEWARD_BQ_CONNECTION=/d' .env 2>/dev/null || true
             sed -i '' '/^HOMEWARD_BQ_DATASET=/d' .env 2>/dev/null || true
             sed -i '' '/^HOMEWARD_BQ_TABLE=/d' .env 2>/dev/null || true
+            sed -i '' '/^HOMEWARD_GEOCODING_API_KEY=/d' .env 2>/dev/null || true
         else
             # GNU sed
             sed -i '/^HOMEWARD_VIDEO_BUCKET=/d' .env 2>/dev/null || true
             sed -i '/^HOMEWARD_BQ_CONNECTION=/d' .env 2>/dev/null || true
             sed -i '/^HOMEWARD_BQ_DATASET=/d' .env 2>/dev/null || true
             sed -i '/^HOMEWARD_BQ_TABLE=/d' .env 2>/dev/null || true
+            sed -i '/^HOMEWARD_GEOCODING_API_KEY=/d' .env 2>/dev/null || true
         fi
         
         # Remove .env file if it's empty
@@ -423,6 +505,7 @@ main() {
     delete_bigquery_object_table
     delete_bigquery_dataset
     delete_bigquery_connection
+    delete_geocoding_api_key
     delete_storage_bucket
     cleanup_environment
     

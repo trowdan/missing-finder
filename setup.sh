@@ -385,9 +385,10 @@ enable_required_apis() {
     
     # APIs required for Homeward project
     local required_apis=(
-        "aiplatform.googleapis.com"  # Vertex AI API (required for remote models)
-        "bigquery.googleapis.com"    # BigQuery API
-        "storage.googleapis.com"     # Cloud Storage API
+        "aiplatform.googleapis.com"    # Vertex AI API (required for remote models)
+        "bigquery.googleapis.com"      # BigQuery API
+        "storage.googleapis.com"       # Cloud Storage API
+        "geocoding-backend.googleapis.com"  # Geocoding API (for address to coordinates conversion)
     )
     
     for api in "${required_apis[@]}"; do
@@ -445,6 +446,97 @@ create_bigquery_dataset() {
         echo "HOMEWARD_BQ_DATASET=$DATASET_ID" >> .env
     fi
     print_info "Dataset ID saved to environment: HOMEWARD_BQ_DATASET"
+}
+
+# Create and configure geocoding API key
+create_geocoding_api_key() {
+    print_step "Creating Geocoding API Key"
+
+    # Check if API key already exists from environment
+    if [[ -n "$HOMEWARD_GEOCODING_API_KEY" ]]; then
+        print_info "Geocoding API key already configured"
+        return 0
+    fi
+
+    local api_key_name="homeward-geocoding-key"
+    local api_key_display_name="Homeward Geocoding API Key"
+
+    print_info "Creating geocoding API key: $api_key_display_name"
+
+    # Create the API key
+    local create_output
+    if create_output=$(gcloud services api-keys create \
+        --project="$PROJECT_ID" \
+        --display-name="$api_key_display_name" \
+        --format="json" 2>&1); then
+
+        # Extract the key name and key value directly from the creation response
+        local key_name=$(echo "$create_output" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+        local api_key_value=$(echo "$create_output" | grep -o '"keyString":"[^"]*"' | cut -d'"' -f4)
+
+        if [[ -z "$key_name" || -z "$api_key_value" ]]; then
+            print_error "Failed to parse API key creation response"
+            print_error "Raw output: $create_output"
+            exit 1
+        fi
+
+        print_success "API key created: $key_name"
+        print_success "API key value extracted from creation response"
+
+        # Extract just the key ID from the full resource name for restrictions
+        local key_id=$(basename "$key_name")
+
+        # Apply API restrictions to limit the key to geocoding service only
+        print_info "Applying API restrictions to limit key to geocoding service..."
+        if gcloud services api-keys update "$key_id" \
+            --project="$PROJECT_ID" \
+            --api-target=service=geocoding-backend.googleapis.com > /dev/null 2>&1; then
+            print_success "API key restricted to geocoding service"
+        else
+            print_warning "Failed to apply API restrictions - key will work but is less secure"
+        fi
+
+        # Store the API key
+        export HOMEWARD_GEOCODING_API_KEY="$api_key_value"
+        if ! grep -q "^HOMEWARD_GEOCODING_API_KEY=" .env 2>/dev/null; then
+            echo "HOMEWARD_GEOCODING_API_KEY=$api_key_value" >> .env
+        fi
+        print_success "Geocoding API key saved to environment"
+
+    else
+        # Check if key already exists with this display name
+        print_info "Checking for existing geocoding API key..."
+        local existing_keys
+        if existing_keys=$(gcloud services api-keys list \
+            --project="$PROJECT_ID" \
+            --filter="displayName:$api_key_display_name" \
+            --format="value(name)" 2>/dev/null); then
+
+            if [[ -n "$existing_keys" ]]; then
+                local existing_key=$(echo "$existing_keys" | head -n1)
+                print_success "Using existing geocoding API key: $existing_key"
+
+                # Get the existing API key value
+                local existing_api_key_value
+                if existing_api_key_value=$(gcloud services api-keys get-key-string "$existing_key" --format="value(keyString)" 2>&1); then
+                    export HOMEWARD_GEOCODING_API_KEY="$existing_api_key_value"
+                    if ! grep -q "^HOMEWARD_GEOCODING_API_KEY=" .env 2>/dev/null; then
+                        echo "HOMEWARD_GEOCODING_API_KEY=$existing_api_key_value" >> .env
+                    fi
+                    print_success "Existing geocoding API key configured"
+                else
+                    print_error "Failed to retrieve existing API key value"
+                    exit 1
+                fi
+            else
+                print_error "Failed to create geocoding API key: $create_output"
+                exit 1
+            fi
+        else
+            print_error "Failed to create or find geocoding API key"
+            exit 1
+        fi
+    fi
 }
 
 
@@ -725,6 +817,7 @@ main() {
     load_existing_environment
     authenticate_gcloud
     enable_required_apis
+    create_geocoding_api_key
     create_storage_bucket
     create_bigquery_connection
     create_bigquery_dataset
@@ -748,6 +841,7 @@ main() {
     print_info "BigQuery connection: $HOMEWARD_BQ_CONNECTION"
     print_info "BigQuery dataset: $HOMEWARD_BQ_DATASET"
     print_info "BigQuery object table: $HOMEWARD_BQ_TABLE"
+    print_info "Geocoding API key: $(echo "$HOMEWARD_GEOCODING_API_KEY" | cut -c1-10)... (configured)"
     print_info "Project ID: $PROJECT_ID"
     print_info "Region: $REGION"
     print_info "Videos processed: $VIDEO_COUNT"

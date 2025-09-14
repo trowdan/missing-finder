@@ -34,9 +34,52 @@ class Location:
     address: str
     city: str
     country: str
-    postal_code: str
-    latitude: float
-    longitude: float
+    postal_code: Optional[str]
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+    def get_full_address(self) -> str:
+        """
+        Construct a full address string for geocoding
+
+        Returns:
+            Formatted full address string
+        """
+        address_parts = []
+
+        if self.address and self.address.strip():
+            address_parts.append(self.address.strip())
+
+        if self.city and self.city.strip():
+            address_parts.append(self.city.strip())
+
+        if self.postal_code and self.postal_code.strip():
+            address_parts.append(self.postal_code.strip())
+
+        if self.country and self.country.strip():
+            address_parts.append(self.country.strip())
+
+        return ", ".join(address_parts)
+
+    def has_coordinates(self) -> bool:
+        """
+        Check if the location has valid coordinates
+
+        Returns:
+            True if both latitude and longitude are not None
+        """
+        return self.latitude is not None and self.longitude is not None
+
+    def update_coordinates(self, latitude: float, longitude: float):
+        """
+        Update the location coordinates
+
+        Args:
+            latitude: New latitude value
+            longitude: New longitude value
+        """
+        self.latitude = latitude
+        self.longitude = longitude
 
 
 @dataclass

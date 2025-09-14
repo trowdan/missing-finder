@@ -17,6 +17,7 @@ class AppConfig:
     bigquery_dataset: Optional[str] = None
     gcs_bucket_ingestion: Optional[str] = None
     gcs_bucket_processed: Optional[str] = None
+    geocoding_api_key: Optional[str] = None
 
 
 def load_config() -> AppConfig:
@@ -35,4 +36,5 @@ def load_config() -> AppConfig:
         bigquery_dataset=os.getenv("HOMEWARD_BIGQUERY_DATASET", "homeward"),
         gcs_bucket_ingestion=os.getenv("HOMEWARD_GCS_BUCKET_INGESTION"),
         gcs_bucket_processed=os.getenv("HOMEWARD_GCS_BUCKET_PROCESSED"),
+        geocoding_api_key=os.getenv("HOMEWARD_GEOCODING_API_KEY"),
     )
