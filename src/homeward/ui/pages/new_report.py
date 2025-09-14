@@ -8,6 +8,7 @@ from homeward.models.case import CasePriority, CaseStatus, Location, MissingPers
 from homeward.services.data_service import DataService
 from homeward.ui.components.footer import create_footer
 from homeward.ui.components.missing_person_form import create_missing_person_form
+from homeward.utils.form_utils import get_sanitized_form_value, sanitize_form_data
 
 
 def create_new_report_page(
@@ -40,8 +41,8 @@ def create_new_report_page(
             # Form Container - Light background for contrast
             with ui.column().classes("w-full"):
                 create_missing_person_form(
-                    on_submit=lambda form_data: handle_form_submission(
-                        form_data, data_service, on_back_to_dashboard
+                    on_submit=lambda form_data, reset_loading_callback=None: handle_form_submission(
+                        form_data, data_service, on_back_to_dashboard, reset_loading_callback
                     ),
                     on_cancel=on_back_to_dashboard,
                 )
@@ -52,34 +53,37 @@ def create_new_report_page(
 
 
 def handle_form_submission(
-    form_data: dict, data_service: DataService, _on_success: callable = None
+    form_data: dict, data_service: DataService, _on_success: callable = None, reset_loading_callback: callable = None
 ):
     """Handle the form submission and create new case"""
     try:
+        # Sanitize form data - convert empty strings to None
+        sanitized_data = sanitize_form_data(form_data)
+
         # Validate required fields
         required_fields = ["name", "surname", "date_of_birth", "gender", "circumstances", "reporter_name", "reporter_phone", "relationship"]
         for field in required_fields:
-            if not form_data.get(field):
+            if not sanitized_data.get(field):
                 raise ValueError(f"Missing required field: {field}")
 
         # Create Location object
         location = Location(
-            address=form_data.get("last_seen_address", ""),
-            city=form_data.get("city", ""),
-            country=form_data.get("country", ""),
-            postal_code=form_data.get("postal_code", ""),
+            address=sanitized_data.get("last_seen_address", ""),
+            city=sanitized_data.get("city", ""),
+            country=sanitized_data.get("country", ""),
+            postal_code=sanitized_data.get("postal_code"),
             latitude=0.0,  # Would need geocoding service for real coordinates
             longitude=0.0,
         )
 
         # Parse date
         last_seen_date = datetime.now()
-        if form_data.get("last_seen_date"):
+        if sanitized_data.get("last_seen_date"):
             try:
                 # Assuming date comes in YYYY-MM-DD format from ui.date
-                date_str = form_data["last_seen_date"]
-                if form_data.get("last_seen_time"):
-                    date_str += f" {form_data['last_seen_time']}"
+                date_str = sanitized_data["last_seen_date"]
+                if sanitized_data.get("last_seen_time"):
+                    date_str += f" {sanitized_data['last_seen_time']}"
                     last_seen_date = datetime.fromisoformat(date_str)
                 else:
                     last_seen_date = datetime.fromisoformat(f"{date_str} 00:00:00")
@@ -93,57 +97,57 @@ def handle_form_submission(
             "Low": CasePriority.LOW,
         }
         priority = priority_map.get(
-            form_data.get("priority", "Medium"), CasePriority.MEDIUM
+            sanitized_data.get("priority", "Medium"), CasePriority.MEDIUM
         )
 
         # Parse date of birth
         date_of_birth = None
-        if form_data.get("date_of_birth"):
+        if sanitized_data.get("date_of_birth"):
             try:
-                date_of_birth = datetime.fromisoformat(form_data["date_of_birth"])
+                date_of_birth = datetime.fromisoformat(sanitized_data["date_of_birth"])
             except ValueError:
                 raise ValueError("Invalid date of birth format")
 
         # Parse height and weight as floats
         height = None
         weight = None
-        if form_data.get("height"):
+        if sanitized_data.get("height"):
             try:
-                height = float(form_data["height"])
+                height = float(sanitized_data["height"])
             except (ValueError, TypeError):
                 pass
-        if form_data.get("weight"):
+        if sanitized_data.get("weight"):
             try:
-                weight = float(form_data["weight"])
+                weight = float(sanitized_data["weight"])
             except (ValueError, TypeError):
                 pass
 
         # Create MissingPersonCase object
         case = MissingPersonCase(
-            id=form_data.get("case_number") or str(uuid.uuid4()),
-            name=form_data.get("name", ""),
-            surname=form_data.get("surname", ""),
+            id=sanitized_data.get("case_number") or str(uuid.uuid4()),
+            name=sanitized_data.get("name", ""),
+            surname=sanitized_data.get("surname", ""),
             date_of_birth=date_of_birth,
-            gender=form_data.get("gender", ""),
+            gender=sanitized_data.get("gender", ""),
             last_seen_date=last_seen_date,
             last_seen_location=location,
             status=CaseStatus.ACTIVE,
-            circumstances=form_data.get("circumstances", ""),
-            reporter_name=form_data.get("reporter_name", ""),
-            reporter_phone=form_data.get("reporter_phone", ""),
-            relationship=form_data.get("relationship", ""),
-            case_number=form_data.get("case_number"),
+            circumstances=sanitized_data.get("circumstances", ""),
+            reporter_name=sanitized_data.get("reporter_name", ""),
+            reporter_phone=sanitized_data.get("reporter_phone", ""),
+            relationship=sanitized_data.get("relationship", ""),
+            case_number=sanitized_data.get("case_number"),
             height=height,
             weight=weight,
-            hair_color=form_data.get("hair_color"),
-            eye_color=form_data.get("eye_color"),
-            distinguishing_marks=form_data.get("distinguishing_marks"),
-            clothing_description=form_data.get("clothing_description"),
-            medical_conditions=form_data.get("medical_conditions"),
-            additional_info=form_data.get("additional_info"),
-            description=form_data.get("description"),
+            hair_color=sanitized_data.get("hair_color"),
+            eye_color=sanitized_data.get("eye_color"),
+            distinguishing_marks=sanitized_data.get("distinguishing_marks"),
+            clothing_description=sanitized_data.get("clothing_description"),
+            medical_conditions=sanitized_data.get("medical_conditions"),
+            additional_info=sanitized_data.get("additional_info"),
+            description=sanitized_data.get("description"),
             photo_url=None,  # Would handle photo upload separately
-            reporter_email=form_data.get("reporter_email"),
+            reporter_email=sanitized_data.get("reporter_email"),
             created_date=datetime.now(),
             priority=priority,
         )
@@ -155,8 +159,15 @@ def handle_form_submission(
 
         ui.notify("Missing person report submitted successfully!", type="positive")
 
+        # Reset loading state on success
+        if reset_loading_callback:
+            reset_loading_callback()
+
         # Navigate to case detail page after a brief delay
         ui.timer(2.0, lambda: ui.navigate.to(f"/case/{case.id}"), once=True)
 
     except Exception as e:
         ui.notify(f"Error submitting report: {str(e)}", type="negative")
+        # Reset loading state on error
+        if reset_loading_callback:
+            reset_loading_callback()

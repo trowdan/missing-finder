@@ -212,8 +212,11 @@ class TestMissingPersonForm:
 
         mock_submit = Mock()
 
+        mock_is_loading = {"value": False}
+        mock_submit_button = Mock()
+        mock_cancel_button = Mock()
         with patch("homeward.ui.components.missing_person_form.ui") as mock_ui:
-            handle_submit(form_data, mock_submit)
+            handle_submit(form_data, mock_submit, mock_is_loading, mock_submit_button, mock_cancel_button)
 
             # Should show validation error
             mock_ui.notify.assert_called()
@@ -246,8 +249,11 @@ class TestMissingPersonForm:
 
         mock_submit = Mock()
 
+        mock_is_loading = {"value": False}
+        mock_submit_button = Mock()
+        mock_cancel_button = Mock()
         with patch("homeward.ui.components.missing_person_form.ui") as mock_ui:
-            handle_submit(form_data, mock_submit)
+            handle_submit(form_data, mock_submit, mock_is_loading, mock_submit_button, mock_cancel_button)
 
             # Should show name validation error
             mock_ui.notify.assert_called()
@@ -277,8 +283,11 @@ class TestMissingPersonForm:
 
         mock_submit = Mock()
 
+        mock_is_loading = {"value": False}
+        mock_submit_button = Mock()
+        mock_cancel_button = Mock()
         with patch("homeward.ui.components.missing_person_form.ui") as mock_ui:
-            handle_submit(form_data, mock_submit)
+            handle_submit(form_data, mock_submit, mock_is_loading, mock_submit_button, mock_cancel_button)
 
             # Should show age validation error
             mock_ui.notify.assert_called()
@@ -308,8 +317,11 @@ class TestMissingPersonForm:
 
         mock_submit = Mock()
 
+        mock_is_loading = {"value": False}
+        mock_submit_button = Mock()
+        mock_cancel_button = Mock()
         with patch("homeward.ui.components.missing_person_form.ui") as mock_ui:
-            handle_submit(form_data, mock_submit)
+            handle_submit(form_data, mock_submit, mock_is_loading, mock_submit_button, mock_cancel_button)
 
             # Should show phone validation error
             mock_ui.notify.assert_called()
@@ -342,8 +354,11 @@ class TestMissingPersonForm:
 
         mock_submit = Mock()
 
+        mock_is_loading = {"value": False}
+        mock_submit_button = Mock()
+        mock_cancel_button = Mock()
         with patch("homeward.ui.components.missing_person_form.ui") as mock_ui:
-            handle_submit(form_data, mock_submit)
+            handle_submit(form_data, mock_submit, mock_is_loading, mock_submit_button, mock_cancel_button)
 
             # Should show email validation error
             mock_ui.notify.assert_called()
@@ -374,8 +389,16 @@ class TestMissingPersonForm:
 
         mock_submit = Mock()
 
-        with patch("homeward.ui.components.missing_person_form.ui"):
-            handle_submit(form_data, mock_submit)
+        mock_is_loading = {"value": False}
+        mock_submit_button = Mock()
+        mock_cancel_button = Mock()
+        with patch("homeward.ui.components.missing_person_form.ui") as mock_ui:
+            # Mock timer to call the function immediately instead of using a timer
+            def immediate_call(delay, callback, once=True):
+                callback()
+            mock_ui.timer = immediate_call
+
+            handle_submit(form_data, mock_submit, mock_is_loading, mock_submit_button, mock_cancel_button)
 
             # Should call submit callback with processed data
             mock_submit.assert_called_once()

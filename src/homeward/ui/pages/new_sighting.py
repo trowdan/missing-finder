@@ -3,6 +3,7 @@ from nicegui import ui
 from homeward.config import AppConfig
 from homeward.services.data_service import DataService
 from homeward.ui.components.footer import create_footer
+from homeward.utils.form_utils import sanitize_form_data
 
 
 def create_new_sighting_page(
@@ -575,10 +576,13 @@ def handle_form_submission(form_data: dict, data_service: DataService):
     """Handle sighting report form submission"""
     try:
         # Collect form data from the form_data dictionary
-        sighting_data = {}
+        raw_data = {}
         for key, field in form_data.items():
             if hasattr(field, "value"):
-                sighting_data[key] = field.value
+                raw_data[key] = field.value
+
+        # Sanitize form data - convert empty strings to None
+        sighting_data = sanitize_form_data(raw_data)
 
         # Validate required fields
         required_fields = [
@@ -612,10 +616,13 @@ def handle_semantic_search(
     """Handle semantic search for similar cases using AI"""
     try:
         # Collect sighting data for semantic analysis
-        sighting_data = {}
+        raw_data = {}
         for key, field in form_data.items():
             if hasattr(field, "value"):
-                sighting_data[key] = field.value
+                raw_data[key] = field.value
+
+        # Sanitize form data - convert empty strings to None
+        sighting_data = sanitize_form_data(raw_data)
 
         # Check if we have enough data for semantic search
         if (
