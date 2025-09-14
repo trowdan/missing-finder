@@ -42,8 +42,9 @@ class TestNewSightingPage:
         assert mock_ui.label.call_count >= 10  # Multiple labels for content
         assert mock_ui.button.call_count >= 3  # Action buttons
 
+    @patch("homeward.ui.pages.new_sighting.GeocodingService")
     @patch("homeward.ui.pages.new_sighting.ui")
-    def test_handle_form_submission_valid_data(self, mock_ui):
+    def test_handle_form_submission_valid_data(self, mock_ui, mock_geocoding_service):
         """Test form submission handler with valid data"""
         from homeward.ui.pages.new_sighting import handle_form_submission
 
@@ -51,17 +52,32 @@ class TestNewSightingPage:
         mock_field = Mock()
         mock_field.value = "Test Value"
 
+        # Mock date field
+        mock_date_field = Mock()
+        mock_date_field.value = "2024-01-15"
+
         form_data = {
             "reporter_name": mock_field,
-            "sighting_date": mock_field,
+            "sighting_date": mock_date_field,
             "sighting_address": mock_field,
             "sighting_city": mock_field,
             "additional_details": mock_field,
         }
 
         mock_data_service = Mock()
+        mock_data_service.create_sighting.return_value = "test-sighting-id"
 
-        handle_form_submission(form_data, mock_data_service)
+        mock_config = Mock()
+
+        # Mock geocoding service
+        mock_geocoding_instance = Mock()
+        mock_geocoding_instance.geocode_address.return_value = None  # No coordinates found
+        mock_geocoding_service.return_value = mock_geocoding_instance
+
+        handle_form_submission(form_data, mock_data_service, mock_config)
+
+        # Verify data service is called
+        mock_data_service.create_sighting.assert_called_once()
 
         # Verify success notification
         mock_ui.notify.assert_called_with(
@@ -87,8 +103,9 @@ class TestNewSightingPage:
         }
 
         mock_data_service = Mock()
+        mock_config = Mock()
 
-        handle_form_submission(form_data, mock_data_service)
+        handle_form_submission(form_data, mock_data_service, mock_config)
 
         # Verify error notification for missing field
         mock_ui.notify.assert_called_with(

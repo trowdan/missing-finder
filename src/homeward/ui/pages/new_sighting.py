@@ -1,7 +1,12 @@
+import uuid
+from datetime import datetime
+
 from nicegui import ui
 
 from homeward.config import AppConfig
+from homeward.models.case import Location, Sighting, SightingConfidenceLevel, SightingSourceType, SightingStatus, SightingPriority
 from homeward.services.data_service import DataService
+from homeward.services.geocoding_service import GeocodingService
 from homeward.ui.components.footer import create_footer
 from homeward.utils.form_utils import sanitize_form_data
 
@@ -561,7 +566,7 @@ def create_new_sighting_page(
                             ui.button(
                                 "Submit Sighting Report",
                                 on_click=lambda: handle_form_submission(
-                                    form_data, data_service
+                                    form_data, data_service, config
                                 ),
                             ).classes(
                                 "bg-transparent text-green-300 px-8 py-4 rounded-full border-2 border-green-400/80 hover:bg-green-200 hover:text-green-900 hover:border-green-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-green-400/20 hover:ring-green-200/40 hover:ring-4"
@@ -572,8 +577,8 @@ def create_new_sighting_page(
             create_footer(config.version)
 
 
-def handle_form_submission(form_data: dict, data_service: DataService):
-    """Handle sighting report form submission"""
+def handle_form_submission(form_data: dict, data_service: DataService, config: AppConfig, on_success: callable = None, reset_loading_callback: callable = None):
+    """Handle sighting report form submission and create new sighting"""
     try:
         # Collect form data from the form_data dictionary
         raw_data = {}
@@ -590,6 +595,7 @@ def handle_form_submission(form_data: dict, data_service: DataService):
             "sighting_date",
             "sighting_address",
             "sighting_city",
+            "additional_details"  # This will be the main description
         ]
         for field in required_fields:
             if not sighting_data.get(field):
@@ -597,17 +603,172 @@ def handle_form_submission(form_data: dict, data_service: DataService):
                     f"Please fill in the required field: {field.replace('_', ' ').title()}",
                     type="negative",
                 )
+                if reset_loading_callback:
+                    reset_loading_callback()
                 return
 
-        # In a real implementation, this would submit to the data service
-        # For now, we'll just show a success message
+        # Create Location object for sighted location
+        sighted_location = Location(
+            address=sighting_data.get("sighting_address", ""),
+            city=sighting_data.get("sighting_city", ""),
+            country=sighting_data.get("sighting_country") or "USA",  # Default to USA if not specified
+            postal_code=sighting_data.get("sighting_postal"),
+        )
+
+        # Initialize geocoding service and try to get coordinates
+        geocoding_service = GeocodingService(config)
+        try:
+            geocoding_result = geocoding_service.geocode_address(
+                address=sighted_location.address,
+                city=sighted_location.city,
+                country=sighted_location.country,
+                postal_code=sighted_location.postal_code
+            )
+
+            if geocoding_result:
+                sighted_location.update_coordinates(
+                    geocoding_result.latitude,
+                    geocoding_result.longitude
+                )
+                ui.notify("Address geocoded successfully", type="info")
+            else:
+                ui.notify("Could not geocode address - sighting will be saved without coordinates", type="warning")
+
+        except Exception as e:
+            ui.notify(f"Geocoding failed: {str(e)} - continuing without coordinates", type="warning")
+
+        # Parse sighting date and time
+        sighted_datetime = datetime.now()
+        if sighting_data.get("sighting_date"):
+            try:
+                date_str = sighting_data["sighting_date"]
+                if sighting_data.get("sighting_time"):
+                    date_str += f" {sighting_data['sighting_time']}"
+                    sighted_datetime = datetime.fromisoformat(date_str)
+                else:
+                    sighted_datetime = datetime.fromisoformat(f"{date_str} 00:00:00")
+            except ValueError:
+                pass  # Use current time if parsing fails
+
+        # Create clothing description from individual fields
+        clothing_parts = []
+        if sighting_data.get("clothing_upper"):
+            clothing_parts.append(f"Upper: {sighting_data['clothing_upper']}")
+        if sighting_data.get("clothing_lower"):
+            clothing_parts.append(f"Lower: {sighting_data['clothing_lower']}")
+        if sighting_data.get("clothing_shoes"):
+            clothing_parts.append(f"Footwear: {sighting_data['clothing_shoes']}")
+        if sighting_data.get("clothing_accessories"):
+            clothing_parts.append(f"Accessories: {sighting_data['clothing_accessories']}")
+
+        clothing_description = "; ".join(clothing_parts) if clothing_parts else None
+
+        # Build comprehensive description from all form fields
+        description_parts = []
+        if sighting_data.get("additional_details"):
+            description_parts.append(sighting_data["additional_details"])
+        if sighting_data.get("behavior"):
+            description_parts.append(f"Behavior: {sighting_data['behavior']}")
+        if sighting_data.get("condition"):
+            description_parts.append(f"Condition: {sighting_data['condition']}")
+        if sighting_data.get("direction"):
+            description_parts.append(f"Direction of travel: {sighting_data['direction']}")
+
+        comprehensive_description = " | ".join(description_parts)
+
+        # Create circumstances description
+        circumstances = None
+        if sighting_data.get("sighting_landmarks"):
+            circumstances = f"Near landmarks: {sighting_data['sighting_landmarks']}"
+
+        # Map confidence level from UI to enum
+        confidence_map = {
+            "Very High - I'm certain it was them": SightingConfidenceLevel.HIGH,
+            "High - Very likely it was them": SightingConfidenceLevel.HIGH,
+            "Medium - Possibly them": SightingConfidenceLevel.MEDIUM,
+            "Low - Uncertain but worth reporting": SightingConfidenceLevel.LOW,
+        }
+        confidence_level = confidence_map.get(
+            sighting_data.get("confidence"), SightingConfidenceLevel.MEDIUM
+        )
+
+        # Create apparent age range from individual age
+        apparent_age_range = None
+        if sighting_data.get("individual_age"):
+            age = int(sighting_data["individual_age"])
+            # Create age ranges in 10-year brackets
+            lower_bound = (age // 10) * 10
+            upper_bound = lower_bound + 9
+            apparent_age_range = f"{lower_bound}-{upper_bound}"
+
+        # Parse height if provided
+        height_estimate = None
+        if sighting_data.get("individual_height"):
+            height_str = str(sighting_data["individual_height"]).lower()
+            # Try to extract numeric value from height string
+            import re
+            numbers = re.findall(r'\d+', height_str)
+            if numbers:
+                height_val = int(numbers[0])
+                # Convert feet/inches to cm if necessary
+                if "'" in height_str or 'ft' in height_str:
+                    # Assume feet, convert to cm (rough estimate)
+                    height_estimate = height_val * 30.48
+                elif height_val > 50 and height_val < 250:  # Reasonable cm range
+                    height_estimate = height_val
+
+        # Create Sighting object
+        sighting = Sighting(
+            id=str(uuid.uuid4()),
+            sighting_number=None,  # Will be auto-generated if needed
+            sighted_date=sighted_datetime,
+            sighted_location=sighted_location,
+            apparent_gender=sighting_data.get("individual_gender"),
+            apparent_age_range=apparent_age_range,
+            height_estimate=height_estimate,
+            weight_estimate=None,  # Not captured in current form
+            hair_color=sighting_data.get("individual_hair"),
+            eye_color=None,  # Not captured in current form
+            clothing_description=clothing_description,
+            distinguishing_features=sighting_data.get("individual_features"),
+            description=comprehensive_description,
+            circumstances=circumstances,
+            confidence_level=confidence_level,
+            photo_url=None,  # Would handle photo upload separately
+            video_url=None,
+            source_type=SightingSourceType.WITNESS,  # Manual entry from witness
+            witness_name=sighting_data.get("reporter_name"),
+            witness_phone=sighting_data.get("reporter_phone"),
+            witness_email=sighting_data.get("reporter_email"),
+            video_analytics_result_id=None,
+            status=SightingStatus.NEW,
+            priority=SightingPriority.MEDIUM,  # Default priority
+            verified=False,
+            created_date=datetime.now(),
+            updated_date=None,
+            created_by=sighting_data.get("reporter_name"),
+            notes=None
+        )
+
+        # Save sighting using data service
+        sighting_id = data_service.create_sighting(sighting)
+        if not sighting_id:
+            raise ValueError("Failed to create sighting")
+
         ui.notify("✅ Sighting report submitted successfully!", type="positive")
 
-        # Redirect back to dashboard after 2 seconds
+        # Reset loading state on success
+        if reset_loading_callback:
+            reset_loading_callback()
+
+        # Navigate to sighting detail page or dashboard after a brief delay
         ui.timer(2.0, lambda: ui.navigate.to("/"), once=True)
 
     except Exception as e:
         ui.notify(f"Error submitting sighting report: {str(e)}", type="negative")
+        # Reset loading state on error
+        if reset_loading_callback:
+            reset_loading_callback()
 
 
 def handle_semantic_search(

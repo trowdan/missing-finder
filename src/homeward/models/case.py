@@ -16,17 +16,6 @@ class CasePriority(Enum):
     LOW = "Low"
 
 
-class SightingStatus(Enum):
-    UNVERIFIED = "Unverified"
-    VERIFIED = "Verified"
-    FALSE_POSITIVE = "False Positive"
-
-
-class ConfidenceLevel(Enum):
-    VERY_HIGH = "Very High - I'm certain it was them"
-    HIGH = "High - Very likely it was them"
-    MEDIUM = "Medium - Possibly them"
-    LOW = "Low - Uncertain but worth reporting"
 
 
 @dataclass
@@ -116,21 +105,80 @@ class MissingPersonCase:
     priority: CasePriority = CasePriority.MEDIUM
 
 
+class SightingSourceType(Enum):
+    WITNESS = "Witness"
+    MANUAL_ENTRY = "Manual_Entry"
+    OTHER = "Other"
+
+
+class SightingConfidenceLevel(Enum):
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
+
+
+class SightingStatus(Enum):
+    NEW = "New"
+    UNDER_REVIEW = "Under_Review"
+    VERIFIED = "Verified"
+    FALSE_POSITIVE = "False_Positive"
+    ARCHIVED = "Archived"
+
+
+class SightingPriority(Enum):
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
+
+
 @dataclass
 class Sighting:
+    # Required fields (no default values)
     id: str
-    reporter_name: str
-    sighting_date: datetime
-    sighting_location: Location
-    individual_age: Optional[int]
-    individual_gender: str
-    description: str
-    confidence: ConfidenceLevel
-    status: SightingStatus
-    linked_case_id: Optional[str] = None
-    reporter_email: Optional[str] = None
-    reporter_phone: Optional[str] = None
+    sighted_date: datetime  # This will be split into date and time in BigQuery
+    sighted_location: Location  # Address, city, country, postal_code, lat, lng
+    description: str  # Required field
+    confidence_level: SightingConfidenceLevel  # Required field
+    source_type: SightingSourceType  # Required field
+
+    # Optional fields (with default values)
+    sighting_number: Optional[str] = None
+
+    # Person Description
+    apparent_gender: Optional[str] = None
+    apparent_age_range: Optional[str] = None
+    height_estimate: Optional[float] = None  # in cm
+    weight_estimate: Optional[float] = None  # in kg
+    hair_color: Optional[str] = None
+    eye_color: Optional[str] = None
+    clothing_description: Optional[str] = None
+    distinguishing_features: Optional[str] = None
+
+    # Sighting Details
+    circumstances: Optional[str] = None
+    photo_url: Optional[str] = None
+    video_url: Optional[str] = None
+
+    # Source Information
+    witness_name: Optional[str] = None
+    witness_phone: Optional[str] = None
+    witness_email: Optional[str] = None
+    video_analytics_result_id: Optional[str] = None
+
+    # Status and Processing
+    status: SightingStatus = SightingStatus.NEW
+    priority: SightingPriority = SightingPriority.MEDIUM
+    verified: bool = False
+
+    # Metadata
     created_date: datetime = datetime.now()
+    updated_date: Optional[datetime] = None
+    created_by: Optional[str] = None
+    notes: Optional[str] = None
+
+    # AI-Generated Content - these will be populated by BigQuery
+    ml_summary: Optional[str] = None
+    ml_summary_embedding: Optional[list[float]] = None
 
 
 @dataclass

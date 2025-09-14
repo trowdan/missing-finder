@@ -1,6 +1,5 @@
 """Tests for form utilities"""
 
-import pytest
 from homeward.utils.form_utils import (
     sanitize_form_value,
     sanitize_form_data,
