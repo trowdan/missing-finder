@@ -378,7 +378,7 @@ class BigQueryDataService(DataService):
                 bigquery.ScalarQueryParameter("video_analytics_result_id", "STRING", sighting.video_analytics_result_id),
                 bigquery.ScalarQueryParameter("status", "STRING", sighting.status.value),
                 bigquery.ScalarQueryParameter("priority", "STRING", sighting.priority.value),
-                bigquery.ScalarQueryParameter("verified", "STRING", "TRUE" if sighting.verified else "FALSE"),
+                bigquery.ScalarQueryParameter("verified", "BOOL", sighting.verified),
                 bigquery.ScalarQueryParameter("created_by", "STRING", sighting.created_by),
                 bigquery.ScalarQueryParameter("notes", "STRING", sighting.notes),
             ]
