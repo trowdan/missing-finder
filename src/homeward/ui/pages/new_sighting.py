@@ -1,10 +1,9 @@
-import uuid
 from datetime import datetime
 
 from nicegui import ui
 
 from homeward.config import AppConfig
-from homeward.models.case import Location, Sighting, SightingConfidenceLevel, SightingSourceType, SightingStatus, SightingPriority
+from homeward.models.form_mappers import SightingFormMapper, SightingFormValidator, SightingFormData
 from homeward.services.data_service import DataService
 from homeward.services.geocoding_service import GeocodingService
 from homeward.ui.components.footer import create_footer
@@ -88,7 +87,7 @@ def create_new_sighting_page(
                             ):
                                 with ui.column():
                                     form_data["reporter_name"] = (
-                                        ui.input("Full Name*")
+                                        ui.input("Full Name")
                                         .classes(
                                             "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                         )
@@ -233,6 +232,16 @@ def create_new_sighting_page(
                                 with ui.column():
                                     form_data["sighting_city"] = (
                                         ui.input("City*", placeholder="City name")
+                                        .classes(
+                                            "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                                        )
+                                        .props("outlined dense")
+                                    )
+                                with ui.column():
+                                    form_data["sighting_country"] = (
+                                        ui.input(
+                                            "Country*", placeholder="Country name", value="USA"
+                                        )
                                         .classes(
                                             "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
                                         )
@@ -459,8 +468,8 @@ def create_new_sighting_page(
 
                             form_data["additional_details"] = (
                                 ui.textarea(
-                                    "Additional Details",
-                                    placeholder="Any other relevant information about the sighting",
+                                    "Sighting Description*",
+                                    placeholder="Detailed description of the sighting (required)",
                                 )
                                 .classes(
                                     "w-full min-h-32 bg-gray-700/50 text-white border-gray-500 rounded-lg mb-6"
@@ -474,12 +483,24 @@ def create_new_sighting_page(
 
                             form_data["confidence"] = (
                                 ui.select(
-                                    [
-                                        "High - Clear view, good lighting, close distance",
-                                        "Medium - Reasonable view with some limitations",
-                                        "Low - Poor visibility but notable details observed",
-                                    ],
-                                    label="Confidence Level",
+                                    SightingFormMapper.get_confidence_level_options(),
+                                    label="Confidence Level*",
+                                )
+                                .classes(
+                                    "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                                )
+                                .props("outlined dense")
+                            )
+
+                            ui.label(
+                                "How did you obtain this sighting information?"
+                            ).classes("text-gray-400 text-sm mb-2 mt-4")
+
+                            form_data["source_type"] = (
+                                ui.select(
+                                    SightingFormMapper.get_source_type_options(),
+                                    label="Source Type*",
+                                    value="Witness - I personally saw this person"
                                 )
                                 .classes(
                                     "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg"
@@ -553,44 +574,96 @@ def handle_form_submission(form_data: dict, data_service: DataService, config: A
         # Sanitize form data - convert empty strings to None
         sighting_data = sanitize_form_data(raw_data)
 
-        # Validate required fields
-        required_fields = [
-            "reporter_name",
-            "sighting_date",
-            "sighting_address",
-            "sighting_city",
-            "additional_details"  # This will be the main description
-        ]
-        for field in required_fields:
-            if not sighting_data.get(field):
-                ui.notify(
-                    f"Please fill in the required field: {field.replace('_', ' ').title()}",
-                    type="negative",
-                )
-                if reset_loading_callback:
-                    reset_loading_callback()
-                return
+        # Validate required fields using the new validator
+        missing_fields = SightingFormValidator.validate_required_fields(sighting_data)
+        if missing_fields:
+            ui.notify(
+                f"Please fill in the required fields: {', '.join(missing_fields)}",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
 
-        # Create Location object for sighted location
-        sighted_location = Location(
-            address=sighting_data.get("sighting_address", ""),
-            city=sighting_data.get("sighting_city", ""),
-            country=sighting_data.get("sighting_country") or "USA",  # Default to USA if not specified
-            postal_code=sighting_data.get("sighting_postal"),
+        # Validate date is not in future
+        if not SightingFormValidator.validate_date_not_future(sighting_data.get("sighting_date", "")):
+            ui.notify(
+                "Sighting date cannot be in the future",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        # Validate height and weight ranges if provided
+        if sighting_data.get("individual_height") and not SightingFormValidator.validate_height_range(sighting_data["individual_height"]):
+            ui.notify(
+                "Height must be between 10-300 cm",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        if sighting_data.get("individual_build") and not SightingFormValidator.validate_weight_range(sighting_data["individual_build"]):
+            ui.notify(
+                "Weight must be between 1-1000 kg",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        # Create form data object
+        form_data_obj = SightingFormData(
+            sighting_date=sighting_data.get("sighting_date", ""),
+            sighting_address=sighting_data.get("sighting_address", ""),
+            sighting_city=sighting_data.get("sighting_city", ""),
+            sighting_country=sighting_data.get("sighting_country", "USA"),
+            description=sighting_data.get("additional_details", ""),
+            confidence_level=sighting_data.get("confidence", ""),
+            source_type=sighting_data.get("source_type", ""),
+            reporter_name=sighting_data.get("reporter_name"),
+            reporter_email=sighting_data.get("reporter_email"),
+            reporter_phone=sighting_data.get("reporter_phone"),
+            relationship=sighting_data.get("relationship"),
+            sighting_time=sighting_data.get("sighting_time"),
+            sighting_postal=sighting_data.get("sighting_postal"),
+            sighting_landmarks=sighting_data.get("sighting_landmarks"),
+            individual_age=sighting_data.get("individual_age"),
+            individual_gender=sighting_data.get("individual_gender"),
+            individual_height=sighting_data.get("individual_height"),
+            individual_build=sighting_data.get("individual_build"),
+            individual_hair=sighting_data.get("individual_hair"),
+            individual_eyes=sighting_data.get("individual_eyes"),
+            individual_features=sighting_data.get("individual_features"),
+            clothing_upper=sighting_data.get("clothing_upper"),
+            clothing_lower=sighting_data.get("clothing_lower"),
+            clothing_shoes=sighting_data.get("clothing_shoes"),
+            clothing_accessories=sighting_data.get("clothing_accessories"),
+            behavior=sighting_data.get("behavior"),
+            condition=sighting_data.get("condition"),
+            additional_details=sighting_data.get("additional_details")
         )
+
+        # Generate unique sighting ID
+        sighting_id = f"sighting_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(str(form_data_obj)) % 10000:04d}"
+
+        # Convert form data to sighting object using mapper
+        sighting = SightingFormMapper.form_to_sighting(form_data_obj, sighting_id)
 
         # Initialize geocoding service and try to get coordinates
         geocoding_service = GeocodingService(config)
         try:
             geocoding_result = geocoding_service.geocode_address(
-                address=sighted_location.address,
-                city=sighted_location.city,
-                country=sighted_location.country,
-                postal_code=sighted_location.postal_code
+                address=sighting.sighted_location.address,
+                city=sighting.sighted_location.city,
+                country=sighting.sighted_location.country,
+                postal_code=sighting.sighted_location.postal_code
             )
 
             if geocoding_result:
-                sighted_location.update_coordinates(
+                sighting.sighted_location.update_coordinates(
                     geocoding_result.latitude,
                     geocoding_result.longitude
                 )
@@ -601,121 +674,14 @@ def handle_form_submission(form_data: dict, data_service: DataService, config: A
         except Exception as e:
             ui.notify(f"Geocoding failed: {str(e)} - continuing without coordinates", type="warning")
 
-        # Parse sighting date and time
-        sighted_datetime = datetime.now()
-        if sighting_data.get("sighting_date"):
-            try:
-                date_str = sighting_data["sighting_date"]
-                if sighting_data.get("sighting_time"):
-                    date_str += f" {sighting_data['sighting_time']}"
-                    sighted_datetime = datetime.fromisoformat(date_str)
-                else:
-                    sighted_datetime = datetime.fromisoformat(f"{date_str} 00:00:00")
-            except ValueError:
-                pass  # Use current time if parsing fails
+        # Sighting object already created above using SightingFormMapper
 
-        # Create clothing description from individual fields
-        clothing_parts = []
-        if sighting_data.get("clothing_upper"):
-            clothing_parts.append(f"Upper: {sighting_data['clothing_upper']}")
-        if sighting_data.get("clothing_lower"):
-            clothing_parts.append(f"Lower: {sighting_data['clothing_lower']}")
-        if sighting_data.get("clothing_shoes"):
-            clothing_parts.append(f"Footwear: {sighting_data['clothing_shoes']}")
-        if sighting_data.get("clothing_accessories"):
-            clothing_parts.append(f"Accessories: {sighting_data['clothing_accessories']}")
-
-        clothing_description = "; ".join(clothing_parts) if clothing_parts else None
-
-        # Build comprehensive description from all form fields
-        description_parts = []
-        if sighting_data.get("additional_details"):
-            description_parts.append(sighting_data["additional_details"])
-        if sighting_data.get("behavior"):
-            description_parts.append(f"Behavior: {sighting_data['behavior']}")
-        if sighting_data.get("condition"):
-            description_parts.append(f"Condition: {sighting_data['condition']}")
-        if sighting_data.get("direction"):
-            description_parts.append(f"Direction of travel: {sighting_data['direction']}")
-
-        comprehensive_description = " | ".join(description_parts)
-
-        # Create circumstances description
-        circumstances = None
-        if sighting_data.get("sighting_landmarks"):
-            circumstances = f"Near landmarks: {sighting_data['sighting_landmarks']}"
-
-        # Map confidence level from UI to enum
-        confidence_map = {
-            "High - Clear view, good lighting, close distance": SightingConfidenceLevel.HIGH,
-            "Medium - Reasonable view with some limitations": SightingConfidenceLevel.MEDIUM,
-            "Low - Poor visibility but notable details observed": SightingConfidenceLevel.LOW,
-        }
-        confidence_level = confidence_map.get(
-            sighting_data.get("confidence"), SightingConfidenceLevel.MEDIUM
-        )
-
-        # Create apparent age range from individual age
-        apparent_age_range = None
-        if sighting_data.get("individual_age"):
-            age = int(sighting_data["individual_age"])
-            # Create age ranges in 10-year brackets
-            lower_bound = (age // 10) * 10
-            upper_bound = lower_bound + 9
-            apparent_age_range = f"{lower_bound}-{upper_bound}"
-
-        # Parse height if provided
-        height_estimate = None
-        if sighting_data.get("individual_height"):
-            height_str = str(sighting_data["individual_height"]).lower()
-            # Try to extract numeric value from height string
-            import re
-            numbers = re.findall(r'\d+', height_str)
-            if numbers:
-                height_val = int(numbers[0])
-                # Convert feet/inches to cm if necessary
-                if "'" in height_str or 'ft' in height_str:
-                    # Assume feet, convert to cm (rough estimate)
-                    height_estimate = height_val * 30.48
-                elif height_val > 50 and height_val < 250:  # Reasonable cm range
-                    height_estimate = height_val
-
-        # Create Sighting object
-        sighting = Sighting(
-            id=str(uuid.uuid4()),
-            sighting_number=None,  # Will be auto-generated if needed
-            sighted_date=sighted_datetime,
-            sighted_location=sighted_location,
-            apparent_gender=sighting_data.get("individual_gender"),
-            apparent_age_range=apparent_age_range,
-            height_estimate=height_estimate,
-            weight_estimate=None,  # Not captured in current form
-            hair_color=sighting_data.get("individual_hair"),
-            eye_color=None,  # Not captured in current form
-            clothing_description=clothing_description,
-            distinguishing_features=sighting_data.get("individual_features"),
-            description=comprehensive_description,
-            circumstances=circumstances,
-            confidence_level=confidence_level,
-            photo_url=None,  # Would handle photo upload separately
-            video_url=None,
-            source_type=SightingSourceType.WITNESS,  # Manual entry from witness
-            witness_name=sighting_data.get("reporter_name"),
-            witness_phone=sighting_data.get("reporter_phone"),
-            witness_email=sighting_data.get("reporter_email"),
-            video_analytics_result_id=None,
-            status=SightingStatus.NEW,
-            priority=SightingPriority.MEDIUM,  # Default priority
-            verified=False,
-            created_date=datetime.now(),
-            updated_date=None,
-            created_by=sighting_data.get("reporter_name"),
-            notes=None
-        )
+        # All form data mapping and sighting object creation is now handled
+        # by the SightingFormMapper.form_to_sighting() method above
 
         # Save sighting using data service
-        sighting_id = data_service.create_sighting(sighting)
-        if not sighting_id:
+        result_sighting_id = data_service.create_sighting(sighting)
+        if not result_sighting_id:
             raise ValueError("Failed to create sighting")
 
         ui.notify("✅ Sighting report submitted successfully!", type="positive")
@@ -724,8 +690,8 @@ def handle_form_submission(form_data: dict, data_service: DataService, config: A
         if reset_loading_callback:
             reset_loading_callback()
 
-        # Navigate to sighting detail page or dashboard after a brief delay
-        ui.timer(2.0, lambda: ui.navigate.to("/"), once=True)
+        # Navigate to sighting detail page after a brief delay
+        ui.timer(2.0, lambda: ui.navigate.to(f"/sighting/{result_sighting_id}"), once=True)
 
     except Exception as e:
         ui.notify(f"Error submitting sighting report: {str(e)}", type="negative")

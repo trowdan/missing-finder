@@ -76,3 +76,19 @@ class MockDataService(DataService):
         """Create a new sighting and return the ID"""
         self._sightings.append(sighting)
         return sighting.id
+
+    def update_case(self, case: MissingPersonCase) -> bool:
+        """Update an existing case and return success status"""
+        for i, existing_case in enumerate(self._cases):
+            if existing_case.id == case.id:
+                self._cases[i] = case
+                return True
+        return False
+
+    def update_sighting(self, sighting: Sighting) -> bool:
+        """Update an existing sighting and return success status"""
+        for i, existing_sighting in enumerate(self._sightings):
+            if existing_sighting.id == sighting.id:
+                self._sightings[i] = sighting
+                return True
+        return False

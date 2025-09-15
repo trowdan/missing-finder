@@ -3,7 +3,7 @@ from datetime import datetime
 from nicegui import ui
 
 from homeward.config import AppConfig
-from homeward.models.case import CaseStatus, CasePriority, MissingPersonCase, Location
+from homeward.models.case import CaseStatus, CasePriority, MissingPersonCase
 from homeward.models.video_analysis import VideoAnalysisRequest, VideoAnalysisResult
 from homeward.services.data_service import DataService
 from homeward.services.video_analysis_service import VideoAnalysisService

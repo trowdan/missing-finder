@@ -530,10 +530,153 @@ class BigQueryDataService(DataService):
         # TODO: Implement BigQuery query
         raise NotImplementedError("BigQuery implementation not yet available")
 
-    def get_sighting_by_id(self, sighting_id: str) -> Sighting:
+    def get_sighting_by_id(self, sighting_id: str) -> Optional[Sighting]:
         """Get a specific sighting by ID from BigQuery"""
-        # TODO: Implement BigQuery query by ID
-        raise NotImplementedError("BigQuery implementation not yet available")
+        SIGHTING_SELECT_QUERY = """
+        SELECT
+            id,
+            sighting_number,
+            sighted_date,
+            sighted_time,
+            sighted_address,
+            sighted_city,
+            sighted_country,
+            sighted_postal_code,
+            sighted_latitude,
+            sighted_longitude,
+            apparent_gender,
+            apparent_age_range,
+            height_estimate,
+            weight_estimate,
+            hair_color,
+            eye_color,
+            clothing_description,
+            distinguishing_features,
+            description,
+            circumstances,
+            confidence_level,
+            photo_url,
+            video_url,
+            source_type,
+            witness_name,
+            witness_phone,
+            witness_email,
+            video_analytics_result_id,
+            status,
+            priority,
+            verified,
+            created_date,
+            updated_date,
+            created_by,
+            notes,
+            ml_summary
+        FROM `homeward.sightings`
+        WHERE id = @sighting_id
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("sighting_id", "STRING", sighting_id),
+            ]
+        )
+
+        try:
+            query_job = self.client.query(SIGHTING_SELECT_QUERY, job_config=job_config)
+            results = list(query_job.result())
+
+            if not results:
+                return None
+
+            row = results[0]
+
+            # Combine date and time for sighted_date
+            sighted_date = row.sighted_date
+            sighted_time = row.sighted_time
+
+            if sighted_date and sighted_time:
+                from datetime import datetime, time
+                if isinstance(sighted_time, time):
+                    sighted_datetime = datetime.combine(sighted_date, sighted_time)
+                else:
+                    sighted_datetime = datetime.combine(sighted_date, datetime.min.time())
+            else:
+                sighted_datetime = datetime.combine(sighted_date, datetime.min.time()) if sighted_date else datetime.now()
+
+            # Create Location object
+            from homeward.models.case import Location, SightingStatus, SightingPriority, SightingConfidenceLevel, SightingSourceType
+            location = Location(
+                address=row.sighted_address or "",
+                city=row.sighted_city or "",
+                country=row.sighted_country or "",
+                postal_code=row.sighted_postal_code,
+                latitude=row.sighted_latitude,
+                longitude=row.sighted_longitude
+            )
+
+            # Map enum values
+            status_map = {
+                "New": SightingStatus.NEW,
+                "Under_Review": SightingStatus.UNDER_REVIEW,
+                "Verified": SightingStatus.VERIFIED,
+                "False_Positive": SightingStatus.FALSE_POSITIVE,
+                "Archived": SightingStatus.ARCHIVED,
+            }
+
+            priority_map = {
+                "High": SightingPriority.HIGH,
+                "Medium": SightingPriority.MEDIUM,
+                "Low": SightingPriority.LOW,
+            }
+
+            confidence_map = {
+                "High": SightingConfidenceLevel.HIGH,
+                "Medium": SightingConfidenceLevel.MEDIUM,
+                "Low": SightingConfidenceLevel.LOW,
+            }
+
+            source_type_map = {
+                "Witness": SightingSourceType.WITNESS,
+                "Manual_Entry": SightingSourceType.MANUAL_ENTRY,
+                "Other": SightingSourceType.OTHER,
+            }
+
+            # Create and return Sighting object
+            return Sighting(
+                id=row.id,
+                sighting_number=row.sighting_number,
+                sighted_date=sighted_datetime,
+                sighted_location=location,
+                description=row.description or "",
+                confidence_level=confidence_map.get(row.confidence_level, SightingConfidenceLevel.MEDIUM),
+                source_type=source_type_map.get(row.source_type, SightingSourceType.OTHER),
+                apparent_gender=row.apparent_gender,
+                apparent_age_range=row.apparent_age_range,
+                height_estimate=row.height_estimate,
+                weight_estimate=row.weight_estimate,
+                hair_color=row.hair_color,
+                eye_color=row.eye_color,
+                clothing_description=row.clothing_description,
+                distinguishing_features=row.distinguishing_features,
+                circumstances=row.circumstances,
+                photo_url=row.photo_url,
+                video_url=row.video_url,
+                witness_name=row.witness_name,
+                witness_phone=row.witness_phone,
+                witness_email=row.witness_email,
+                video_analytics_result_id=row.video_analytics_result_id,
+                status=status_map.get(row.status, SightingStatus.NEW),
+                priority=priority_map.get(row.priority, SightingPriority.MEDIUM),
+                verified=row.verified or False,
+                created_date=row.created_date or datetime.now(),
+                updated_date=row.updated_date,
+                created_by=row.created_by,
+                notes=row.notes,
+                ml_summary=row.ml_summary
+            )
+
+        except Exception as e:
+            print(f"Error retrieving sighting {sighting_id}: {str(e)}")
+            return None
 
     def create_sighting(self, sighting: Sighting) -> str:
         """Create a new sighting in BigQuery with AI-generated summary"""
@@ -713,3 +856,205 @@ class BigQueryDataService(DataService):
         query_job.result()  # Wait for the query to complete
 
         return sighting.id
+
+    def update_sighting(self, sighting: Sighting) -> bool:
+        """Update an existing sighting in BigQuery with AI regeneration and embedding clearing"""
+        SIGHTING_UPDATE_QUERY = """
+        MERGE `homeward.sightings` AS target
+        USING (
+          SELECT
+            @id AS id,
+            @sighting_number AS sighting_number,
+            @sighted_date AS sighted_date,
+            @sighted_time AS sighted_time,
+            @sighted_address AS sighted_address,
+            @sighted_city AS sighted_city,
+            @sighted_country AS sighted_country,
+            @sighted_postal_code AS sighted_postal_code,
+            @sighted_latitude AS sighted_latitude,
+            @sighted_longitude AS sighted_longitude,
+            CASE
+              WHEN @sighted_latitude IS NOT NULL AND @sighted_longitude IS NOT NULL
+              THEN ST_GEOGPOINT(@sighted_longitude, @sighted_latitude)
+              ELSE NULL
+            END AS sighted_geo,
+            @apparent_gender AS apparent_gender,
+            @apparent_age_range AS apparent_age_range,
+            @height_estimate AS height_estimate,
+            @weight_estimate AS weight_estimate,
+            @hair_color AS hair_color,
+            @eye_color AS eye_color,
+            @clothing_description AS clothing_description,
+            @distinguishing_features AS distinguishing_features,
+            @description AS description,
+            @circumstances AS circumstances,
+            @confidence_level AS confidence_level,
+            @photo_url AS photo_url,
+            @video_url AS video_url,
+            @source_type AS source_type,
+            @witness_name AS witness_name,
+            @witness_phone AS witness_phone,
+            @witness_email AS witness_email,
+            @video_analytics_result_id AS video_analytics_result_id,
+            @status AS status,
+            @priority AS priority,
+            @verified AS verified,
+            CURRENT_TIMESTAMP() AS updated_date,
+            @created_by AS created_by,
+            @notes AS notes,
+            AI.GENERATE(
+              CONCAT(
+                'Generate a comprehensive summary paragraph for this sighting report for law enforcement analysis and matching purposes. ',
+                'Write it as a single, flowing, discursive paragraph without bullet points, lists, or structured formatting. ',
+                'Include key identifying features, location details, and critical information for matching with missing persons in narrative form. ',
+                'Return only the summary paragraph without any introduction, conclusion, or additional commentary from the model. ',
+                'Sighting: ', @description, '. ',
+                'Date and time: ', CAST(@sighted_date AS STRING),
+                CASE
+                  WHEN @sighted_time IS NOT NULL THEN CONCAT(' at ', CAST(@sighted_time AS STRING))
+                  ELSE ''
+                END,
+                '. Location: ', @sighted_address, ', ', @sighted_city, ', ', @sighted_country,
+                CASE
+                  WHEN @sighted_postal_code IS NOT NULL THEN CONCAT(', ', @sighted_postal_code)
+                  ELSE ''
+                END,
+                '. ',
+                CASE
+                  WHEN @apparent_gender IS NOT NULL THEN CONCAT('Gender: ', @apparent_gender, '. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @apparent_age_range IS NOT NULL THEN CONCAT('Age range: ', @apparent_age_range, '. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @height_estimate IS NOT NULL THEN CONCAT('Height: approximately ', CAST(@height_estimate AS STRING), 'cm. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @weight_estimate IS NOT NULL THEN CONCAT('Weight: approximately ', CAST(@weight_estimate AS STRING), 'kg. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @hair_color IS NOT NULL THEN CONCAT('Hair: ', @hair_color, '. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @eye_color IS NOT NULL THEN CONCAT('Eyes: ', @eye_color, '. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @clothing_description IS NOT NULL THEN CONCAT('Clothing: ', @clothing_description, '. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @distinguishing_features IS NOT NULL THEN CONCAT('Distinguishing features: ', @distinguishing_features, '. ')
+                  ELSE ''
+                END,
+                CASE
+                  WHEN @circumstances IS NOT NULL THEN CONCAT('Circumstances: ', @circumstances, '. ')
+                  ELSE ''
+                END,
+                'Confidence level: ', @confidence_level, '. Source: ', @source_type,
+                CASE
+                  WHEN @witness_name IS NOT NULL THEN CONCAT(' (witness: ', @witness_name, ')')
+                  ELSE ''
+                END,
+                '.'
+              ),
+              connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
+              endpoint => 'gemini-2.5-flash',
+              model_params => JSON '{"generation_config": {"temperature": 0}}'
+            ).result AS ml_summary
+        ) AS source
+        ON target.id = source.id
+        WHEN MATCHED THEN
+          UPDATE SET
+            sighting_number = source.sighting_number,
+            sighted_date = source.sighted_date,
+            sighted_time = source.sighted_time,
+            sighted_address = source.sighted_address,
+            sighted_city = source.sighted_city,
+            sighted_country = source.sighted_country,
+            sighted_postal_code = source.sighted_postal_code,
+            sighted_latitude = source.sighted_latitude,
+            sighted_longitude = source.sighted_longitude,
+            sighted_geo = source.sighted_geo,
+            apparent_gender = source.apparent_gender,
+            apparent_age_range = source.apparent_age_range,
+            height_estimate = source.height_estimate,
+            weight_estimate = source.weight_estimate,
+            hair_color = source.hair_color,
+            eye_color = source.eye_color,
+            clothing_description = source.clothing_description,
+            distinguishing_features = source.distinguishing_features,
+            description = source.description,
+            circumstances = source.circumstances,
+            confidence_level = source.confidence_level,
+            photo_url = source.photo_url,
+            video_url = source.video_url,
+            source_type = source.source_type,
+            witness_name = source.witness_name,
+            witness_phone = source.witness_phone,
+            witness_email = source.witness_email,
+            video_analytics_result_id = source.video_analytics_result_id,
+            status = source.status,
+            priority = source.priority,
+            verified = source.verified,
+            updated_date = source.updated_date,
+            created_by = source.created_by,
+            notes = source.notes,
+            ml_summary = source.ml_summary,
+            ml_summary_embedding = NULL;
+        """
+
+        try:
+            # Set up the query parameters
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("id", "STRING", sighting.id),
+                    bigquery.ScalarQueryParameter("sighting_number", "STRING", sighting.sighting_number),
+                    bigquery.ScalarQueryParameter("sighted_date", "DATE", sighting.sighted_date.date()),
+                    bigquery.ScalarQueryParameter("sighted_time", "TIME", sighting.sighted_date.time()),
+                    bigquery.ScalarQueryParameter("sighted_address", "STRING", sighting.sighted_location.address),
+                    bigquery.ScalarQueryParameter("sighted_city", "STRING", sighting.sighted_location.city),
+                    bigquery.ScalarQueryParameter("sighted_country", "STRING", sighting.sighted_location.country),
+                    bigquery.ScalarQueryParameter("sighted_postal_code", "STRING", sighting.sighted_location.postal_code),
+                    bigquery.ScalarQueryParameter("sighted_latitude", "FLOAT64", sighting.sighted_location.latitude if sighting.sighted_location.latitude != 0.0 else None),
+                    bigquery.ScalarQueryParameter("sighted_longitude", "FLOAT64", sighting.sighted_location.longitude if sighting.sighted_location.longitude != 0.0 else None),
+                    bigquery.ScalarQueryParameter("apparent_gender", "STRING", sighting.apparent_gender),
+                    bigquery.ScalarQueryParameter("apparent_age_range", "STRING", sighting.apparent_age_range),
+                    bigquery.ScalarQueryParameter("height_estimate", "FLOAT64", sighting.height_estimate),
+                    bigquery.ScalarQueryParameter("weight_estimate", "FLOAT64", sighting.weight_estimate),
+                    bigquery.ScalarQueryParameter("hair_color", "STRING", sighting.hair_color),
+                    bigquery.ScalarQueryParameter("eye_color", "STRING", sighting.eye_color),
+                    bigquery.ScalarQueryParameter("clothing_description", "STRING", sighting.clothing_description),
+                    bigquery.ScalarQueryParameter("distinguishing_features", "STRING", sighting.distinguishing_features),
+                    bigquery.ScalarQueryParameter("description", "STRING", sighting.description),
+                    bigquery.ScalarQueryParameter("circumstances", "STRING", sighting.circumstances),
+                    bigquery.ScalarQueryParameter("confidence_level", "STRING", sighting.confidence_level.value),
+                    bigquery.ScalarQueryParameter("photo_url", "STRING", sighting.photo_url),
+                    bigquery.ScalarQueryParameter("video_url", "STRING", sighting.video_url),
+                    bigquery.ScalarQueryParameter("source_type", "STRING", sighting.source_type.value),
+                    bigquery.ScalarQueryParameter("witness_name", "STRING", sighting.witness_name),
+                    bigquery.ScalarQueryParameter("witness_phone", "STRING", sighting.witness_phone),
+                    bigquery.ScalarQueryParameter("witness_email", "STRING", sighting.witness_email),
+                    bigquery.ScalarQueryParameter("video_analytics_result_id", "STRING", sighting.video_analytics_result_id),
+                    bigquery.ScalarQueryParameter("status", "STRING", sighting.status.value),
+                    bigquery.ScalarQueryParameter("priority", "STRING", sighting.priority.value),
+                    bigquery.ScalarQueryParameter("verified", "BOOL", sighting.verified),
+                    bigquery.ScalarQueryParameter("created_by", "STRING", sighting.created_by),
+                    bigquery.ScalarQueryParameter("notes", "STRING", sighting.notes),
+                ]
+            )
+
+            # Execute the parameterized query
+            query_job = self.client.query(SIGHTING_UPDATE_QUERY, job_config=job_config)
+            query_job.result()  # Wait for the query to complete
+
+            return True
+
+        except Exception as e:
+            print(f"Error updating sighting {sighting.id}: {str(e)}")
+            return False

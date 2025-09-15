@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from nicegui import ui
 
 from homeward.config import AppConfig
 from homeward.models.case import SightingStatus
 from homeward.services.data_service import DataService
 from homeward.ui.components.footer import create_footer
+from homeward.ui.components.sighting_form import create_sighting_form
 
 
 def create_sighting_detail_page(
@@ -16,6 +19,27 @@ def create_sighting_detail_page(
 
     # Get sighting data from service
     sighting = data_service.get_sighting_by_id(sighting_id)
+
+    if not sighting:
+        # Handle sighting not found
+        ui.dark_mode().enable()
+        with ui.column().classes(
+            "w-full bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen"
+        ):
+            with ui.column().classes("max-w-7xl mx-auto p-8 w-full items-center justify-center min-h-screen"):
+                ui.label("Homeward").classes(
+                    "text-6xl font-extralight text-white tracking-tight mb-4"
+                )
+                ui.label("Sighting Not Found").classes(
+                    "text-2xl font-light text-gray-300 tracking-wide mb-8"
+                )
+                ui.label(f"Sighting with ID '{sighting_id}' was not found in the database.").classes(
+                    "text-gray-400 mb-8"
+                )
+                ui.button("← Back to Dashboard", on_click=on_back_to_dashboard).classes(
+                    "bg-transparent text-gray-300 px-6 py-2 rounded-full border border-gray-400/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide"
+                )
+        return
 
     # Set dark theme
     ui.dark_mode().enable()
@@ -30,7 +54,7 @@ def create_sighting_detail_page(
                 ui.label("Homeward").classes(
                     "text-6xl font-extralight text-white tracking-tight mb-4"
                 )
-                ui.label(f"Sighting Details - {sighting.id}").classes(
+                ui.label(f"Sighting Details - {sighting.sighting_number or sighting.id}").classes(
                     "text-2xl font-light text-gray-300 tracking-wide"
                 )
 
@@ -59,9 +83,13 @@ def create_sighting_detail_page(
                             status_color = (
                                 "bg-green-500"
                                 if sighting.status == SightingStatus.VERIFIED
+                                else "bg-blue-500"
+                                if sighting.status == SightingStatus.UNDER_REVIEW
                                 else "bg-yellow-500"
-                                if sighting.status == SightingStatus.UNVERIFIED
+                                if sighting.status == SightingStatus.NEW
                                 else "bg-red-500"
+                                if sighting.status == SightingStatus.FALSE_POSITIVE
+                                else "bg-gray-500"
                             )
                             ui.label(sighting.status.value).classes(
                                 f"ml-auto px-3 py-1 rounded-full text-xs font-medium text-white {status_color}"
@@ -70,26 +98,28 @@ def create_sighting_detail_page(
                         with ui.grid(columns="1fr 1fr").classes("w-full gap-4"):
                             with ui.column():
                                 create_info_field("Sighting ID", sighting.id)
+                                if sighting.sighting_number:
+                                    create_info_field("Reference Number", sighting.sighting_number)
                                 create_info_field(
                                     "Date & Time",
-                                    sighting.sighting_date.strftime("%Y-%m-%d %H:%M"),
+                                    sighting.sighted_date.strftime("%Y-%m-%d %H:%M"),
                                 )
                                 create_info_field(
-                                    "Individual Gender", sighting.individual_gender
+                                    "Source Type", sighting.source_type.value
                                 )
                             with ui.column():
                                 create_info_field(
-                                    "Individual Age",
-                                    str(sighting.individual_age)
-                                    if sighting.individual_age
-                                    else "Unknown",
+                                    "Age Range",
+                                    sighting.apparent_age_range or "Unknown",
                                 )
                                 create_info_field(
-                                    "Confidence Level", sighting.confidence.value
+                                    "Gender", sighting.apparent_gender or "Unknown"
                                 )
                                 create_info_field(
-                                    "Created",
-                                    sighting.created_date.strftime("%Y-%m-%d %H:%M"),
+                                    "Confidence Level", sighting.confidence_level.value
+                                )
+                                create_info_field(
+                                    "Priority", sighting.priority.value
                                 )
 
                     # Right column - Linked Case Info
@@ -102,16 +132,16 @@ def create_sighting_detail_page(
                                 "text-xl font-light text-white"
                             )
 
-                        if sighting.linked_case_id:
+                        # Check if sighting has a linked case (this field doesn't exist in current model, but we'll handle it)
+                        linked_case_id = getattr(sighting, 'linked_case_id', None)
+                        if linked_case_id:
                             with ui.column().classes("w-full space-y-4"):
-                                create_info_field("Case ID", sighting.linked_case_id)
+                                create_info_field("Case ID", linked_case_id)
 
                                 # View case button
                                 ui.button(
                                     "View Case Details",
-                                    on_click=lambda: handle_view_case(
-                                        sighting.linked_case_id
-                                    ),
+                                    on_click=lambda: handle_view_case(linked_case_id),
                                 ).classes(
                                     "w-full bg-transparent text-blue-300 px-4 py-3 rounded-lg border border-blue-400/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-sm tracking-wide mt-4"
                                 )
@@ -152,25 +182,25 @@ def create_sighting_detail_page(
                             with ui.grid(columns="1fr 1fr").classes("w-full gap-6"):
                                 with ui.column():
                                     create_info_field(
-                                        "Address", sighting.sighting_location.address
+                                        "Address", sighting.sighted_location.address
                                     )
                                     create_info_field(
-                                        "City", sighting.sighting_location.city
+                                        "City", sighting.sighted_location.city
                                     )
                                 with ui.column():
                                     create_info_field(
-                                        "Country", sighting.sighting_location.country
+                                        "Country", sighting.sighted_location.country
                                     )
-                                    if sighting.sighting_location.postal_code:
+                                    if sighting.sighted_location.postal_code:
                                         create_info_field(
                                             "Postal Code",
-                                            sighting.sighting_location.postal_code,
+                                            sighting.sighted_location.postal_code,
                                         )
 
                         # Right column - Map
                         if (
-                            sighting.sighting_location.latitude
-                            and sighting.sighting_location.longitude
+                            sighting.sighted_location.latitude
+                            and sighting.sighted_location.longitude
                         ):
                             with ui.column().classes("flex-1"):
                                 ui.label("Location Map").classes(
@@ -181,8 +211,8 @@ def create_sighting_detail_page(
                                 ):
                                     map_component = ui.leaflet(
                                         center=[
-                                            sighting.sighting_location.latitude,
-                                            sighting.sighting_location.longitude,
+                                            sighting.sighted_location.latitude,
+                                            sighting.sighted_location.longitude,
                                         ],
                                         zoom=15,
                                     ).classes("w-full h-full")
@@ -199,12 +229,12 @@ def create_sighting_detail_page(
                                     # Add marker for sighting location
                                     map_component.marker(
                                         latlng=[
-                                            sighting.sighting_location.latitude,
-                                            sighting.sighting_location.longitude,
+                                            sighting.sighted_location.latitude,
+                                            sighting.sighted_location.longitude,
                                         ]
                                     )
 
-                # Description Card
+                # Description and Physical Details Card
                 with ui.card().classes(
                     "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
                 ):
@@ -212,59 +242,233 @@ def create_sighting_detail_page(
                         ui.icon("description", size="1.5rem").classes(
                             "text-purple-400 mr-3"
                         )
-                        ui.label("Sighting Description").classes(
+                        ui.label("Sighting Description & Physical Details").classes(
                             "text-xl font-light text-white"
                         )
 
-                    with ui.column().classes("w-full space-y-4"):
+                    with ui.column().classes("w-full space-y-6"):
+                        # Main description
                         with ui.element("div").classes(
-                            "border-l-4 border-purple-400/50 pl-4"
+                            "border-l-4 border-purple-400/50 pl-4 mb-4"
                         ):
                             ui.label(sighting.description).classes(
                                 "text-gray-100 leading-relaxed text-sm"
                             )
 
-                # Reporter Information Card
+                        # Physical details in a grid
+                        with ui.row().classes("w-full gap-8"):
+                            # Left column - Physical appearance
+                            with ui.column().classes("flex-1 space-y-4"):
+                                if sighting.hair_color:
+                                    create_info_field("Hair Color", sighting.hair_color)
+                                if sighting.eye_color:
+                                    create_info_field("Eye Color", sighting.eye_color)
+                                if sighting.height_estimate:
+                                    create_info_field("Height Estimate", f"{sighting.height_estimate:.0f} cm")
+                                if sighting.weight_estimate:
+                                    create_info_field("Weight Estimate", f"{sighting.weight_estimate:.0f} kg")
+
+                            # Right column - Clothing and features
+                            with ui.column().classes("flex-1 space-y-4"):
+                                if sighting.clothing_description:
+                                    ui.label("Clothing Description").classes(
+                                        "text-amber-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-amber-400/50 pl-4 mb-4"
+                                    ):
+                                        ui.label(sighting.clothing_description).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                                if sighting.distinguishing_features:
+                                    ui.label("Distinguishing Features").classes(
+                                        "text-cyan-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-cyan-400/50 pl-4"
+                                    ):
+                                        ui.label(sighting.distinguishing_features).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                                if sighting.circumstances:
+                                    ui.label("Circumstances").classes(
+                                        "text-green-400 font-medium text-sm mb-2"
+                                    )
+                                    with ui.element("div").classes(
+                                        "border-l-4 border-green-400/50 pl-4"
+                                    ):
+                                        ui.label(sighting.circumstances).classes(
+                                            "text-gray-100 leading-relaxed text-sm"
+                                        )
+
+                # Source Information Card
                 with ui.card().classes(
                     "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
                 ):
                     with ui.row().classes("items-center mb-6"):
                         ui.icon("person", size="1.5rem").classes("text-cyan-400 mr-3")
-                        ui.label("Reporter Information").classes(
+                        ui.label("Source Information").classes(
                             "text-xl font-light text-white"
                         )
 
                     with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-6"):
                         with ui.column():
-                            create_info_field("Name", sighting.reporter_name)
+                            if sighting.witness_name:
+                                create_info_field("Witness Name", sighting.witness_name)
                         with ui.column():
-                            if sighting.reporter_email:
-                                create_info_field("Email", sighting.reporter_email)
+                            if sighting.witness_email:
+                                create_info_field("Witness Email", sighting.witness_email)
                         with ui.column():
-                            if sighting.reporter_phone:
-                                create_info_field("Phone", sighting.reporter_phone)
+                            if sighting.witness_phone:
+                                create_info_field("Witness Phone", sighting.witness_phone)
+
+                # Additional Details Card
+                with ui.card().classes(
+                    "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
+                ):
+                    with ui.row().classes("items-center mb-6"):
+                        ui.icon("info", size="1.5rem").classes("text-orange-400 mr-3")
+                        ui.label("Additional Details").classes(
+                            "text-xl font-light text-white"
+                        )
+
+                    with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-6"):
+                        with ui.column():
+                            create_info_field(
+                                "Created",
+                                sighting.created_date.strftime("%Y-%m-%d %H:%M"),
+                            )
+                            if sighting.updated_date:
+                                create_info_field(
+                                    "Last Updated",
+                                    sighting.updated_date.strftime("%Y-%m-%d %H:%M"),
+                                )
+                        with ui.column():
+                            if sighting.created_by:
+                                create_info_field("Created By", sighting.created_by)
+                            create_info_field(
+                                "Verified", "Yes" if sighting.verified else "No"
+                            )
+                        with ui.column():
+                            if sighting.video_analytics_result_id:
+                                create_info_field(
+                                    "AI Analysis ID", sighting.video_analytics_result_id
+                                )
+
+                # Media and Evidence Card (if available)
+                if sighting.photo_url or sighting.video_url:
+                    with ui.card().classes(
+                        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
+                    ):
+                        with ui.row().classes("items-center mb-6"):
+                            ui.icon("media_library", size="1.5rem").classes("text-pink-400 mr-3")
+                            ui.label("Media & Evidence").classes(
+                                "text-xl font-light text-white"
+                            )
+
+                        with ui.row().classes("w-full gap-6"):
+                            if sighting.photo_url:
+                                with ui.column().classes("flex-1"):
+                                    ui.label("Photo Evidence").classes(
+                                        "text-xs font-medium text-gray-400 uppercase tracking-wide mb-3"
+                                    )
+                                    ui.image(sighting.photo_url).classes(
+                                        "w-full max-w-sm h-64 object-cover rounded-lg border border-gray-600"
+                                    )
+
+                            if sighting.video_url:
+                                with ui.column().classes("flex-1"):
+                                    ui.label("Video Evidence").classes(
+                                        "text-xs font-medium text-gray-400 uppercase tracking-wide mb-3"
+                                    )
+                                    ui.button(
+                                        "📹 View Video",
+                                        on_click=lambda: ui.open(sighting.video_url, new_tab=True)
+                                    ).classes(
+                                        "bg-transparent text-pink-300 px-6 py-3 rounded-lg border border-pink-400/60 hover:bg-pink-200 hover:text-pink-900 hover:border-pink-200 transition-all duration-300 font-light text-sm tracking-wide"
+                                    )
+
+                # AI-Generated Summary Card (if available)
+                if sighting.ml_summary:
+                    with ui.card().classes(
+                        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl relative"
+                    ):
+                        # AI badge in corner
+                        with ui.element("div").classes(
+                            "absolute top-4 right-4 flex items-center gap-2"
+                        ):
+                            with ui.element("div").classes(
+                                "w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg"
+                            ):
+                                ui.icon("psychology", size="1rem").classes("text-white")
+                            ui.label("AI-Generated").classes(
+                                "text-xs text-purple-400 font-medium"
+                            )
+
+                        with ui.row().classes("items-center mb-6"):
+                            ui.icon("smart_toy", size="1.5rem").classes(
+                                "text-purple-400 mr-3"
+                            )
+                            ui.label("AI Sighting Summary").classes(
+                                "text-xl font-light text-white"
+                            )
+
+                        with ui.column().classes("w-full"):
+                            # AI summary with special styling
+                            with ui.element("div").classes(
+                                "bg-purple-900/20 rounded-lg p-4 border border-purple-500/30"
+                            ):
+                                ui.label(sighting.ml_summary).classes(
+                                    "text-purple-100 leading-relaxed text-sm italic"
+                                )
+
+                        # Powered by Gemini note
+                        with ui.row().classes("justify-center mt-4"):
+                            ui.label("Powered by Google Gemini").classes(
+                                "text-xs text-purple-400 font-medium"
+                            )
+
+                # Notes Card (if available)
+                if sighting.notes:
+                    with ui.card().classes(
+                        "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
+                    ):
+                        with ui.row().classes("items-center mb-6"):
+                            ui.icon("note", size="1.5rem").classes("text-gray-400 mr-3")
+                            ui.label("Notes").classes(
+                                "text-xl font-light text-white"
+                            )
+
+                        with ui.element("div").classes(
+                            "border-l-4 border-gray-400/50 pl-4"
+                        ):
+                            ui.label(sighting.notes).classes(
+                                "text-gray-100 leading-relaxed text-sm"
+                            )
 
                 # Action Buttons Section
                 with ui.row().classes("w-full justify-center gap-6 mt-12"):
                     ui.button(
                         "Edit Sighting",
-                        on_click=lambda: handle_edit_sighting(sighting.id),
+                        on_click=lambda: handle_edit_sighting(sighting.id, sighting, data_service),
                     ).classes(
                         "bg-transparent text-gray-300 px-8 py-4 rounded-full border-2 border-gray-400/80 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-gray-400/20 hover:ring-gray-200/40 hover:ring-4"
                     )
 
-                    if sighting.status == SightingStatus.UNVERIFIED:
-                        ui.button(
+                    if sighting.status in [SightingStatus.NEW, SightingStatus.UNDER_REVIEW]:
+                        verify_button = ui.button(
                             "Verify Sighting",
-                            on_click=lambda: handle_verify_sighting(sighting.id),
+                            on_click=lambda: handle_verify_sighting_with_loading(sighting.id, data_service, verify_button),
                         ).classes(
                             "bg-transparent text-green-300 px-8 py-4 rounded-full border-2 border-green-400/80 hover:bg-green-200 hover:text-green-900 hover:border-green-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-green-400/20 hover:ring-green-200/40 hover:ring-4"
                         )
 
                     if sighting.status != SightingStatus.FALSE_POSITIVE:
-                        ui.button(
+                        false_positive_button = ui.button(
                             "Mark as False Positive",
-                            on_click=lambda: handle_mark_false_positive(sighting.id),
+                            on_click=lambda: handle_mark_false_positive_with_loading(sighting.id, data_service, false_positive_button),
                         ).classes(
                             "bg-transparent text-red-300 px-8 py-4 rounded-full border-2 border-red-400/80 hover:bg-red-200 hover:text-red-900 hover:border-red-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-red-400/20 hover:ring-red-200/40 hover:ring-4"
                         )
@@ -293,19 +497,157 @@ def handle_link_to_case(sighting_id: str, data_service: DataService = None):
     show_link_case_modal(sighting_id, data_service)
 
 
-def handle_edit_sighting(sighting_id: str):
+def handle_edit_sighting(sighting_id: str, sighting: object, data_service: DataService):
     """Handle editing the sighting"""
-    ui.notify(f"Edit sighting {sighting_id}", type="info")
+    open_edit_sighting_modal(sighting_id, sighting, data_service)
 
 
-def handle_verify_sighting(sighting_id: str):
+def handle_verify_sighting_with_loading(sighting_id: str, data_service: DataService, button):
+    """Handle verifying the sighting with loading state"""
+    # Set loading state
+    original_text = button.text
+    button.text = ""
+    button.props(add="loading")
+    button.props(add="disable")
+
+    # Run the actual handler in a separate thread to avoid blocking the UI
+    import asyncio
+    asyncio.create_task(verify_sighting_async(sighting_id, data_service, button, original_text))
+
+
+def handle_mark_false_positive_with_loading(sighting_id: str, data_service: DataService, button):
+    """Handle marking sighting as false positive with loading state"""
+    # Set loading state
+    original_text = button.text
+    button.text = ""
+    button.props(add="loading")
+    button.props(add="disable")
+
+    # Run the actual handler in a separate thread to avoid blocking the UI
+    import asyncio
+    asyncio.create_task(mark_false_positive_async(sighting_id, data_service, button, original_text))
+
+
+async def verify_sighting_async(sighting_id: str, data_service: DataService, button, original_text: str):
+    """Async handler for verifying the sighting"""
+    try:
+        # Get the current sighting
+        sighting = data_service.get_sighting_by_id(sighting_id)
+        if not sighting:
+            ui.notify("Sighting not found", type="negative")
+            return
+
+        # Update status to verified
+        sighting.status = SightingStatus.VERIFIED
+        sighting.verified = True
+        sighting.updated_date = datetime.now()
+
+        # Update in database
+        success = data_service.update_sighting(sighting)
+
+        if success:
+            ui.notify("✅ Sighting verified successfully!", type="positive")
+            # Refresh the page to show updated status
+            ui.timer(1.0, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+        else:
+            ui.notify("❌ Failed to verify sighting", type="negative")
+
+    except Exception as e:
+        ui.notify(f"❌ Error verifying sighting: {str(e)}", type="negative")
+    finally:
+        # Reset button state
+        button.props(remove="loading")
+        button.props(remove="disable")
+        button.text = original_text
+
+
+async def mark_false_positive_async(sighting_id: str, data_service: DataService, button, original_text: str):
+    """Async handler for marking sighting as false positive"""
+    try:
+        # Get the current sighting
+        sighting = data_service.get_sighting_by_id(sighting_id)
+        if not sighting:
+            ui.notify("Sighting not found", type="negative")
+            return
+
+        # Update status to false positive
+        sighting.status = SightingStatus.FALSE_POSITIVE
+        sighting.verified = False
+        sighting.updated_date = datetime.now()
+
+        # Update in database
+        success = data_service.update_sighting(sighting)
+
+        if success:
+            ui.notify("⚠️ Sighting marked as false positive", type="warning")
+            # Refresh the page to show updated status
+            ui.timer(1.0, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+        else:
+            ui.notify("❌ Failed to mark sighting as false positive", type="negative")
+
+    except Exception as e:
+        ui.notify(f"❌ Error marking sighting as false positive: {str(e)}", type="negative")
+    finally:
+        # Reset button state
+        button.props(remove="loading")
+        button.props(remove="disable")
+        button.text = original_text
+
+
+def handle_verify_sighting(sighting_id: str, data_service: DataService):
     """Handle verifying the sighting"""
-    ui.notify(f"Mark sighting {sighting_id} as verified", type="positive")
+    try:
+        # Get the current sighting
+        sighting = data_service.get_sighting_by_id(sighting_id)
+        if not sighting:
+            ui.notify("Sighting not found", type="negative")
+            return
+
+        # Update status to verified
+        sighting.status = SightingStatus.VERIFIED
+        sighting.verified = True
+        sighting.updated_date = datetime.now()
+
+        # Update in database
+        success = data_service.update_sighting(sighting)
+
+        if success:
+            ui.notify("✅ Sighting verified successfully!", type="positive")
+            # Refresh the page to show updated status
+            ui.timer(1.0, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+        else:
+            ui.notify("❌ Failed to verify sighting", type="negative")
+
+    except Exception as e:
+        ui.notify(f"❌ Error verifying sighting: {str(e)}", type="negative")
 
 
-def handle_mark_false_positive(sighting_id: str):
+def handle_mark_false_positive(sighting_id: str, data_service: DataService):
     """Handle marking sighting as false positive"""
-    ui.notify(f"Mark sighting {sighting_id} as false positive", type="warning")
+    try:
+        # Get the current sighting
+        sighting = data_service.get_sighting_by_id(sighting_id)
+        if not sighting:
+            ui.notify("Sighting not found", type="negative")
+            return
+
+        # Update status to false positive
+        sighting.status = SightingStatus.FALSE_POSITIVE
+        sighting.verified = False
+        sighting.updated_date = datetime.now()
+
+        # Update in database
+        success = data_service.update_sighting(sighting)
+
+        if success:
+            ui.notify("⚠️ Sighting marked as false positive", type="warning")
+            # Refresh the page to show updated status
+            ui.timer(1.0, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+        else:
+            ui.notify("❌ Failed to mark sighting as false positive", type="negative")
+
+    except Exception as e:
+        ui.notify(f"❌ Error marking sighting as false positive: {str(e)}", type="negative")
 
 
 def show_link_case_modal(sighting_id: str, data_service: DataService):
@@ -618,3 +960,170 @@ def handle_modal_link_to_case(sighting_id: str, case_id: str):
     # In a real implementation, this would update the database
     # For now, we'll close the modal and refresh the page or update the UI
     ui.timer(1.5, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+
+
+def open_edit_sighting_modal(sighting_id: str, sighting: object, data_service: DataService):
+    """Open modal to edit sighting information using the reusable form component"""
+    with ui.dialog().props("persistent maximized") as dialog:
+        with ui.column().classes("w-full h-full bg-gray-900 text-white overflow-hidden"):
+            # Modal Header - Fixed at top
+            with ui.row().classes("w-full items-center justify-between p-6 border-b border-gray-800 bg-gray-900 flex-shrink-0"):
+                with ui.row().classes("items-center"):
+                    ui.icon("edit", size="1.5rem").classes("text-green-400 mr-3")
+                    ui.label(f"Edit Sighting: {sighting.sighting_number or sighting.id}").classes("text-xl font-light text-white")
+                ui.button("✕", on_click=dialog.close).classes("bg-transparent text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-all")
+
+            # Modal Content - Scrollable area
+            with ui.scroll_area().classes("flex-1 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"):
+                create_sighting_form(
+                    on_submit=lambda form_data, reset_loading_callback=None: handle_edit_sighting_submission(
+                        sighting, form_data, data_service, dialog, reset_loading_callback
+                    ),
+                    on_cancel=dialog.close,
+                    edit_mode=True,
+                    existing_sighting=sighting
+                )
+
+    dialog.open()
+
+
+def handle_edit_sighting_submission(
+    original_sighting: object,
+    form_data: dict,
+    data_service: DataService,
+    dialog,
+    reset_loading_callback: callable = None
+):
+    """Handle the sighting edit form submission"""
+    try:
+        from homeward.utils.form_utils import sanitize_form_data
+        from homeward.models.form_mappers import SightingFormValidator, SightingFormData, SightingFormMapper
+
+        # Collect form data from the form_data dictionary
+        raw_data = {}
+        for key, field in form_data.items():
+            if hasattr(field, "value"):
+                raw_data[key] = field.value
+
+        # Sanitize form data - convert empty strings to None
+        sighting_data = sanitize_form_data(raw_data)
+
+        # Validate required fields using the existing validator
+        missing_fields = SightingFormValidator.validate_required_fields(sighting_data)
+        if missing_fields:
+            ui.notify(
+                f"Please fill in the required fields: {', '.join(missing_fields)}",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        # Validate date is not in future
+        if not SightingFormValidator.validate_date_not_future(sighting_data.get("sighting_date", "")):
+            ui.notify(
+                "Sighting date cannot be in the future",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        # Validate height and weight ranges if provided
+        if sighting_data.get("individual_height") and not SightingFormValidator.validate_height_range(sighting_data["individual_height"]):
+            ui.notify(
+                "Height must be between 10-300 cm",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        if sighting_data.get("individual_build") and not SightingFormValidator.validate_weight_range(sighting_data["individual_build"]):
+            ui.notify(
+                "Weight must be between 1-1000 kg",
+                type="negative",
+            )
+            if reset_loading_callback:
+                reset_loading_callback()
+            return
+
+        # Create form data object
+        form_data_obj = SightingFormData(
+            sighting_date=sighting_data.get("sighting_date", ""),
+            sighting_address=sighting_data.get("sighting_address", ""),
+            sighting_city=sighting_data.get("sighting_city", ""),
+            sighting_country=sighting_data.get("sighting_country", "USA"),
+            description=sighting_data.get("additional_details", ""),
+            confidence_level=sighting_data.get("confidence", ""),
+            source_type=sighting_data.get("source_type", ""),
+            reporter_name=sighting_data.get("reporter_name"),
+            reporter_email=sighting_data.get("reporter_email"),
+            reporter_phone=sighting_data.get("reporter_phone"),
+            relationship=sighting_data.get("relationship"),
+            sighting_time=sighting_data.get("sighting_time"),
+            sighting_postal=sighting_data.get("sighting_postal"),
+            sighting_landmarks=sighting_data.get("sighting_landmarks"),
+            individual_age=sighting_data.get("individual_age"),
+            individual_gender=sighting_data.get("individual_gender"),
+            individual_height=sighting_data.get("individual_height"),
+            individual_build=sighting_data.get("individual_build"),
+            individual_hair=sighting_data.get("individual_hair"),
+            individual_eyes=sighting_data.get("individual_eyes"),
+            individual_features=sighting_data.get("individual_features"),
+            clothing_upper=sighting_data.get("clothing_upper"),
+            clothing_lower=sighting_data.get("clothing_lower"),
+            clothing_shoes=sighting_data.get("clothing_shoes"),
+            clothing_accessories=sighting_data.get("clothing_accessories"),
+            behavior=sighting_data.get("behavior"),
+            condition=sighting_data.get("condition"),
+            additional_details=sighting_data.get("additional_details")
+        )
+
+        # Convert form data to updated sighting object using mapper
+        updated_sighting = SightingFormMapper.form_to_sighting(form_data_obj, original_sighting.id)
+
+        # Preserve original fields that should not be changed
+        updated_sighting.created_date = original_sighting.created_date
+        updated_sighting.created_by = original_sighting.created_by
+        updated_sighting.status = original_sighting.status
+        updated_sighting.priority = original_sighting.priority
+        updated_sighting.verified = original_sighting.verified
+        updated_sighting.sighting_number = original_sighting.sighting_number
+
+        # Try to geocode the address if it changed
+        if (updated_sighting.sighted_location.address != original_sighting.sighted_location.address or
+            updated_sighting.sighted_location.city != original_sighting.sighted_location.city):
+
+            try:
+                # Initialize geocoding service - need to get config somehow
+                # For now, we'll skip geocoding in edit mode to avoid complexity
+                # In a real implementation, you'd pass config or get it from a singleton
+                ui.notify("Address updated - geocoding skipped in edit mode", type="warning")
+            except Exception as e:
+                ui.notify(f"Geocoding failed: {str(e)} - continuing without coordinates", type="warning")
+
+        # Set updated date
+        updated_sighting.updated_date = datetime.now()
+
+        # Save updated sighting using data service
+        success = data_service.update_sighting(updated_sighting)
+
+        if not success:
+            raise ValueError("Failed to update sighting in database")
+
+        ui.notify("✅ Sighting updated successfully!", type="positive")
+
+        # Reset loading state on success
+        if reset_loading_callback:
+            reset_loading_callback()
+
+        # Close dialog and optionally refresh the page
+        dialog.close()
+        ui.notify("🔄 Please refresh the page to see updated information.", type="info")
+
+    except Exception as e:
+        ui.notify(f"❌ Error updating sighting: {str(e)}", type="negative")
+        # Reset loading state on error
+        if reset_loading_callback:
+            reset_loading_callback()

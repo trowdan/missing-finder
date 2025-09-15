@@ -61,7 +61,10 @@ class TestNewSightingPage:
             "sighting_date": mock_date_field,
             "sighting_address": mock_field,
             "sighting_city": mock_field,
+            "sighting_country": mock_field,
             "additional_details": mock_field,
+            "confidence": mock_field,
+            "source_type": mock_field,
         }
 
         mock_data_service = Mock()
@@ -107,9 +110,9 @@ class TestNewSightingPage:
 
         handle_form_submission(form_data, mock_data_service, mock_config)
 
-        # Verify error notification for missing field
+        # Verify error notification for missing fields
         mock_ui.notify.assert_called_with(
-            "Please fill in the required field: Reporter Name", type="negative"
+            "Please fill in the required fields: Sighting Date, Sighting Address, Sighting City, Country, Sighting Description, Confidence Level, Source Type", type="negative"
         )
 
 

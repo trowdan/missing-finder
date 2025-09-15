@@ -226,10 +226,26 @@ class TestCaseDetailHelpers:
     @patch("homeward.ui.pages.case_detail.ui")
     def test_handle_edit_case(self, mock_ui):
         """Test edit case handler"""
+        from homeward.services.mock_data_service import MockDataService
         from homeward.ui.pages.case_detail import handle_edit_case
 
-        handle_edit_case("MP001")
-        mock_ui.notify.assert_called_once_with("Edit case MP001", type="info")
+        mock_data_service = MockDataService()
+        case = mock_data_service.get_case_by_id("MP001")
+
+        # Mock dialog components
+        mock_dialog = MagicMock()
+        mock_dialog.__enter__ = MagicMock(return_value=mock_dialog)
+        mock_dialog.__exit__ = MagicMock(return_value=None)
+        mock_ui.dialog.return_value = mock_dialog
+
+        # Mock form components
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+
+        handle_edit_case("MP001", case, mock_data_service)
+
+        # Verify dialog was opened
+        mock_ui.dialog.assert_called_once()
 
     @patch("homeward.ui.pages.case_detail.ui")
     def test_handle_resolve_case(self, mock_ui):

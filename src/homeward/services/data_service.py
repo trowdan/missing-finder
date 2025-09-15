@@ -45,3 +45,8 @@ class DataService(ABC):
     def create_sighting(self, sighting: Sighting) -> str:
         """Create a new sighting and return the ID"""
         pass
+
+    @abstractmethod
+    def update_sighting(self, sighting: Sighting) -> bool:
+        """Update an existing sighting and return success status"""
+        pass
