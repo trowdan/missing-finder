@@ -11,21 +11,21 @@ from homeward.ui.components.sightings_table import create_sightings_table
 def create_dashboard(data_service: DataService, config: AppConfig):
     """Create the main dashboard page with two-panel layout"""
 
-    # Get initial data from service
+    # Get initial data from service with pagination
     kpi_data = data_service.get_kpi_data()
-    all_cases = data_service.get_cases()
-    all_sightings = data_service.get_sightings()
+    cases, total_cases = data_service.get_cases(page=1, page_size=10)
+    sightings, total_sightings = data_service.get_sightings(page=1, page_size=10)
 
     # Sort by creation date descending to show latest first (with safety check for sorting)
     try:
-        latest_cases = sorted(all_cases, key=lambda x: x.created_date, reverse=True)
+        latest_cases = sorted(cases, key=lambda x: x.created_date, reverse=True)
         latest_sightings = sorted(
-            all_sightings, key=lambda x: x.created_date, reverse=True
+            sightings, key=lambda x: x.created_date, reverse=True
         )
     except (AttributeError, TypeError):
         # Fallback for test mocks or missing created_date attribute
-        latest_cases = all_cases
-        latest_sightings = all_sightings
+        latest_cases = cases
+        latest_sightings = sightings
 
     # Set dark theme
     ui.dark_mode().enable()

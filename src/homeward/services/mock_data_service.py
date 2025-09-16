@@ -23,16 +23,23 @@ class MockDataService(DataService):
         self._sightings = get_mock_sightings()
         self._kpi_data = get_mock_kpi_data()
 
-    def get_cases(self, status_filter: Optional[str] = None) -> list[MissingPersonCase]:
-        """Get missing person cases, optionally filtered by status"""
+    def get_cases(self, status_filter: Optional[str] = None, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Get missing person cases with pagination. Returns (cases, total_count)"""
         if status_filter is None:
-            return self._cases
+            filtered_cases = self._cases
+        else:
+            try:
+                status_enum = CaseStatus(status_filter)
+                filtered_cases = [case for case in self._cases if case.status == status_enum]
+            except ValueError:
+                filtered_cases = self._cases
 
-        try:
-            status_enum = CaseStatus(status_filter)
-            return [case for case in self._cases if case.status == status_enum]
-        except ValueError:
-            return self._cases
+        total_count = len(filtered_cases)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_cases = filtered_cases[start_idx:end_idx]
+
+        return paginated_cases, total_count
 
     def get_kpi_data(self) -> KPIData:
         """Get KPI dashboard data"""
@@ -50,20 +57,27 @@ class MockDataService(DataService):
         self._cases.append(case)
         return case.id
 
-    def get_sightings(self, status_filter: Optional[str] = None) -> list[Sighting]:
-        """Get sighting reports, optionally filtered by status"""
+    def get_sightings(self, status_filter: Optional[str] = None, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Get sighting reports with pagination. Returns (sightings, total_count)"""
         if status_filter is None:
-            return self._sightings
+            filtered_sightings = self._sightings
+        else:
+            try:
+                status_enum = SightingStatus(status_filter)
+                filtered_sightings = [
+                    sighting
+                    for sighting in self._sightings
+                    if sighting.status == status_enum
+                ]
+            except ValueError:
+                filtered_sightings = self._sightings
 
-        try:
-            status_enum = SightingStatus(status_filter)
-            return [
-                sighting
-                for sighting in self._sightings
-                if sighting.status == status_enum
-            ]
-        except ValueError:
-            return self._sightings
+        total_count = len(filtered_sightings)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_sightings = filtered_sightings[start_idx:end_idx]
+
+        return paginated_sightings, total_count
 
     def get_sighting_by_id(self, sighting_id: str) -> Optional[Sighting]:
         """Get a specific sighting by ID"""

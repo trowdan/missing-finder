@@ -64,9 +64,8 @@ class TestDashboardCreation:
         # Setup data service mock
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = Mock()
-        mock_data_service.get_cases.return_value = []
-        mock_data_service.get_sightings.return_value = []
-        mock_data_service.get_sightings.return_value = []
+        mock_data_service.get_cases.return_value = ([], 0)
+        mock_data_service.get_sightings.return_value = ([], 0)
 
         # Setup config mock
         mock_config = Mock()
@@ -88,7 +87,7 @@ class TestDashboardCreation:
 
         # Verify data service was called
         mock_data_service.get_kpi_data.assert_called_once()
-        mock_data_service.get_cases.assert_called_once()
+        mock_data_service.get_cases.assert_called_once_with(page=1, page_size=10)
 
     @patch("homeward.ui.pages.dashboard.create_kpi_grid")
     @patch("homeward.ui.pages.dashboard.create_cases_table")
@@ -109,8 +108,8 @@ class TestDashboardCreation:
         # Setup mocks
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = Mock()
-        mock_data_service.get_cases.return_value = []
-        mock_data_service.get_sightings.return_value = []
+        mock_data_service.get_cases.return_value = ([], 0)
+        mock_data_service.get_sightings.return_value = ([], 0)
         mock_config = Mock()
         mock_config.version = "1.0.0"
 
@@ -150,8 +149,8 @@ class TestDashboardCreation:
         # Setup mocks
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = Mock()
-        mock_data_service.get_cases.return_value = []
-        mock_data_service.get_sightings.return_value = []
+        mock_data_service.get_cases.return_value = ([], 0)
+        mock_data_service.get_sightings.return_value = ([], 0)
         mock_config = Mock()
         mock_config.version = "1.0.0"
 
@@ -178,6 +177,9 @@ class TestDashboardCreation:
         from homeward.ui.pages.dashboard import create_dashboard
 
         mock_data_service = Mock()
+        mock_data_service.get_kpi_data.return_value = Mock()
+        mock_data_service.get_cases.return_value = ([], 0)
+        mock_data_service.get_sightings.return_value = ([], 0)
         mock_config = Mock()
         mock_config.version = "1.0.0"
 
@@ -197,7 +199,7 @@ class TestDashboardCreation:
             create_dashboard(mock_data_service, mock_config)
 
             # Verify that all cases are requested (changed to support search functionality)
-            mock_data_service.get_cases.assert_called_once()
+            mock_data_service.get_cases.assert_called_once_with(page=1, page_size=10)
 
 
 class TestDashboardErrorHandling:
@@ -239,8 +241,8 @@ class TestDashboardErrorHandling:
         # Service returns None
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = None
-        mock_data_service.get_cases.return_value = None
-        mock_data_service.get_sightings.return_value = None
+        mock_data_service.get_cases.return_value = (None, 0)
+        mock_data_service.get_sightings.return_value = (None, 0)
 
         mock_config = Mock()
         mock_config.version = "1.0.0"
@@ -271,8 +273,8 @@ class TestDashboardIntegration:
 
         mock_data_service = Mock()
         mock_data_service.get_kpi_data.return_value = mock_kpi_data
-        mock_data_service.get_cases.return_value = mock_cases
-        mock_data_service.get_sightings.return_value = []
+        mock_data_service.get_cases.return_value = (mock_cases, len(mock_cases))
+        mock_data_service.get_sightings.return_value = ([], 0)
 
         mock_config = Mock()
         mock_config.version = "2.1.0"
@@ -296,7 +298,7 @@ class TestDashboardIntegration:
             # Verify complete workflow
             # 1. Data fetched
             mock_data_service.get_kpi_data.assert_called_once()
-            mock_data_service.get_cases.assert_called_once()
+            mock_data_service.get_cases.assert_called_once_with(page=1, page_size=10)
 
             # 2. UI components created
             mock_ui.dark_mode.assert_called_once()

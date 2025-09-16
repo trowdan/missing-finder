@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from homeward.models.case import KPIData, MissingPersonCase, Sighting
 
@@ -7,8 +8,8 @@ class DataService(ABC):
     """Abstract base class for data services"""
 
     @abstractmethod
-    def get_cases(self, status_filter: str = None) -> list[MissingPersonCase]:
-        """Get missing person cases, optionally filtered by status"""
+    def get_cases(self, status_filter: Optional[str] = None, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Get missing person cases with pagination. Returns (cases, total_count)"""
         pass
 
     @abstractmethod
@@ -32,8 +33,8 @@ class DataService(ABC):
         pass
 
     @abstractmethod
-    def get_sightings(self, status_filter: str = None) -> list[Sighting]:
-        """Get sighting reports, optionally filtered by status"""
+    def get_sightings(self, status_filter: Optional[str] = None, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Get sighting reports with pagination. Returns (sightings, total_count)"""
         pass
 
     @abstractmethod

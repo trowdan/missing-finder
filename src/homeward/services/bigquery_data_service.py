@@ -14,15 +14,177 @@ class BigQueryDataService(DataService):
         self.config = config
         self.client = bigquery.Client(project=config.bigquery_project_id)
 
-    def get_cases(self, status_filter: Optional[str] = None) -> list[MissingPersonCase]:
-        """Get missing person cases from BigQuery"""
-        # TODO: Implement BigQuery query
-        raise NotImplementedError("BigQuery implementation not yet available")
+    def get_cases(self, status_filter: Optional[str] = None, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Get missing person cases from BigQuery with pagination"""
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Count query - optimized to count only on id field
+        COUNT_QUERY = """
+        SELECT COUNT(id) as total_count
+        FROM `homeward.missing_persons`
+        WHERE (@status_filter IS NULL OR status = @status_filter)
+        """
+
+        # Data query with pagination
+        CASES_QUERY = """
+        SELECT
+            id, case_number, name, surname, date_of_birth, gender,
+            height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
+            last_seen_date, last_seen_time, last_seen_address, last_seen_city,
+            last_seen_country, last_seen_postal_code, last_seen_latitude, last_seen_longitude,
+            circumstances, priority, status, description, medical_conditions, additional_info,
+            photo_url, reporter_name, reporter_phone, reporter_email, relationship,
+            created_date, updated_date, ml_summary
+        FROM `homeward.missing_persons`
+        WHERE (@status_filter IS NULL OR status = @status_filter)
+        ORDER BY created_date DESC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        # Execute count query
+        count_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("status_filter", "STRING", status_filter)
+            ]
+        )
+        count_job = self.client.query(COUNT_QUERY, job_config=count_job_config)
+        total_count = list(count_job.result())[0].total_count
+
+        # Execute data query
+        data_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("status_filter", "STRING", status_filter),
+                bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                bigquery.ScalarQueryParameter("offset", "INT64", offset)
+            ]
+        )
+        data_job = self.client.query(CASES_QUERY, job_config=data_job_config)
+
+        # Convert results to MissingPersonCase objects (using existing pattern from get_case_by_id)
+        cases = []
+        for row in data_job.result():
+            # Combine date and time for last_seen_date
+            last_seen_date = row.last_seen_date
+            last_seen_time = row.last_seen_time
+
+            if last_seen_date and last_seen_time:
+                from datetime import datetime, time
+                if isinstance(last_seen_time, time):
+                    last_seen_datetime = datetime.combine(last_seen_date, last_seen_time)
+                else:
+                    last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time())
+            else:
+                last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time()) if last_seen_date else datetime.now()
+
+            # Create Location object
+            from homeward.models.case import Location, CaseStatus, CasePriority
+            location = Location(
+                address=row.last_seen_address or "",
+                city=row.last_seen_city or "",
+                country=row.last_seen_country or "",
+                postal_code=row.last_seen_postal_code,
+                latitude=row.last_seen_latitude,
+                longitude=row.last_seen_longitude
+            )
+
+            # Parse enum values
+            status = CaseStatus.ACTIVE
+            try:
+                status = CaseStatus(row.status)
+            except ValueError:
+                pass
+
+            priority = CasePriority.MEDIUM
+            try:
+                priority = CasePriority(row.priority)
+            except ValueError:
+                pass
+
+            # Convert date_of_birth from date to datetime
+            from datetime import datetime
+            date_of_birth = row.date_of_birth
+            if date_of_birth and not isinstance(date_of_birth, datetime):
+                date_of_birth = datetime.combine(date_of_birth, datetime.min.time())
+
+            # Create MissingPersonCase object
+            case = MissingPersonCase(
+                id=row.id,
+                name=row.name or "",
+                surname=row.surname or "",
+                date_of_birth=date_of_birth or datetime.now(),
+                gender=row.gender or "",
+                last_seen_date=last_seen_datetime,
+                last_seen_location=location,
+                status=status,
+                circumstances=row.circumstances or "",
+                reporter_name=row.reporter_name or "",
+                reporter_phone=row.reporter_phone or "",
+                relationship=row.relationship or "",
+                case_number=row.case_number,
+                height=row.height,
+                weight=row.weight,
+                hair_color=row.hair_color,
+                eye_color=row.eye_color,
+                distinguishing_marks=row.distinguishing_marks,
+                clothing_description=row.clothing_description,
+                medical_conditions=row.medical_conditions,
+                additional_info=row.additional_info,
+                description=row.description,
+                photo_url=row.photo_url,
+                reporter_email=row.reporter_email,
+                created_date=row.created_date or datetime.now(),
+                priority=priority,
+                ml_summary=row.ml_summary,
+            )
+            cases.append(case)
+
+        return cases, total_count
 
     def get_kpi_data(self) -> KPIData:
         """Get KPI dashboard data from BigQuery"""
-        # TODO: Implement BigQuery aggregation queries
-        raise NotImplementedError("BigQuery implementation not yet available")
+
+        KPI_QUERY = """
+        WITH case_stats AS (
+          SELECT
+            COUNT(id) as total_cases,
+            COUNTIF(status = 'Active') as active_cases,
+            COUNTIF(status = 'Resolved') as resolved_cases,
+            AVG(CASE
+              WHEN status = 'Resolved'
+              THEN DATE_DIFF(updated_date, created_date, DAY)
+              END) as avg_resolution_days,
+            SAFE_DIVIDE(COUNTIF(status = 'Resolved'), COUNT(id)) * 100 as success_rate
+          FROM `homeward.missing_persons`
+        ),
+        sighting_stats AS (
+          SELECT COUNT(id) as sightings_today
+          FROM `homeward.sightings`
+          WHERE DATE(created_date) = CURRENT_DATE()
+        )
+        SELECT
+          c.total_cases,
+          c.active_cases,
+          c.resolved_cases,
+          s.sightings_today,
+          c.success_rate,
+          c.avg_resolution_days
+        FROM case_stats c
+        CROSS JOIN sighting_stats s
+        """
+
+        query_job = self.client.query(KPI_QUERY)
+        row = list(query_job.result())[0]
+
+        return KPIData(
+            total_cases=row.total_cases or 0,
+            active_cases=row.active_cases or 0,
+            resolved_cases=row.resolved_cases or 0,
+            sightings_today=row.sightings_today or 0,
+            success_rate=row.success_rate or 0.0,
+            avg_resolution_days=row.avg_resolution_days or 0.0
+        )
 
     def get_case_by_id(self, case_id: str) -> Optional[MissingPersonCase]:
         """Get a specific case by ID from BigQuery"""
@@ -525,10 +687,145 @@ class BigQueryDataService(DataService):
             print(f"Error updating case {case.id}: {str(e)}")
             return False
 
-    def get_sightings(self, status_filter: Optional[str] = None) -> list[Sighting]:
-        """Get sighting reports from BigQuery"""
-        # TODO: Implement BigQuery query
-        raise NotImplementedError("BigQuery implementation not yet available")
+    def get_sightings(self, status_filter: Optional[str] = None, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Get sighting reports from BigQuery with pagination"""
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Count query - optimized to count only on id field
+        COUNT_QUERY = """
+        SELECT COUNT(id) as total_count
+        FROM `homeward.sightings`
+        WHERE (@status_filter IS NULL OR status = @status_filter)
+        """
+
+        # Data query with pagination
+        SIGHTINGS_QUERY = """
+        SELECT
+            id, sighting_number, sighted_date, sighted_time, sighted_address, sighted_city,
+            sighted_country, sighted_postal_code, sighted_latitude, sighted_longitude,
+            apparent_gender, apparent_age_range, height_estimate, weight_estimate,
+            hair_color, eye_color, clothing_description, distinguishing_features,
+            description, circumstances, confidence_level, photo_url, video_url,
+            source_type, witness_name, witness_phone, witness_email,
+            video_analytics_result_id, status, priority, verified,
+            created_date, updated_date, created_by, notes, ml_summary
+        FROM `homeward.sightings`
+        WHERE (@status_filter IS NULL OR status = @status_filter)
+        ORDER BY created_date DESC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        # Execute count query
+        count_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("status_filter", "STRING", status_filter)
+            ]
+        )
+        count_job = self.client.query(COUNT_QUERY, job_config=count_job_config)
+        total_count = list(count_job.result())[0].total_count
+
+        # Execute data query
+        data_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("status_filter", "STRING", status_filter),
+                bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                bigquery.ScalarQueryParameter("offset", "INT64", offset)
+            ]
+        )
+        data_job = self.client.query(SIGHTINGS_QUERY, job_config=data_job_config)
+
+        # Convert results to Sighting objects (using existing pattern from get_sighting_by_id)
+        sightings = []
+        for row in data_job.result():
+            # Combine date and time for sighted_date
+            sighted_date = row.sighted_date
+            sighted_time = row.sighted_time
+
+            if sighted_date and sighted_time:
+                from datetime import datetime, time
+                if isinstance(sighted_time, time):
+                    sighted_datetime = datetime.combine(sighted_date, sighted_time)
+                else:
+                    sighted_datetime = datetime.combine(sighted_date, datetime.min.time())
+            else:
+                sighted_datetime = datetime.combine(sighted_date, datetime.min.time()) if sighted_date else datetime.now()
+
+            # Create Location object
+            from homeward.models.case import Location, SightingStatus, SightingPriority, SightingConfidenceLevel, SightingSourceType
+            location = Location(
+                address=row.sighted_address or "",
+                city=row.sighted_city or "",
+                country=row.sighted_country or "",
+                postal_code=row.sighted_postal_code,
+                latitude=row.sighted_latitude,
+                longitude=row.sighted_longitude
+            )
+
+            # Map enum values
+            status_map = {
+                "New": SightingStatus.NEW,
+                "Under_Review": SightingStatus.UNDER_REVIEW,
+                "Verified": SightingStatus.VERIFIED,
+                "False_Positive": SightingStatus.FALSE_POSITIVE,
+                "Archived": SightingStatus.ARCHIVED,
+            }
+
+            priority_map = {
+                "High": SightingPriority.HIGH,
+                "Medium": SightingPriority.MEDIUM,
+                "Low": SightingPriority.LOW,
+            }
+
+            confidence_map = {
+                "High": SightingConfidenceLevel.HIGH,
+                "Medium": SightingConfidenceLevel.MEDIUM,
+                "Low": SightingConfidenceLevel.LOW,
+            }
+
+            source_type_map = {
+                "Witness": SightingSourceType.WITNESS,
+                "Manual_Entry": SightingSourceType.MANUAL_ENTRY,
+                "Other": SightingSourceType.OTHER,
+            }
+
+            # Create Sighting object
+            sighting = Sighting(
+                id=row.id,
+                sighting_number=row.sighting_number,
+                sighted_date=sighted_datetime,
+                sighted_location=location,
+                description=row.description or "",
+                confidence_level=confidence_map.get(row.confidence_level, SightingConfidenceLevel.MEDIUM),
+                source_type=source_type_map.get(row.source_type, SightingSourceType.OTHER),
+                apparent_gender=row.apparent_gender,
+                apparent_age_range=row.apparent_age_range,
+                height_estimate=row.height_estimate,
+                weight_estimate=row.weight_estimate,
+                hair_color=row.hair_color,
+                eye_color=row.eye_color,
+                clothing_description=row.clothing_description,
+                distinguishing_features=row.distinguishing_features,
+                circumstances=row.circumstances,
+                photo_url=row.photo_url,
+                video_url=row.video_url,
+                witness_name=row.witness_name,
+                witness_phone=row.witness_phone,
+                witness_email=row.witness_email,
+                video_analytics_result_id=row.video_analytics_result_id,
+                status=status_map.get(row.status, SightingStatus.NEW),
+                priority=priority_map.get(row.priority, SightingPriority.MEDIUM),
+                verified=row.verified or False,
+                created_date=row.created_date or datetime.now(),
+                updated_date=row.updated_date,
+                created_by=row.created_by,
+                notes=row.notes,
+                ml_summary=row.ml_summary
+            )
+            sightings.append(sighting)
+
+        return sightings, total_count
 
     def get_sighting_by_id(self, sighting_id: str) -> Optional[Sighting]:
         """Get a specific sighting by ID from BigQuery"""

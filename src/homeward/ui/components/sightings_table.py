@@ -21,44 +21,44 @@ def create_sighting_row(
         .on("click", on_click if on_click else lambda: None)
     ):
         ui.label(sighting.id).classes("font-mono text-gray-300 text-sm")
-        ui.label(sighting.reporter_name).classes("text-white text-sm")
+        ui.label(sighting.witness_name or "Unknown").classes("text-white text-sm")
 
         # Gender column
-        ui.label(sighting.individual_gender).classes(
+        ui.label(sighting.apparent_gender or "Unknown").classes(
             "text-gray-300 text-sm text-center"
         )
 
         # Age column
-        ui.label(str(sighting.individual_age or "?")).classes(
+        ui.label(str(sighting.apparent_age_range or "?")).classes(
             "text-gray-300 text-sm text-center"
         )
 
         ui.label(
-            f"{sighting.sighting_location.address}, {sighting.sighting_location.city}"
+            f"{sighting.sighted_location.address}, {sighting.sighted_location.city}"
         ).classes("text-gray-300 text-sm truncate")
-        ui.label(sighting.sighting_date.strftime("%d/%m/%Y %H:%M")).classes(
+        ui.label(sighting.sighted_date.strftime("%d/%m/%Y %H:%M")).classes(
             "text-gray-400 text-sm"
         )
 
         # Confidence badge - centered
         with ui.element("div").classes("flex justify-center"):
             confidence_color = {
-                "Very High - I'm certain it was them": "bg-green-500",
-                "High - Very likely it was them": "bg-yellow-500",
-                "Medium - Possibly them": "bg-orange-500",
-                "Low - Uncertain but worth reporting": "bg-red-500",
-            }.get(sighting.confidence.value, "bg-gray-500")
-            confidence_short = sighting.confidence.value.split(" - ")[0]
-            ui.label(confidence_short).classes(
+                "High": "bg-green-500",
+                "Medium": "bg-yellow-500",
+                "Low": "bg-red-500",
+            }.get(sighting.confidence_level.value, "bg-gray-500")
+            ui.label(sighting.confidence_level.value).classes(
                 f"px-2 py-1 rounded-full text-white text-xs {confidence_color}"
             )
 
         # Status badge - centered
         with ui.element("div").classes("flex justify-center"):
             status_color = {
-                "Unverified": "bg-yellow-500",
+                "New": "bg-blue-500",
+                "Under_Review": "bg-yellow-500",
                 "Verified": "bg-green-500",
-                "False Positive": "bg-red-500",
+                "False_Positive": "bg-red-500",
+                "Archived": "bg-gray-500",
             }.get(sighting.status.value, "bg-gray-500")
             ui.label(sighting.status.value).classes(
                 f"px-2 py-1 rounded-full text-white text-xs {status_color}"
