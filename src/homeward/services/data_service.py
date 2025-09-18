@@ -81,3 +81,8 @@ class DataService(ABC):
     def find_similar_missing_persons_for_sighting(self, sighting_id: str, search_radius_meters: float = 10000.0, delta_days: int = 30, top_k: int = 5) -> list[dict]:
         """Find missing persons similar to a sighting using vector search. Returns list of similarity results."""
         pass
+
+    @abstractmethod
+    def get_case_sightings(self, case_id: str) -> list[dict]:
+        """Get all sightings linked to a specific case from the case_sightings table. Returns list of sighting link data."""
+        pass

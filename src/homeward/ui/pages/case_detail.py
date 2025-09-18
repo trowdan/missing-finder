@@ -347,8 +347,8 @@ def create_case_detail_page(
                             "ml-auto bg-transparent text-purple-300 px-4 py-2 rounded-full border border-purple-400/60 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide"
                         )
 
-                    # Sightings table placeholder
-                    create_sightings_table()
+                    # Sightings table - now uses real data from case_sightings table
+                    create_sightings_table(case.id, data_service)
 
                 # AI-Powered Video Analysis Section
                 with ui.card().classes(
@@ -455,88 +455,117 @@ def create_info_field(label: str, value: str):
         ui.label(value).classes("text-gray-100 font-light")
 
 
-def create_sightings_table():
-    """Create the sightings table"""
-    # Sample sightings data
-    sightings = [
-        {
-            "date": "2023-12-02 10:30",
-            "location": "Union Station",
-            "confidence": "85%",
-            "status": "Verified",
-        },
-        {
-            "date": "2023-12-02 14:15",
-            "location": "CN Tower Area",
-            "confidence": "72%",
-            "status": "Pending",
-        },
-        {
-            "date": "2023-12-03 09:45",
-            "location": "Harbourfront",
-            "confidence": "91%",
-            "status": "Verified",
-        },
-    ]
+def create_sightings_table(case_id: str, data_service: DataService):
+    """Create the sightings table using real data from case_sightings table"""
+    # Get case sightings from the database
+    case_sightings = data_service.get_case_sightings(case_id)
 
-    if not sightings:
+    if not case_sightings:
         with ui.column().classes(
             "w-full items-center justify-center py-8 bg-gray-800/30 rounded-lg border border-gray-700/50"
         ):
             ui.icon("search_off", size="2rem").classes("text-gray-500 mb-2")
-            ui.label("No sightings found for this case").classes("text-gray-400")
+            ui.label("No sightings linked to this case yet").classes("text-gray-400")
+            ui.label("Use 'Link Sighting' button to connect existing sightings").classes("text-gray-500 text-xs mt-2")
     else:
         with ui.element("div").classes(
             "w-full bg-gray-800/30 rounded-lg border border-gray-700/50 overflow-hidden"
         ):
-            # Table header
+            # Table header - updated with more relevant columns
             with ui.element("div").classes(
-                "grid grid-cols-5 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-700/50"
+                "grid grid-cols-8 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-700/50"
             ):
                 ui.label("Date & Time").classes("text-gray-300 font-medium text-sm")
                 ui.label("Location").classes("text-gray-300 font-medium text-sm")
-                ui.label("Confidence").classes(
-                    "text-gray-300 font-medium text-sm text-center"
-                )
-                ui.label("Status").classes(
-                    "text-gray-300 font-medium text-sm text-center"
-                )
-                ui.label("Actions").classes(
-                    "text-gray-300 font-medium text-sm text-center"
-                )
+                ui.label("Distance (km)").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Match Confidence").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Match Type").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Status").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Investigated").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Actions").classes("text-gray-300 font-medium text-sm text-center")
 
             # Table rows
-            for i, sighting in enumerate(sightings):
-                is_last = i == len(sightings) - 1
-                row_classes = "grid grid-cols-5 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center"
+            for i, sighting in enumerate(case_sightings):
+                is_last = i == len(case_sightings) - 1
+                row_classes = "grid grid-cols-8 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center"
                 if not is_last:
                     row_classes += " border-b border-gray-700/30"
 
                 with ui.element("div").classes(row_classes):
-                    ui.label(sighting["date"]).classes("text-gray-100 text-sm")
-                    ui.label(sighting["location"]).classes("text-gray-100 text-sm")
-                    ui.label(sighting["confidence"]).classes(
-                        "text-gray-100 text-sm text-center"
-                    )
+                    # Date & Time
+                    if hasattr(sighting["sighted_date"], 'strftime'):
+                        date_str = sighting["sighted_date"].strftime("%m/%d %H:%M")
+                    else:
+                        date_str = str(sighting["sighted_date"])[:16] if sighting["sighted_date"] else "N/A"
+                    ui.label(date_str).classes("text-gray-100 text-sm")
+
+                    # Location
+                    location = sighting.get("sighted_city", "Unknown")
+                    if sighting.get("sighted_address"):
+                        location = f"{location} ({sighting['sighted_address'][:20]}...)" if len(sighting['sighted_address']) > 20 else f"{location} ({sighting['sighted_address']})"
+                    ui.label(location).classes("text-gray-100 text-sm")
+
+                    # Distance
+                    with ui.element("div").classes("flex justify-center"):
+                        distance_km = sighting.get("distance_km")
+                        if distance_km is not None:
+                            distance_color = "text-green-400" if distance_km < 2 else "text-yellow-400" if distance_km < 5 else "text-orange-400"
+                            ui.label(f"{distance_km:.1f}").classes(f"text-sm {distance_color}")
+                        else:
+                            ui.label("N/A").classes("text-gray-400 text-sm")
+
+                    # Match Confidence
+                    with ui.element("div").classes("flex justify-center"):
+                        confidence = sighting.get("match_confidence", 0)
+                        confidence_pct = f"{confidence:.0%}" if confidence else "N/A"
+                        confidence_color = "text-green-400" if confidence >= 0.8 else "text-yellow-400" if confidence >= 0.6 else "text-orange-400"
+                        ui.label(confidence_pct).classes(f"text-sm {confidence_color}")
+
+                    # Match Type
+                    with ui.element("div").classes("flex justify-center"):
+                        match_type = sighting.get("match_type", "Unknown")
+                        type_color = "text-purple-400" if match_type == "AI_Analysis" else "text-blue-400"
+                        ui.label(match_type).classes(f"text-xs {type_color}")
 
                     # Status badge - centered
                     with ui.element("div").classes("flex justify-center"):
-                        status_color = (
-                            "bg-green-500"
-                            if sighting["status"] == "Verified"
-                            else "bg-yellow-500"
-                        )
-                        ui.label(sighting["status"]).classes(
+                        status = sighting.get("status", "Unknown")
+                        if status == "Confirmed":
+                            status_color = "bg-green-500"
+                        elif status == "Under_Review":
+                            status_color = "bg-yellow-500"
+                        elif status == "Potential":
+                            status_color = "bg-blue-500"
+                        elif status == "Rejected":
+                            status_color = "bg-red-500"
+                        else:
+                            status_color = "bg-gray-500"
+                        ui.label(status).classes(
                             f"px-2 py-1 rounded-full text-xs text-white {status_color}"
                         )
 
-                    # Actions - centered
+                    # Investigated
                     with ui.element("div").classes("flex justify-center"):
+                        investigated = sighting.get("investigated", False)
+                        investigated_color = "text-green-400" if investigated else "text-gray-400"
+                        investigated_text = "Yes" if investigated else "No"
+                        ui.label(investigated_text).classes(f"text-xs {investigated_color}")
+
+                    # Actions - centered
+                    with ui.element("div").classes("flex justify-center gap-1"):
                         ui.button(
-                            "View", on_click=lambda s=sighting: handle_view_sighting(s)
+                            "View", on_click=lambda s=sighting: handle_view_case_sighting(s)
                         ).classes(
-                            "bg-transparent text-gray-300 px-3 py-1 rounded-full border border-gray-500/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-xs tracking-wide"
+                            "bg-transparent text-gray-300 px-2 py-1 rounded-full border border-gray-500/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-xs tracking-wide"
                         )
+
+                        # Show investigation button if not investigated
+                        if not sighting.get("investigated", False):
+                            ui.button(
+                                "Investigate", on_click=lambda s=sighting: handle_investigate_sighting(s)
+                            ).classes(
+                                "bg-transparent text-blue-300 px-2 py-1 rounded-full border border-blue-500/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide"
+                            )
 
 
 def create_video_analysis_section():
@@ -1138,6 +1167,19 @@ def handle_analyze_video(
 def handle_view_sighting(sighting: dict):
     """Handle viewing sighting details"""
     ui.notify(f"View sighting at {sighting['location']}", type="info")
+
+
+def handle_view_case_sighting(sighting: dict):
+    """Handle viewing case sighting details with all the linking information"""
+    sighting_id = sighting.get("sighting_id", "Unknown")
+    location = sighting.get("sighted_city", "Unknown location")
+    ui.notify(f"Viewing case sighting {sighting_id} at {location}", type="info")
+
+
+def handle_investigate_sighting(sighting: dict):
+    """Handle starting investigation of a case sighting"""
+    sighting_id = sighting.get("sighting_id", "Unknown")
+    ui.notify(f"Starting investigation of sighting {sighting_id}", type="info")
 
 
 def create_analysis_results_table(

@@ -1999,3 +1999,163 @@ class BigQueryDataService(DataService):
         except Exception as e:
             print(f"Error executing reverse similarity search: {str(e)}")
             return []
+
+    def get_case_sightings(self, case_id: str) -> list[dict]:
+        """Get all sightings linked to a specific case from the case_sightings table"""
+        CASE_SIGHTINGS_QUERY = """
+        SELECT
+            cs.id as link_id,
+            cs.missing_person_id,
+            cs.sighting_id,
+            cs.match_confidence,
+            cs.match_type,
+            cs.match_reason,
+            cs.status,
+            cs.confirmed,
+            cs.confirmed_by,
+            cs.confirmed_date,
+            cs.similarity_score,
+            cs.physical_match_score,
+            cs.temporal_match_score,
+            cs.geographical_match_score,
+            cs.investigated,
+            cs.investigation_notes,
+            cs.investigator_name,
+            cs.investigation_date,
+            cs.priority,
+            cs.requires_review,
+            cs.review_notes,
+            cs.created_date,
+            cs.updated_date,
+            cs.created_by,
+            cs.distance_km,
+            cs.time_difference_hours,
+            s.sighting_number,
+            s.sighted_date,
+            s.sighted_time,
+            s.sighted_address,
+            s.sighted_city,
+            s.sighted_country,
+            s.sighted_latitude,
+            s.sighted_longitude,
+            s.apparent_gender,
+            s.apparent_age_range,
+            s.height_estimate,
+            s.weight_estimate,
+            s.hair_color,
+            s.eye_color,
+            s.clothing_description,
+            s.distinguishing_features,
+            s.description as sighting_description,
+            s.circumstances as sighting_circumstances,
+            s.confidence_level,
+            s.photo_url,
+            s.video_url,
+            s.source_type,
+            s.witness_name,
+            s.witness_phone,
+            s.witness_email,
+            s.video_analytics_result_id,
+            s.status as sighting_status,
+            s.priority as sighting_priority,
+            s.verified,
+            s.notes as sighting_notes,
+            s.ml_summary as sighting_ml_summary
+        FROM `homeward.case_sightings` cs
+        JOIN `homeward.sightings` s ON cs.sighting_id = s.id
+        WHERE cs.missing_person_id = @case_id
+        ORDER BY cs.created_date DESC, cs.match_confidence DESC
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("case_id", "STRING", case_id)
+            ]
+        )
+
+        try:
+            query_job = self.client.query(CASE_SIGHTINGS_QUERY, job_config=job_config)
+            results = query_job.result()
+
+            case_sightings = []
+            for row in results:
+                # Combine date and time for sighted_date
+                sighted_date = row.sighted_date
+                sighted_time = row.sighted_time
+
+                if sighted_date and sighted_time:
+                    from datetime import datetime, time
+                    if isinstance(sighted_time, time):
+                        sighted_datetime = datetime.combine(sighted_date, sighted_time)
+                    else:
+                        sighted_datetime = datetime.combine(sighted_date, datetime.min.time())
+                else:
+                    sighted_datetime = datetime.combine(sighted_date, datetime.min.time()) if sighted_date else datetime.now()
+
+                case_sightings.append({
+                    # Case sighting link data
+                    "link_id": row.link_id,
+                    "missing_person_id": row.missing_person_id,
+                    "sighting_id": row.sighting_id,
+                    "match_confidence": float(row.match_confidence) if row.match_confidence else 0.0,
+                    "match_type": row.match_type,
+                    "match_reason": row.match_reason,
+                    "status": row.status,
+                    "confirmed": row.confirmed,
+                    "confirmed_by": row.confirmed_by,
+                    "confirmed_date": row.confirmed_date,
+                    "similarity_score": float(row.similarity_score) if row.similarity_score else None,
+                    "physical_match_score": float(row.physical_match_score) if row.physical_match_score else None,
+                    "temporal_match_score": float(row.temporal_match_score) if row.temporal_match_score else None,
+                    "geographical_match_score": float(row.geographical_match_score) if row.geographical_match_score else None,
+                    "investigated": row.investigated,
+                    "investigation_notes": row.investigation_notes,
+                    "investigator_name": row.investigator_name,
+                    "investigation_date": row.investigation_date,
+                    "priority": row.priority,
+                    "requires_review": row.requires_review,
+                    "review_notes": row.review_notes,
+                    "created_date": row.created_date,
+                    "updated_date": row.updated_date,
+                    "created_by": row.created_by,
+                    "distance_km": float(row.distance_km) if row.distance_km else None,
+                    "time_difference_hours": int(row.time_difference_hours) if row.time_difference_hours else None,
+
+                    # Sighting data
+                    "sighting_number": row.sighting_number,
+                    "sighted_date": sighted_datetime,
+                    "sighted_address": row.sighted_address,
+                    "sighted_city": row.sighted_city,
+                    "sighted_country": row.sighted_country,
+                    "sighted_latitude": row.sighted_latitude,
+                    "sighted_longitude": row.sighted_longitude,
+                    "apparent_gender": row.apparent_gender,
+                    "apparent_age_range": row.apparent_age_range,
+                    "height_estimate": row.height_estimate,
+                    "weight_estimate": row.weight_estimate,
+                    "hair_color": row.hair_color,
+                    "eye_color": row.eye_color,
+                    "clothing_description": row.clothing_description,
+                    "distinguishing_features": row.distinguishing_features,
+                    "sighting_description": row.sighting_description,
+                    "sighting_circumstances": row.sighting_circumstances,
+                    "confidence_level": row.confidence_level,
+                    "photo_url": row.photo_url,
+                    "video_url": row.video_url,
+                    "source_type": row.source_type,
+                    "witness_name": row.witness_name,
+                    "witness_phone": row.witness_phone,
+                    "witness_email": row.witness_email,
+                    "video_analytics_result_id": row.video_analytics_result_id,
+                    "sighting_status": row.sighting_status,
+                    "sighting_priority": row.sighting_priority,
+                    "verified": row.verified,
+                    "sighting_notes": row.sighting_notes,
+                    "sighting_ml_summary": row.sighting_ml_summary
+                })
+
+            return case_sightings
+
+        except Exception as e:
+            print(f"Error retrieving case sightings for case {case_id}: {str(e)}")
+            return []
