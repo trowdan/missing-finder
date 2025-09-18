@@ -1,4 +1,4 @@
-from datetime import datetime
+import uuid
 
 from nicegui import ui
 
@@ -647,7 +647,7 @@ def handle_form_submission(form_data: dict, data_service: DataService, config: A
         )
 
         # Generate unique sighting ID
-        sighting_id = f"sighting_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(str(form_data_obj)) % 10000:04d}"
+        sighting_id = str(uuid.uuid4())
 
         # Convert form data to sighting object using mapper
         sighting = SightingFormMapper.form_to_sighting(form_data_obj, sighting_id)
