@@ -132,16 +132,26 @@ def create_sighting_detail_page(
                                 "text-xl font-light text-white"
                             )
 
-                        # Check if sighting has a linked case (this field doesn't exist in current model, but we'll handle it)
-                        linked_case_id = getattr(sighting, 'linked_case_id', None)
-                        if linked_case_id:
+                        # Check if sighting has a linked case by querying the case_sightings table
+                        linked_case = data_service.get_linked_case_for_sighting(sighting.id)
+                        if linked_case:
                             with ui.column().classes("w-full space-y-4"):
-                                create_info_field("Case ID", linked_case_id)
+                                # Display case ID - prefer case_number if it exists and is not None, otherwise use case_id
+                                case_id_value = linked_case.get("case_number") or linked_case.get("case_id", "Unknown")
+                                create_info_field("Case ID", case_id_value)
+
+                                # Show match confidence
+                                match_confidence = linked_case.get("match_confidence")
+                                if match_confidence:
+                                    confidence_pct = f"{match_confidence:.0%}"
+                                    confidence_color = "text-green-400" if match_confidence >= 0.8 else "text-yellow-400" if match_confidence >= 0.6 else "text-orange-400"
+                                    ui.label("Match Confidence").classes("text-xs font-medium text-gray-400 uppercase tracking-wide")
+                                    ui.label(confidence_pct).classes(f"text-gray-100 font-light {confidence_color}")
 
                                 # View case button
                                 ui.button(
                                     "View Case Details",
-                                    on_click=lambda: handle_view_case(linked_case_id),
+                                    on_click=lambda: handle_view_case(linked_case.get("case_id")),
                                 ).classes(
                                     "w-full bg-transparent text-blue-300 px-4 py-3 rounded-lg border border-blue-400/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-sm tracking-wide mt-4"
                                 )
@@ -966,18 +976,37 @@ def handle_link_sighting_to_case(case_result: dict, sighting_id: str, data_servi
     """Handle linking the sighting to a specific case from similarity search"""
     try:
         case_id = case_result.get('id') or case_result.get('case_number')
-        # In a real implementation, this would update the database to link the sighting to the case
-        ui.notify(
-            f"✅ Sighting {sighting_id} successfully linked to case {case_id}",
-            type="positive",
+        if not case_id:
+            ui.notify("❌ Case ID not found", type="negative")
+            return
+
+        # Get match confidence from similarity result
+        similarity_distance = case_result.get('similarity_distance', 0.5)
+        match_confidence = 1.0 - similarity_distance  # Convert distance to confidence
+
+        # Determine match reason from similarity result
+        match_reason = case_result.get('ml_summary', 'AI similarity match')
+
+        # Link the sighting to the case using the data service
+        success = data_service.link_sighting_to_case(
+            sighting_id=sighting_id,
+            case_id=case_id,
+            match_confidence=match_confidence,
+            match_type="AI_Analysis",
+            match_reason=match_reason
         )
 
-        # Close the modal after successful linking
-        dialog.close()
-
-        # Optionally, refresh the sighting details page to show the newly linked case
-        # This would require reloading the sighting data and updating the UI
-        ui.timer(1.5, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+        if success:
+            ui.notify(
+                f"✅ Sighting {sighting_id} successfully linked to case {case_id}",
+                type="positive",
+            )
+            # Close the modal after successful linking
+            dialog.close()
+            # Refresh the sighting details page to show the newly linked case
+            ui.timer(1.5, lambda: ui.navigate.to(f"/sighting/{sighting_id}"), once=True)
+        else:
+            ui.notify("❌ Failed to link sighting to case", type="negative")
 
     except Exception as e:
         ui.notify(f"❌ Failed to link sighting: {str(e)}", type="negative")

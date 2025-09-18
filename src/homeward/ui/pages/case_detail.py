@@ -935,17 +935,37 @@ def handle_link_similarity_to_case(similarity_result: dict, case_id: str, data_s
     """Handle linking a similarity search result to the case"""
     try:
         sighting_id = similarity_result.get('sighting_id') or similarity_result.get('sighting_number')
-        # In a real implementation, this would update the database to link the sighting to the case
-        ui.notify(
-            f"✅ Sighting {sighting_id} successfully linked to case {case_id}",
-            type="positive",
+        if not sighting_id:
+            ui.notify("❌ Sighting ID not found", type="negative")
+            return
+
+        # Get match confidence from similarity result
+        similarity_distance = similarity_result.get('similarity_distance', 0.5)
+        match_confidence = 1.0 - similarity_distance  # Convert distance to confidence
+
+        # Determine match reason from similarity result
+        match_reason = similarity_result.get('ml_summary', 'AI similarity match')
+
+        # Link the sighting to the case using the data service
+        success = data_service.link_sighting_to_case(
+            sighting_id=sighting_id,
+            case_id=case_id,
+            match_confidence=match_confidence,
+            match_type="AI_Analysis",
+            match_reason=match_reason
         )
 
-        # Close the modal after successful linking
-        dialog.close()
-
-        # Optionally, refresh the sightings table to show the newly linked sighting
-        # This would require reloading the case data and updating the UI
+        if success:
+            ui.notify(
+                f"✅ Sighting {sighting_id} successfully linked to case {case_id}",
+                type="positive",
+            )
+            # Close the modal after successful linking
+            dialog.close()
+            # Refresh the page to show the newly linked sighting
+            ui.timer(1.0, lambda: ui.navigate.reload(), once=True)
+        else:
+            ui.notify("❌ Failed to link sighting to case", type="negative")
 
     except Exception as e:
         ui.notify(f"❌ Failed to link sighting: {str(e)}", type="negative")
@@ -1101,17 +1121,27 @@ def handle_link_sighting_to_case_modal(
 ):
     """Handle linking a specific sighting to the case from modal"""
     try:
-        # In a real implementation, this would update the database to link the sighting to the case
-        ui.notify(
-            f"✅ Sighting {sighting_id} successfully linked to case {case_id}",
-            type="positive",
+        # Link the sighting to the case using the data service
+        # For manual linking, use medium confidence and manual match type
+        success = data_service.link_sighting_to_case(
+            sighting_id=sighting_id,
+            case_id=case_id,
+            match_confidence=0.7,  # Medium confidence for manual linking
+            match_type="Manual",
+            match_reason="Manual selection by user"
         )
 
-        # Close the modal after successful linking
-        dialog.close()
-
-        # Optionally, refresh the sightings table to show the newly linked sighting
-        # This would require reloading the case data and updating the UI
+        if success:
+            ui.notify(
+                f"✅ Sighting {sighting_id} successfully linked to case {case_id}",
+                type="positive",
+            )
+            # Close the modal after successful linking
+            dialog.close()
+            # Refresh the page to show the newly linked sighting
+            ui.timer(1.0, lambda: ui.navigate.reload(), once=True)
+        else:
+            ui.notify("❌ Failed to link sighting to case", type="negative")
 
     except Exception as e:
         ui.notify(f"❌ Failed to link sighting: {str(e)}", type="negative")

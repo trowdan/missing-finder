@@ -86,3 +86,13 @@ class DataService(ABC):
     def get_case_sightings(self, case_id: str) -> list[dict]:
         """Get all sightings linked to a specific case from the case_sightings table. Returns list of sighting link data."""
         pass
+
+    @abstractmethod
+    def link_sighting_to_case(self, sighting_id: str, case_id: str, match_confidence: float = 0.5, match_type: str = "Manual", match_reason: str = None) -> bool:
+        """Link a sighting to a missing person case. Returns success status."""
+        pass
+
+    @abstractmethod
+    def get_linked_case_for_sighting(self, sighting_id: str) -> dict:
+        """Get the linked case information for a sighting. Returns case data dict or None if not linked."""
+        pass

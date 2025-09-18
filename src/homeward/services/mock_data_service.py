@@ -480,3 +480,93 @@ class MockDataService(DataService):
                 "sighting_ml_summary": "Confirmed sighting of missing person at Harbourfront Centre with positive identification"
             }
         ]
+
+    def link_sighting_to_case(self, sighting_id: str, case_id: str, match_confidence: float = 0.5, match_type: str = "Manual", match_reason: str = None) -> bool:
+        """Mock implementation - simulates linking a sighting to a case"""
+        try:
+            # In a real implementation, this would insert into the case_sightings table
+            # For mock purposes, we'll just validate the inputs and return success
+
+            # Basic validation
+            if not sighting_id or not case_id:
+                return False
+
+            # Check if sighting exists
+            sighting_exists = any(s.id == sighting_id for s in self._sightings)
+            if not sighting_exists:
+                return False
+
+            # Check if case exists
+            case_exists = any(c.id == case_id for c in self._cases)
+            if not case_exists:
+                return False
+
+            # Validate confidence score
+            if not (0.0 <= match_confidence <= 1.0):
+                return False
+
+            # For mock purposes, always return success after validation
+            print(f"Mock: Successfully linked sighting {sighting_id} to case {case_id} with confidence {match_confidence}")
+            return True
+
+        except Exception as e:
+            print(f"Mock: Error linking sighting to case: {str(e)}")
+            return False
+
+    def get_linked_case_for_sighting(self, sighting_id: str) -> dict:
+        """Mock implementation - returns linked case data for a sighting if it exists"""
+        try:
+            # Check if sighting exists
+            sighting_exists = any(s.id == sighting_id for s in self._sightings)
+            if not sighting_exists:
+                return None
+
+            # For demo purposes, let's link the first sighting to a case
+            # Get the first sighting ID dynamically
+            if len(self._sightings) > 0:
+                first_sighting_id = self._sightings[0].id
+                second_sighting_id = self._sightings[1].id if len(self._sightings) > 1 else None
+
+                # Create dynamic mock links based on actual sighting IDs
+                mock_links = {}
+
+                # Link first sighting to MP001
+                mock_links[first_sighting_id] = {
+                    "case_id": "MP001",
+                    "case_number": "MP001-2024",
+                    "case_name": "John",
+                    "case_surname": "Smith",
+                    "status": "Active",
+                    "priority": "High",
+                    "match_confidence": 0.85,
+                    "match_type": "AI_Analysis",
+                    "confirmed": False,
+                    "link_status": "Potential",
+                    "created_date": "2024-01-02",
+                    "last_seen_city": "Toronto"
+                }
+
+                # Link second sighting to MP002 if it exists
+                if second_sighting_id:
+                    mock_links[second_sighting_id] = {
+                        "case_id": "MP002",
+                        "case_number": "MP002-2024",
+                        "case_name": "Jane",
+                        "case_surname": "Wilson",
+                        "status": "Active",
+                        "priority": "Medium",
+                        "match_confidence": 0.74,
+                        "match_type": "Manual",
+                        "confirmed": True,
+                        "link_status": "Confirmed",
+                        "created_date": "2024-01-05",
+                        "last_seen_city": "Vancouver"
+                    }
+
+                return mock_links.get(sighting_id, None)
+
+            return None
+
+        except Exception as e:
+            print(f"Mock: Error getting linked case for sighting: {str(e)}")
+            return None

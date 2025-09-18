@@ -2159,3 +2159,136 @@ class BigQueryDataService(DataService):
         except Exception as e:
             print(f"Error retrieving case sightings for case {case_id}: {str(e)}")
             return []
+
+    def link_sighting_to_case(self, sighting_id: str, case_id: str, match_confidence: float = 0.5, match_type: str = "Manual", match_reason: str = None) -> bool:
+        """Link a sighting to a missing person case by inserting into case_sightings table"""
+        try:
+            from datetime import datetime
+            import uuid
+
+            # Generate unique ID for the link
+            link_id = str(uuid.uuid4())
+            current_time = datetime.now()
+
+            # Determine priority based on confidence
+            priority = "High" if match_confidence >= 0.8 else "Medium" if match_confidence >= 0.6 else "Low"
+
+            # Determine status based on match type and confidence
+            if match_type == "AI_Analysis":
+                status = "Potential" if match_confidence < 0.9 else "Under_Review"
+                requires_review = True
+            else:
+                status = "Under_Review"
+                requires_review = False
+
+            # Prepare the INSERT query
+            INSERT_LINK_QUERY = """
+            INSERT INTO `homeward.case_sightings` (
+                id, missing_person_id, sighting_id, match_confidence, match_type, match_reason,
+                status, confirmed, confirmed_by, confirmed_date, similarity_score,
+                investigated, investigation_notes, investigator_name, investigation_date,
+                priority, requires_review, review_notes, created_date, updated_date, created_by
+            ) VALUES (
+                @link_id, @missing_person_id, @sighting_id, @match_confidence, @match_type, @match_reason,
+                @status, @confirmed, @confirmed_by, @confirmed_date, @similarity_score,
+                @investigated, @investigation_notes, @investigator_name, @investigation_date,
+                @priority, @requires_review, @review_notes, @created_date, @updated_date, @created_by
+            )
+            """
+
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("link_id", "STRING", link_id),
+                    bigquery.ScalarQueryParameter("missing_person_id", "STRING", case_id),
+                    bigquery.ScalarQueryParameter("sighting_id", "STRING", sighting_id),
+                    bigquery.ScalarQueryParameter("match_confidence", "FLOAT64", match_confidence),
+                    bigquery.ScalarQueryParameter("match_type", "STRING", match_type),
+                    bigquery.ScalarQueryParameter("match_reason", "STRING", match_reason),
+                    bigquery.ScalarQueryParameter("status", "STRING", status),
+                    bigquery.ScalarQueryParameter("confirmed", "BOOL", False),
+                    bigquery.ScalarQueryParameter("confirmed_by", "STRING", None),
+                    bigquery.ScalarQueryParameter("confirmed_date", "TIMESTAMP", None),
+                    bigquery.ScalarQueryParameter("similarity_score", "FLOAT64", match_confidence),
+                    bigquery.ScalarQueryParameter("investigated", "BOOL", False),
+                    bigquery.ScalarQueryParameter("investigation_notes", "STRING", None),
+                    bigquery.ScalarQueryParameter("investigator_name", "STRING", None),
+                    bigquery.ScalarQueryParameter("investigation_date", "TIMESTAMP", None),
+                    bigquery.ScalarQueryParameter("priority", "STRING", priority),
+                    bigquery.ScalarQueryParameter("requires_review", "BOOL", requires_review),
+                    bigquery.ScalarQueryParameter("review_notes", "STRING", None),
+                    bigquery.ScalarQueryParameter("created_date", "TIMESTAMP", current_time),
+                    bigquery.ScalarQueryParameter("updated_date", "TIMESTAMP", current_time),
+                    bigquery.ScalarQueryParameter("created_by", "STRING", "System_User")
+                ]
+            )
+
+            # Execute the insert query
+            query_job = self.client.query(INSERT_LINK_QUERY, job_config=job_config)
+            query_job.result()  # Wait for the job to complete
+
+            print(f"Successfully linked sighting {sighting_id} to case {case_id} with confidence {match_confidence}")
+            return True
+
+        except Exception as e:
+            print(f"Error linking sighting to case: {str(e)}")
+            return False
+
+    def get_linked_case_for_sighting(self, sighting_id: str) -> dict:
+        """Get the linked case information for a sighting by querying case_sightings table"""
+        try:
+            # Query to get the linked case for a sighting
+            LINKED_CASE_QUERY = """
+            SELECT
+                cs.missing_person_id as case_id,
+                mp.case_number,
+                mp.name as case_name,
+                mp.surname as case_surname,
+                mp.status,
+                mp.priority,
+                mp.last_seen_city,
+                mp.created_date,
+                cs.match_confidence,
+                cs.match_type,
+                cs.confirmed,
+                cs.status as link_status,
+                cs.created_date as link_created_date
+            FROM `homeward.case_sightings` cs
+            JOIN `homeward.missing_persons` mp ON cs.missing_person_id = mp.id
+            WHERE cs.sighting_id = @sighting_id
+            AND cs.status IN ('Potential', 'Under_Review', 'Confirmed')
+            ORDER BY cs.created_date DESC
+            LIMIT 1
+            """
+
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("sighting_id", "STRING", sighting_id)
+                ]
+            )
+
+            query_job = self.client.query(LINKED_CASE_QUERY, job_config=job_config)
+            results = query_job.result()
+
+            for row in results:
+                return {
+                    "case_id": row.case_id,
+                    "case_number": row.case_number,
+                    "case_name": row.case_name,
+                    "case_surname": row.case_surname,
+                    "status": row.status,
+                    "priority": row.priority,
+                    "last_seen_city": row.last_seen_city,
+                    "created_date": row.created_date.strftime("%Y-%m-%d") if row.created_date else None,
+                    "match_confidence": row.match_confidence,
+                    "match_type": row.match_type,
+                    "confirmed": row.confirmed,
+                    "link_status": row.link_status,
+                    "link_created_date": row.link_created_date.strftime("%Y-%m-%d") if row.link_created_date else None
+                }
+
+            # No confirmed link found
+            return None
+
+        except Exception as e:
+            print(f"Error getting linked case for sighting {sighting_id}: {str(e)}")
+            return None
