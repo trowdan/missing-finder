@@ -413,8 +413,8 @@ def perform_dynamic_search(
                 data_source, latitude, longitude, radius
             )
         elif search_type == "semantic":
-            description = semantic_fields.description_input.value
-            results = perform_semantic_search_dynamic(data_source, description)
+            # Semantic search now handled by BigQuery - fallback to data_source for this legacy function
+            results = data_source
         else:
             try:
                 results = sorted(
@@ -577,38 +577,6 @@ def perform_geographic_search_with_address(
             return data_service.get_sightings(page=1, page_size=10)
 
 
-def perform_semantic_search_dynamic(cases: list, description: str) -> list:
-    """Perform AI-powered semantic search on case descriptions"""
-    if not description:
-        ui.notify("Please enter a description for semantic search", type="warning")
-        return cases
-
-    description = description.lower().strip()
-    results = []
-    keywords = description.split()
-
-    for case in cases:
-        case_description = case.description.lower()
-        match_score = 0
-
-        # Enhanced keyword matching with weights
-        for keyword in keywords:
-            if len(keyword) > 2:
-                if keyword in case_description:
-                    # Exact word match gets higher score
-                    if f" {keyword} " in f" {case_description} ":
-                        match_score += 2
-                    else:
-                        match_score += 1
-
-        # Include cases with reasonable match scores
-        if match_score > 0:
-            results.append((case, match_score))
-
-    # Sort by match score descending
-    results.sort(key=lambda x: x[1], reverse=True)
-    return [case for case, score in results]
-
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance between two points using Haversine formula (simplified)"""
@@ -751,8 +719,10 @@ def perform_panel_search(
             )
         elif search_type == "semantic":
             description = semantic_fields.description_input.value
-            results = perform_semantic_search_dynamic(data_source, description)
-            total_count = len(results)
+            if panel_type == "missing_persons":
+                results, total_count = data_service.search_cases_semantic(description, page=1, page_size=10)
+            else:
+                results, total_count = data_service.search_sightings_semantic(description, page=1, page_size=10)
         else:
             if panel_type == "missing_persons":
                 results, total_count = data_service.get_cases(page=1, page_size=10)

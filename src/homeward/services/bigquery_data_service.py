@@ -2591,3 +2591,338 @@ class BigQueryDataService(DataService):
             ml_summary=row.ml_summary
         )
         return sighting
+
+    def search_cases_semantic(self, query: str, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Perform semantic search on missing person cases using embeddings and cosine similarity"""
+
+        if not query or not query.strip():
+            return self.get_cases(page=page, page_size=page_size)
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Generate embedding for the search query
+        EMBEDDING_QUERY = """
+        SELECT ml_generate_embedding_result
+        FROM ML.GENERATE_EMBEDDING(
+            MODEL `homeward.text_embedding_model`,
+            (SELECT @query_text as content),
+            STRUCT('SEMANTIC_SIMILARITY' as task_type)
+        )
+        """
+
+        # Get query embedding
+        try:
+            embedding_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("query_text", "STRING", query.strip())
+                ]
+            )
+            embedding_job = self.client.query(EMBEDDING_QUERY, job_config=embedding_job_config)
+            embedding_result = list(embedding_job.result())[0]
+            query_embedding = embedding_result.ml_generate_embedding_result
+
+            if not query_embedding:
+                # Fallback to regular cases if embedding generation fails
+                return self.get_cases(page=page, page_size=page_size)
+
+        except Exception as e:
+            print(f"Error generating embedding for query: {str(e)}")
+            # Fallback to regular cases if embedding generation fails
+            return self.get_cases(page=page, page_size=page_size)
+
+        # Count query for semantic search results
+        COUNT_QUERY = """
+        SELECT COUNT(*) as total_count
+        FROM `homeward.missing_persons`
+        WHERE ml_summary_embedding IS NOT NULL
+        AND ARRAY_LENGTH(ml_summary_embedding) > 0
+        AND ml_summary IS NOT NULL
+        """
+
+        # Semantic search query with cosine similarity
+        SEMANTIC_SEARCH_QUERY = """
+        SELECT
+            id, case_number, name, surname, date_of_birth, gender,
+            height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
+            last_seen_date, last_seen_time, last_seen_address, last_seen_city,
+            last_seen_country, last_seen_postal_code, last_seen_latitude, last_seen_longitude,
+            circumstances, priority, status, description, medical_conditions, additional_info,
+            photo_url, reporter_name, reporter_phone, reporter_email, relationship,
+            created_date, updated_date, ml_summary,
+            ML.DISTANCE(ml_summary_embedding, @query_embedding, 'COSINE') as cosine_distance
+        FROM `homeward.missing_persons`
+        WHERE ml_summary_embedding IS NOT NULL
+        AND ARRAY_LENGTH(ml_summary_embedding) > 0
+        AND ml_summary IS NOT NULL
+        ORDER BY cosine_distance ASC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        try:
+            # Execute count query
+            count_job = self.client.query(COUNT_QUERY)
+            total_count = list(count_job.result())[0].total_count
+
+            # Execute semantic search query
+            search_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", query_embedding),
+                    bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                    bigquery.ScalarQueryParameter("offset", "INT64", offset)
+                ]
+            )
+            search_job = self.client.query(SEMANTIC_SEARCH_QUERY, job_config=search_job_config)
+
+            # Convert results to MissingPersonCase objects
+            cases = []
+            for row in search_job.result():
+                # Same conversion logic as get_cases method
+                last_seen_date = row.last_seen_date
+                last_seen_time = row.last_seen_time
+
+                if last_seen_date and last_seen_time:
+                    from datetime import datetime, time
+                    if isinstance(last_seen_time, time):
+                        last_seen_datetime = datetime.combine(last_seen_date, last_seen_time)
+                    else:
+                        last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time())
+                else:
+                    last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time()) if last_seen_date else datetime.now()
+
+                from homeward.models.case import Location, CaseStatus, CasePriority
+                location = Location(
+                    address=row.last_seen_address or "",
+                    city=row.last_seen_city or "",
+                    country=row.last_seen_country or "",
+                    postal_code=row.last_seen_postal_code,
+                    latitude=row.last_seen_latitude,
+                    longitude=row.last_seen_longitude
+                )
+
+                status = CaseStatus.ACTIVE
+                try:
+                    status = CaseStatus(row.status)
+                except ValueError:
+                    pass
+
+                priority = CasePriority.MEDIUM
+                try:
+                    priority = CasePriority(row.priority)
+                except ValueError:
+                    pass
+
+                from datetime import datetime
+                date_of_birth = row.date_of_birth
+                if date_of_birth and not isinstance(date_of_birth, datetime):
+                    date_of_birth = datetime.combine(date_of_birth, datetime.min.time())
+
+                case = MissingPersonCase(
+                    id=row.id,
+                    name=row.name or "",
+                    surname=row.surname or "",
+                    date_of_birth=date_of_birth or datetime.now(),
+                    gender=row.gender or "",
+                    last_seen_date=last_seen_datetime,
+                    last_seen_location=location,
+                    status=status,
+                    circumstances=row.circumstances or "",
+                    reporter_name=row.reporter_name or "",
+                    reporter_phone=row.reporter_phone or "",
+                    relationship=row.relationship or "",
+                    case_number=row.case_number,
+                    height=row.height,
+                    weight=row.weight,
+                    hair_color=row.hair_color,
+                    eye_color=row.eye_color,
+                    distinguishing_marks=row.distinguishing_marks,
+                    clothing_description=row.clothing_description,
+                    medical_conditions=row.medical_conditions,
+                    additional_info=row.additional_info,
+                    description=row.description,
+                    photo_url=row.photo_url,
+                    reporter_email=row.reporter_email,
+                    created_date=row.created_date or datetime.now(),
+                    priority=priority,
+                    ml_summary=row.ml_summary,
+                )
+                cases.append(case)
+
+            return cases, total_count
+
+        except Exception as e:
+            print(f"Error performing semantic search: {str(e)}")
+            # Fallback to regular cases if semantic search fails
+            return self.get_cases(page=page, page_size=page_size)
+
+    def search_sightings_semantic(self, query: str, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Perform semantic search on sightings using embeddings and cosine similarity"""
+
+        if not query or not query.strip():
+            return self.get_sightings(page=page, page_size=page_size)
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Generate embedding for the search query
+        EMBEDDING_QUERY = """
+        SELECT ml_generate_embedding_result
+        FROM ML.GENERATE_EMBEDDING(
+            MODEL `homeward.text_embedding_model`,
+            (SELECT @query_text as content),
+            STRUCT('SEMANTIC_SIMILARITY' as task_type)
+        )
+        """
+
+        # Get query embedding
+        try:
+            embedding_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("query_text", "STRING", query.strip())
+                ]
+            )
+            embedding_job = self.client.query(EMBEDDING_QUERY, job_config=embedding_job_config)
+            embedding_result = list(embedding_job.result())[0]
+            query_embedding = embedding_result.ml_generate_embedding_result
+
+            if not query_embedding:
+                # Fallback to regular sightings if embedding generation fails
+                return self.get_sightings(page=page, page_size=page_size)
+
+        except Exception as e:
+            print(f"Error generating embedding for query: {str(e)}")
+            # Fallback to regular sightings if embedding generation fails
+            return self.get_sightings(page=page, page_size=page_size)
+
+        # Count query for semantic search results
+        COUNT_QUERY = """
+        SELECT COUNT(*) as total_count
+        FROM `homeward.sightings`
+        WHERE ml_summary_embedding IS NOT NULL
+        AND ARRAY_LENGTH(ml_summary_embedding) > 0
+        AND ml_summary IS NOT NULL
+        """
+
+        # Semantic search query with cosine similarity
+        SEMANTIC_SEARCH_QUERY = """
+        SELECT
+            id, sighting_number, sighted_date, sighted_time, sighted_address, sighted_city,
+            sighted_country, sighted_postal_code, sighted_latitude, sighted_longitude,
+            apparent_gender, apparent_age_range, height_estimate, weight_estimate,
+            hair_color, eye_color, clothing_description, distinguishing_features,
+            description, circumstances, confidence_level, photo_url, video_url,
+            source_type, witness_name, witness_phone, witness_email,
+            status, priority, verified, created_date, updated_date,
+            created_by, notes, ml_summary,
+            ML.DISTANCE(ml_summary_embedding, @query_embedding, 'COSINE') as cosine_distance
+        FROM `homeward.sightings`
+        WHERE ml_summary_embedding IS NOT NULL
+        AND ARRAY_LENGTH(ml_summary_embedding) > 0
+        AND ml_summary IS NOT NULL
+        ORDER BY cosine_distance ASC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        try:
+            # Execute count query
+            count_job = self.client.query(COUNT_QUERY)
+            total_count = list(count_job.result())[0].total_count
+
+            # Execute semantic search query
+            search_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", query_embedding),
+                    bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                    bigquery.ScalarQueryParameter("offset", "INT64", offset)
+                ]
+            )
+            search_job = self.client.query(SEMANTIC_SEARCH_QUERY, job_config=search_job_config)
+
+            # Convert results to Sighting objects
+            sightings = []
+            for row in search_job.result():
+                # Same conversion logic as get_sightings method
+                sighted_date = row.sighted_date
+                sighted_time = row.sighted_time
+
+                if sighted_date and sighted_time:
+                    from datetime import datetime, time
+                    if isinstance(sighted_time, time):
+                        sighted_datetime = datetime.combine(sighted_date, sighted_time)
+                    else:
+                        sighted_datetime = datetime.combine(sighted_date, datetime.min.time())
+                else:
+                    sighted_datetime = datetime.combine(sighted_date, datetime.min.time()) if sighted_date else datetime.now()
+
+                from homeward.models.case import Location, SightingStatus, SightingPriority, SightingConfidenceLevel, SightingSourceType
+                location = Location(
+                    address=row.sighted_address or "",
+                    city=row.sighted_city or "",
+                    country=row.sighted_country or "",
+                    postal_code=row.sighted_postal_code,
+                    latitude=row.sighted_latitude,
+                    longitude=row.sighted_longitude
+                )
+
+                status = SightingStatus.NEW
+                try:
+                    status = SightingStatus(row.status)
+                except ValueError:
+                    pass
+
+                priority = SightingPriority.MEDIUM
+                try:
+                    priority = SightingPriority(row.priority)
+                except ValueError:
+                    pass
+
+                confidence_level = SightingConfidenceLevel.MEDIUM
+                try:
+                    confidence_level = SightingConfidenceLevel(row.confidence_level)
+                except ValueError:
+                    pass
+
+                source_type = SightingSourceType.WITNESS
+                try:
+                    source_type = SightingSourceType(row.source_type)
+                except ValueError:
+                    pass
+
+                sighting = Sighting(
+                    id=row.id,
+                    sighting_number=row.sighting_number,
+                    sighted_date=sighted_datetime,
+                    sighted_location=location,
+                    apparent_gender=row.apparent_gender or "",
+                    height_estimate=row.height_estimate,
+                    weight_estimate=row.weight_estimate,
+                    hair_color=row.hair_color or "",
+                    clothing_description=row.clothing_description or "",
+                    distinguishing_features=row.distinguishing_features or "",
+                    description=row.description or "",
+                    confidence_level=confidence_level,
+                    source_type=source_type,
+                    created_date=row.created_date or datetime.now(),
+                    ml_summary=row.ml_summary,
+                    status=status,
+                    priority=priority,
+                    verified=row.verified or False,
+                    witness_name=row.witness_name,
+                    witness_phone=row.witness_phone,
+                    witness_email=row.witness_email,
+                    photo_url=row.photo_url,
+                    video_url=row.video_url,
+                    circumstances=row.circumstances,
+                    notes=row.notes,
+                    created_by=row.created_by,
+                    apparent_age_range=row.apparent_age_range,
+                    eye_color=row.eye_color
+                )
+                sightings.append(sighting)
+
+            return sightings, total_count
+
+        except Exception as e:
+            print(f"Error performing semantic search on sightings: {str(e)}")
+            # Fallback to regular sightings if semantic search fails
+            return self.get_sightings(page=page, page_size=page_size)
