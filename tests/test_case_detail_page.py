@@ -88,6 +88,7 @@ class TestCaseDetailPage:
 
         mock_data_service = Mock()
         mock_data_service.get_case_by_id.return_value = case
+        mock_data_service.get_case_sightings.return_value = []
 
         mock_config = Mock()
         mock_config.version = "2.0.0"
@@ -306,12 +307,16 @@ class TestCaseDetailComponents:
         mock_ui.element.return_value.__enter__ = Mock()
         mock_ui.element.return_value.__exit__ = Mock()
 
-        create_sightings_table()
+        # Mock data service
+        mock_data_service = Mock()
+        mock_data_service.get_case_sightings.return_value = []
 
-        # Verify table structure is created
-        assert mock_ui.element.called  # div elements for grid layout
-        assert mock_ui.label.called  # table headers and content
-        assert mock_ui.button.called  # action buttons
+        create_sightings_table("test_case_id", mock_data_service)
+
+        # Verify UI structure is created (when no sightings, it creates a column with no sightings message)
+        assert mock_ui.column.called  # column for no sightings message
+        assert mock_ui.label.called  # no sightings message
+        assert mock_ui.icon.called  # search_off icon
 
     @patch("homeward.ui.pages.case_detail.ui")
     def test_create_video_analysis_section(self, mock_ui):

@@ -922,9 +922,13 @@ def create_similarity_results_table(
 
 def handle_view_similarity_details(similarity_result: dict):
     """Handle viewing details of a similarity search result"""
-    ui.notify(f"Viewing details for sighting {similarity_result['sighting_number']}", type="info")
-    # In a real implementation, this would navigate to the sighting detail page
-    # ui.navigate.to(f"/sighting/{similarity_result['sighting_id']}")
+    sighting_id = similarity_result.get('sighting_id') or similarity_result.get('id')
+    sighting_number = similarity_result.get('sighting_number')
+
+    if sighting_id:
+        ui.navigate.to(f"/sighting/{sighting_id}")
+    else:
+        ui.notify(f"Sighting ID not found for sighting {sighting_number}", type="negative")
 
 
 def handle_link_similarity_to_case(similarity_result: dict, case_id: str, data_service: DataService, dialog):
@@ -1172,8 +1176,10 @@ def handle_view_sighting(sighting: dict):
 def handle_view_case_sighting(sighting: dict):
     """Handle viewing case sighting details with all the linking information"""
     sighting_id = sighting.get("sighting_id", "Unknown")
-    location = sighting.get("sighted_city", "Unknown location")
-    ui.notify(f"Viewing case sighting {sighting_id} at {location}", type="info")
+    if sighting_id and sighting_id != "Unknown":
+        ui.navigate.to(f"/sighting/{sighting_id}")
+    else:
+        ui.notify("Sighting ID not found", type="negative")
 
 
 def handle_investigate_sighting(sighting: dict):
