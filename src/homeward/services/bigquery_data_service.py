@@ -472,8 +472,8 @@ class BigQueryDataService(DataService):
                 bigquery.ScalarQueryParameter("last_seen_city", "STRING", case.last_seen_location.city),
                 bigquery.ScalarQueryParameter("last_seen_country", "STRING", case.last_seen_location.country),
                 bigquery.ScalarQueryParameter("last_seen_postal_code", "STRING", case.last_seen_location.postal_code),
-                bigquery.ScalarQueryParameter("last_seen_latitude", "FLOAT64", case.last_seen_location.latitude if case.last_seen_location.latitude != 0.0 else None),
-                bigquery.ScalarQueryParameter("last_seen_longitude", "FLOAT64", case.last_seen_location.longitude if case.last_seen_location.longitude != 0.0 else None),
+                bigquery.ScalarQueryParameter("last_seen_latitude", "FLOAT64", case.last_seen_location.latitude if case.last_seen_location.latitude is not None and case.last_seen_location.latitude != 0.0 else None),
+                bigquery.ScalarQueryParameter("last_seen_longitude", "FLOAT64", case.last_seen_location.longitude if case.last_seen_location.longitude is not None and case.last_seen_location.longitude != 0.0 else None),
                 bigquery.ScalarQueryParameter("circumstances", "STRING", case.circumstances),
                 bigquery.ScalarQueryParameter("priority", "STRING", case.priority.value),
                 bigquery.ScalarQueryParameter("status", "STRING", case.status.value),
@@ -661,8 +661,8 @@ class BigQueryDataService(DataService):
                     bigquery.ScalarQueryParameter("last_seen_city", "STRING", case.last_seen_location.city),
                     bigquery.ScalarQueryParameter("last_seen_country", "STRING", case.last_seen_location.country),
                     bigquery.ScalarQueryParameter("last_seen_postal_code", "STRING", case.last_seen_location.postal_code),
-                    bigquery.ScalarQueryParameter("last_seen_latitude", "FLOAT64", case.last_seen_location.latitude if case.last_seen_location.latitude != 0.0 else None),
-                    bigquery.ScalarQueryParameter("last_seen_longitude", "FLOAT64", case.last_seen_location.longitude if case.last_seen_location.longitude != 0.0 else None),
+                    bigquery.ScalarQueryParameter("last_seen_latitude", "FLOAT64", case.last_seen_location.latitude if case.last_seen_location.latitude is not None and case.last_seen_location.latitude != 0.0 else None),
+                    bigquery.ScalarQueryParameter("last_seen_longitude", "FLOAT64", case.last_seen_location.longitude if case.last_seen_location.longitude is not None and case.last_seen_location.longitude != 0.0 else None),
                     bigquery.ScalarQueryParameter("circumstances", "STRING", case.circumstances),
                     bigquery.ScalarQueryParameter("priority", "STRING", case.priority.value),
                     bigquery.ScalarQueryParameter("status", "STRING", case.status.value),
@@ -1120,8 +1120,8 @@ class BigQueryDataService(DataService):
                 bigquery.ScalarQueryParameter("sighted_city", "STRING", sighting.sighted_location.city),
                 bigquery.ScalarQueryParameter("sighted_country", "STRING", sighting.sighted_location.country),
                 bigquery.ScalarQueryParameter("sighted_postal_code", "STRING", sighting.sighted_location.postal_code),
-                bigquery.ScalarQueryParameter("sighted_latitude", "FLOAT64", sighting.sighted_location.latitude if sighting.sighted_location.latitude != 0.0 else None),
-                bigquery.ScalarQueryParameter("sighted_longitude", "FLOAT64", sighting.sighted_location.longitude if sighting.sighted_location.longitude != 0.0 else None),
+                bigquery.ScalarQueryParameter("sighted_latitude", "FLOAT64", sighting.sighted_location.latitude if sighting.sighted_location.latitude is not None and sighting.sighted_location.latitude != 0.0 else None),
+                bigquery.ScalarQueryParameter("sighted_longitude", "FLOAT64", sighting.sighted_location.longitude if sighting.sighted_location.longitude is not None and sighting.sighted_location.longitude != 0.0 else None),
                 bigquery.ScalarQueryParameter("apparent_gender", "STRING", sighting.apparent_gender),
                 bigquery.ScalarQueryParameter("apparent_age_range", "STRING", sighting.apparent_age_range),
                 bigquery.ScalarQueryParameter("height_estimate", "FLOAT64", sighting.height_estimate),
@@ -1318,8 +1318,8 @@ class BigQueryDataService(DataService):
                     bigquery.ScalarQueryParameter("sighted_city", "STRING", sighting.sighted_location.city),
                     bigquery.ScalarQueryParameter("sighted_country", "STRING", sighting.sighted_location.country),
                     bigquery.ScalarQueryParameter("sighted_postal_code", "STRING", sighting.sighted_location.postal_code),
-                    bigquery.ScalarQueryParameter("sighted_latitude", "FLOAT64", sighting.sighted_location.latitude if sighting.sighted_location.latitude != 0.0 else None),
-                    bigquery.ScalarQueryParameter("sighted_longitude", "FLOAT64", sighting.sighted_location.longitude if sighting.sighted_location.longitude != 0.0 else None),
+                    bigquery.ScalarQueryParameter("sighted_latitude", "FLOAT64", sighting.sighted_location.latitude if sighting.sighted_location.latitude is not None and sighting.sighted_location.latitude != 0.0 else None),
+                    bigquery.ScalarQueryParameter("sighted_longitude", "FLOAT64", sighting.sighted_location.longitude if sighting.sighted_location.longitude is not None and sighting.sighted_location.longitude != 0.0 else None),
                     bigquery.ScalarQueryParameter("apparent_gender", "STRING", sighting.apparent_gender),
                     bigquery.ScalarQueryParameter("apparent_age_range", "STRING", sighting.apparent_age_range),
                     bigquery.ScalarQueryParameter("height_estimate", "FLOAT64", sighting.height_estimate),
@@ -1810,7 +1810,11 @@ class BigQueryDataService(DataService):
         base.sighted_geo,
         base.witness_name,
         base.confidence_level,
-        base.ml_summary
+        base.ml_summary,
+        ST_DISTANCE(
+          base.sighted_geo,
+          ST_GEOGPOINT(@last_seen_longitude, @last_seen_latitude)
+        ) / 1000 as distance_km
         FROM
         VECTOR_SEARCH(
             (
@@ -1861,7 +1865,8 @@ class BigQueryDataService(DataService):
                     "sighted_city": row[7],
                     "witness_name": row[9],
                     "confidence_level": row[10],
-                    "ml_summary": row[11]
+                    "ml_summary": row[11],
+                    "distance_km": float(row[12])
                 })
 
             return similar_sightings
