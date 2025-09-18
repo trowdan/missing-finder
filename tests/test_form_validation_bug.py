@@ -3,7 +3,6 @@ Test to reproduce the specific validation error the user is experiencing.
 This test simulates filling out the form with proper data but still getting validation errors.
 """
 
-import pytest
 from src.homeward.models.form_mappers import SightingFormValidator
 
 
@@ -103,7 +102,7 @@ class TestFormValidationBug:
         # Run validation
         missing_fields = SightingFormValidator.validate_required_fields(realistic_form_data)
 
-        print(f"\n=== REALISTIC USER INPUT TEST ===")
+        print("\n=== REALISTIC USER INPUT TEST ===")
         print(f"User filled {len(realistic_form_data)} fields")
         print(f"Missing fields reported: {missing_fields}")
 

@@ -61,3 +61,18 @@ class DataService(ABC):
     def search_sightings(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
         """Search sighting reports with LIKE filtering. Returns (sightings, total_count)"""
         pass
+
+    @abstractmethod
+    def update_missing_persons_embeddings(self) -> dict:
+        """Update embeddings for missing persons that don't have them yet. Returns status dict."""
+        pass
+
+    @abstractmethod
+    def update_sightings_embeddings(self) -> dict:
+        """Update embeddings for sightings that don't have them yet. Returns status dict."""
+        pass
+
+    @abstractmethod
+    def find_similar_sightings_for_missing_person(self, missing_person_id: str, search_radius_meters: float = 10000.0, delta_days: int = 30, top_k: int = 5) -> list[dict]:
+        """Find sightings similar to a missing person using vector search. Returns list of similarity results."""
+        pass

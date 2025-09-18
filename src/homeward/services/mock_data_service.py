@@ -187,3 +187,51 @@ class MockDataService(DataService):
         paginated_results = results[start_idx:end_idx]
 
         return paginated_results, total_count
+
+    def update_missing_persons_embeddings(self) -> dict:
+        """Mock implementation - embeddings are not calculated in mock service"""
+        return {
+            "success": True,
+            "rows_modified": 0,
+            "message": "Mock service: embeddings update simulated (no actual embeddings calculated)"
+        }
+
+    def update_sightings_embeddings(self) -> dict:
+        """Mock implementation - embeddings are not calculated in mock service"""
+        return {
+            "success": True,
+            "rows_modified": 0,
+            "message": "Mock service: embeddings update simulated (no actual embeddings calculated)"
+        }
+
+    def find_similar_sightings_for_missing_person(self, missing_person_id: str, search_radius_meters: float = 10000.0, delta_days: int = 30, top_k: int = 5) -> list[dict]:
+        """Mock implementation - returns sample similarity results for testing"""
+        # Return mock similarity results for demonstration
+        return [
+            {
+                "missing_person_id": missing_person_id,
+                "case_number": "MP-2024-001",
+                "similarity_distance": 0.15,
+                "sighting_id": "S-2024-001",
+                "sighting_number": "SGHT-001",
+                "sighted_date": "2024-01-15",
+                "sighted_time": "14:30:00",
+                "sighted_city": "Mock City",
+                "witness_name": "John Doe",
+                "confidence_level": "High",
+                "ml_summary": "Mock sighting of person matching description near shopping center"
+            },
+            {
+                "missing_person_id": missing_person_id,
+                "case_number": "MP-2024-001",
+                "similarity_distance": 0.25,
+                "sighting_id": "S-2024-002",
+                "sighting_number": "SGHT-002",
+                "sighted_date": "2024-01-16",
+                "sighted_time": "09:15:00",
+                "sighted_city": "Mock City",
+                "witness_name": "Jane Smith",
+                "confidence_level": "Medium",
+                "ml_summary": "Possible match reported at transit station, partial view"
+            }
+        ]

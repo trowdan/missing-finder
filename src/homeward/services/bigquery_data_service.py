@@ -1653,3 +1653,219 @@ class BigQueryDataService(DataService):
             sightings.append(sighting)
 
         return sightings, total_count
+
+    def update_missing_persons_embeddings(self) -> dict:
+        """Update embeddings for missing persons that don't have them yet"""
+        UPDATE_MISSING_PERSONS_EMBEDDINGS_QUERY = """
+        UPDATE `homeward.missing_persons` AS mp
+        SET mp.ml_summary_embedding = e.ml_generate_embedding_result
+        FROM ML.GENERATE_EMBEDDING(
+            MODEL `homeward.text_embedding_model`,
+            (SELECT id, ml_summary as content FROM `homeward.missing_persons` WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)),
+            STRUCT('SEMANTIC_SIMILARITY' as task_type)
+        ) as e
+        WHERE mp.id = e.id;
+        """
+
+        try:
+            query_job = self.client.query(UPDATE_MISSING_PERSONS_EMBEDDINGS_QUERY)
+
+            # Wait for job completion with timeout
+            query_job.result(timeout=120)  # 2 minute timeout for embedding calculation
+
+            # Additional check to ensure embeddings were actually created
+            if query_job.num_dml_affected_rows == 0:
+                # Check if there are any records that need embeddings
+                check_query = """
+                SELECT COUNT(*) as records_needing_embeddings
+                FROM `homeward.missing_persons`
+                WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)
+                """
+                check_job = self.client.query(check_query)
+                check_result = list(check_job.result())[0]
+
+                if check_result.records_needing_embeddings > 0:
+                    return {
+                        "success": False,
+                        "rows_modified": 0,
+                        "message": f"Embedding calculation failed - {check_result.records_needing_embeddings} records still need embeddings"
+                    }
+
+            return {
+                "success": True,
+                "rows_modified": query_job.num_dml_affected_rows or 0,
+                "message": f"Updated embeddings for {query_job.num_dml_affected_rows or 0} missing person records"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "rows_modified": 0,
+                "message": f"Error updating embeddings: {str(e)}"
+            }
+
+    def update_sightings_embeddings(self) -> dict:
+        """Update embeddings for sightings that don't have them yet"""
+        UPDATE_SIGHTINGS_EMBEDDINGS_QUERY = """
+        UPDATE `homeward.sightings` as s
+        SET s.ml_summary_embedding = e.ml_generate_embedding_result
+        FROM ML.GENERATE_EMBEDDING(
+            MODEL `homeward.text_embedding_model`,
+            (SELECT id, ml_summary as content FROM `homeward.sightings` WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)),
+            STRUCT('SEMANTIC_SIMILARITY' as task_type)
+        ) as e
+        WHERE e.id = s.id;
+        """
+
+        try:
+            query_job = self.client.query(UPDATE_SIGHTINGS_EMBEDDINGS_QUERY)
+
+            # Wait for job completion with timeout
+            query_job.result(timeout=120)  # 2 minute timeout for embedding calculation
+
+            # Additional check to ensure embeddings were actually created
+            if query_job.num_dml_affected_rows == 0:
+                # Check if there are any records that need embeddings
+                check_query = """
+                SELECT COUNT(*) as records_needing_embeddings
+                FROM `homeward.sightings`
+                WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)
+                """
+                check_job = self.client.query(check_query)
+                check_result = list(check_job.result())[0]
+
+                if check_result.records_needing_embeddings > 0:
+                    return {
+                        "success": False,
+                        "rows_modified": 0,
+                        "message": f"Embedding calculation failed - {check_result.records_needing_embeddings} records still need embeddings"
+                    }
+
+            return {
+                "success": True,
+                "rows_modified": query_job.num_dml_affected_rows or 0,
+                "message": f"Updated embeddings for {query_job.num_dml_affected_rows or 0} sighting records"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "rows_modified": 0,
+                "message": f"Error updating embeddings: {str(e)}"
+            }
+
+    def find_similar_sightings_for_missing_person(self, missing_person_id: str, search_radius_meters: float = 10000.0, delta_days: int = 30, top_k: int = 5) -> list[dict]:
+        """Find sightings similar to a missing person using vector search - matches demo notebook implementation"""
+
+        # First get the missing person details for geo/time filtering
+        missing_person = self.get_case_by_id(missing_person_id)
+        if not missing_person:
+            print(f"Missing person with id {missing_person_id} not found")
+            return []
+
+        # Verify that the missing person has embeddings
+        check_embeddings_query = """
+        SELECT
+            COUNT(*) as mp_with_embeddings,
+            (SELECT COUNT(*) FROM `homeward.sightings` WHERE ml_summary_embedding IS NOT NULL AND ARRAY_LENGTH(ml_summary_embedding) > 0) as sightings_with_embeddings
+        FROM `homeward.missing_persons`
+        WHERE id = @missing_person_id
+        AND ml_summary_embedding IS NOT NULL
+        AND ARRAY_LENGTH(ml_summary_embedding) > 0
+        """
+
+        check_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("missing_person_id", "STRING", missing_person_id)
+            ]
+        )
+
+        try:
+            check_job = self.client.query(check_embeddings_query, job_config=check_job_config)
+            check_result = list(check_job.result())[0]
+
+            if check_result.mp_with_embeddings == 0:
+                print(f"Missing person {missing_person_id} has no embeddings calculated")
+                return []
+
+            if check_result.sightings_with_embeddings == 0:
+                print("No sightings have embeddings calculated")
+                return []
+
+            print(f"Found embeddings: {check_result.mp_with_embeddings} missing person, {check_result.sightings_with_embeddings} sightings")
+
+        except Exception as e:
+            print(f"Error checking embeddings: {str(e)}")
+            return []
+
+        # Corrected query structure based on demo notebook
+        SIMILARITY_SEARCH_MP_TO_SIGHTINGS_QUERY = """
+        SELECT
+        query.id,
+        query.case_number,
+        distance,
+        base.id,
+        base.sighting_number,
+        base.sighted_date,
+        base.sighted_time,
+        base.sighted_city,
+        base.sighted_geo,
+        base.witness_name,
+        base.confidence_level,
+        base.ml_summary
+        FROM
+        VECTOR_SEARCH(
+            (
+              SELECT *
+              FROM
+                `homeward.sightings`
+              WHERE
+                DATE(created_date) >= DATE_SUB(@last_seen_date, INTERVAL @delta_days DAY)
+            ),
+            'ml_summary_embedding',
+            (SELECT id, case_number, ml_summary_embedding FROM `homeward.missing_persons` WHERE id = @missing_person_id),
+            top_k => @top_k,
+            distance_type => 'COSINE',
+            options => '{"fraction_lists_to_search": 0.005}')
+        WHERE ST_DWITHIN(
+          base.sighted_geo,
+          ST_GEOGPOINT(@last_seen_longitude, @last_seen_latitude),
+          @search_radius_meters
+        );
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("missing_person_id", "STRING", missing_person_id),
+                bigquery.ScalarQueryParameter("last_seen_latitude", "FLOAT64", missing_person.last_seen_location.latitude),
+                bigquery.ScalarQueryParameter("last_seen_longitude", "FLOAT64", missing_person.last_seen_location.longitude),
+                bigquery.ScalarQueryParameter("search_radius_meters", "FLOAT64", search_radius_meters),
+                bigquery.ScalarQueryParameter("last_seen_date", "DATE", missing_person.last_seen_date.date()),
+                bigquery.ScalarQueryParameter("delta_days", "INT64", delta_days),
+                bigquery.ScalarQueryParameter("top_k", "INT64", top_k)
+            ]
+        )
+
+        try:
+            query_job = self.client.query(SIMILARITY_SEARCH_MP_TO_SIGHTINGS_QUERY, job_config=job_config)
+            results = query_job.result()
+
+            similar_sightings = []
+            for row in results:
+                similar_sightings.append({
+                    "missing_person_id": row[0],
+                    "case_number": row[1],
+                    "similarity_distance": float(row[2]),
+                    "sighting_id": row[3],
+                    "sighting_number": row[4],
+                    "sighted_date": row[5],
+                    "sighted_time": row[6],
+                    "sighted_city": row[7],
+                    "witness_name": row[9],
+                    "confidence_level": row[10],
+                    "ml_summary": row[11]
+                })
+
+            return similar_sightings
+
+        except Exception as e:
+            print(f"Error executing similarity search: {str(e)}")
+            return []

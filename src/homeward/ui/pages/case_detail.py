@@ -671,38 +671,196 @@ def open_link_sighting_modal(case_id: str, data_service: DataService):
 def search_and_display_sightings(
     case_id: str, data_service: DataService, results_container, dialog
 ):
-    """Search for available sightings and display results in modal"""
+    """Search for available sightings using AI similarity search and display results in modal"""
+
+    # Clear existing content and show loading spinner
+    results_container.clear()
+    with results_container:
+        with ui.column().classes("w-full items-center justify-center py-16"):
+            with ui.column().classes("items-center"):
+                ui.spinner(size="xl").classes("text-purple-400 mb-4")
+                ui.label("Calculating embeddings and searching for similar sightings...").classes("text-gray-300 text-lg font-medium")
+                ui.label("This may take a few moments").classes("text-gray-400 text-sm mt-2")
+
+    # Force UI update to show spinner
+    ui.update()
+
     try:
-        ui.notify("🔗 Searching for available sightings to link...", type="info")
+        ui.notify("🧠 Starting AI-powered similarity search...", type="info")
 
-        # Get unlinked sightings (mock implementation)
-        unlinked_sightings = get_unlinked_sightings(data_service)
+        # Step 1: Update embeddings for missing persons
+        ui.notify("📊 Calculating missing person embeddings (this may take 1-2 minutes)...", type="info")
+        mp_result = data_service.update_missing_persons_embeddings()
 
-        # Clear existing content and display results
+        if not mp_result["success"]:
+            # If embedding calculation failed, show error and stop
+            results_container.clear()
+            with results_container:
+                with ui.column().classes("w-full items-center justify-center py-16"):
+                    ui.icon("error", size="3rem").classes("text-red-400 mb-4")
+                    ui.label("Missing Person Embedding Calculation Failed").classes("text-red-300 text-center font-medium")
+                    ui.label(f"Error: {mp_result['message']}").classes("text-red-400 text-xs mt-2 text-center")
+            ui.notify(f"❌ {mp_result['message']}", type="negative")
+            return
+
+        ui.notify(f"✅ {mp_result['message']}", type="positive")
+
+        # Step 2: Update embeddings for sightings
+        ui.notify("📊 Calculating sighting embeddings (this may take 1-2 minutes)...", type="info")
+        sighting_result = data_service.update_sightings_embeddings()
+
+        if not sighting_result["success"]:
+            # If embedding calculation failed, show error and stop
+            results_container.clear()
+            with results_container:
+                with ui.column().classes("w-full items-center justify-center py-16"):
+                    ui.icon("error", size="3rem").classes("text-red-400 mb-4")
+                    ui.label("Sighting Embedding Calculation Failed").classes("text-red-300 text-center font-medium")
+                    ui.label(f"Error: {sighting_result['message']}").classes("text-red-400 text-xs mt-2 text-center")
+            ui.notify(f"❌ {sighting_result['message']}", type="negative")
+            return
+
+        ui.notify(f"✅ {sighting_result['message']}", type="positive")
+
+        # Step 3: Verify embeddings exist before attempting similarity search
+        ui.notify("🔍 Verifying embeddings and performing vector similarity search...", type="info")
+
+        # Only proceed if at least one embedding job affected rows or both returned success
+        if (mp_result["rows_modified"] == 0 and sighting_result["rows_modified"] == 0):
+            ui.notify("⚠️ No new embeddings calculated - proceeding with existing embeddings", type="warning")
+
+        similar_sightings = data_service.find_similar_sightings_for_missing_person(
+            missing_person_id=case_id,
+            search_radius_meters=10000.0,  # 10km radius
+            delta_days=30,  # Search within 30 days
+            top_k=5  # Top 5 most similar sightings
+        )
+
+        # Clear loading spinner and display results
         results_container.clear()
 
-        if unlinked_sightings:
-            create_modal_sighting_results_table(
-                unlinked_sightings, case_id, data_service, results_container, dialog
-            )
+        if similar_sightings:
+            with results_container:
+                create_similarity_results_table(similar_sightings, case_id, data_service, results_container, dialog)
             ui.notify(
-                f"✅ Found {len(unlinked_sightings)} available sightings to link",
+                f"🎯 Found {len(similar_sightings)} similar sightings using AI analysis",
                 type="positive",
             )
         else:
             with results_container:
                 with ui.column().classes("w-full items-center justify-center py-16"):
-                    ui.icon("search_off", size="3rem").classes("text-gray-500 mb-4")
-                    ui.label("No unlinked sightings found").classes(
-                        "text-gray-400 text-center"
-                    )
-                    ui.label(
-                        "All sightings are already linked to cases or no sightings exist"
-                    ).classes("text-gray-500 text-xs mt-2 text-center")
-            ui.notify("No unlinked sightings found", type="warning")
+                    ui.icon("psychology_alt", size="3rem").classes("text-purple-400 mb-4")
+                    ui.label("No similar sightings found").classes("text-gray-400 text-center")
+                    ui.label("AI analysis found no matching sightings in the specified area and timeframe").classes("text-gray-500 text-xs mt-2 text-center")
+            ui.notify("No similar sightings found by AI analysis", type="warning")
 
     except Exception as e:
-        ui.notify(f"❌ Failed to load sightings: {str(e)}", type="negative")
+        # Clear loading spinner and show error
+        results_container.clear()
+        with results_container:
+            with ui.column().classes("w-full items-center justify-center py-16"):
+                ui.icon("error", size="3rem").classes("text-red-400 mb-4")
+                ui.label("Search failed").classes("text-red-300 text-center")
+                ui.label(f"Error: {str(e)}").classes("text-red-400 text-xs mt-2 text-center")
+        ui.notify(f"❌ Similarity search failed: {str(e)}", type="negative")
+
+
+def create_similarity_results_table(
+    similarity_results: list, case_id: str, data_service: DataService, container, dialog
+):
+    """Create and display similarity search results table in modal"""
+    with container:
+        with ui.column().classes("w-full space-y-4"):
+            # Results summary with AI badge
+            with ui.row().classes("items-center mb-4"):
+                with ui.row().classes("items-center"):
+                    with ui.element("div").classes(
+                        "w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg mr-3"
+                    ):
+                        ui.icon("psychology", size="1rem").classes("text-white")
+                    ui.label("AI Similarity Search Results").classes(
+                        "text-gray-300 font-medium text-lg"
+                    )
+                ui.label(f"{len(similarity_results)} similar sightings found").classes(
+                    "text-purple-400 text-sm ml-auto font-medium"
+                )
+
+            # Results table with full-width styling for modal
+            with ui.element("div").classes(
+                "w-full bg-gray-700/30 rounded-lg border border-purple-500/30 overflow-hidden"
+            ):
+                # Table header
+                with ui.element("div").classes(
+                    "grid grid-cols-7 gap-4 px-6 py-4 bg-purple-900/20 border-b border-purple-500/30"
+                ):
+                    ui.label("Similarity").classes("text-purple-300 font-medium text-sm")
+                    ui.label("Sighting ID").classes("text-purple-300 font-medium text-sm")
+                    ui.label("Date & Time").classes("text-purple-300 font-medium text-sm")
+                    ui.label("Location").classes("text-purple-300 font-medium text-sm")
+                    ui.label("Witness").classes("text-purple-300 font-medium text-sm")
+                    ui.label("Confidence").classes("text-purple-300 font-medium text-sm text-center")
+                    ui.label("Actions").classes("text-purple-300 font-medium text-sm text-center")
+
+                # Table rows
+                for i, result in enumerate(similarity_results):
+                    similarity_score = 1.0 - result["similarity_distance"]  # Convert distance to similarity score
+                    similarity_percentage = f"{similarity_score * 100:.1f}%"
+
+                    row_classes = "grid grid-cols-7 gap-4 px-6 py-4 border-b border-gray-600/30 hover:bg-purple-900/10 transition-colors"
+                    if i == len(similarity_results) - 1:
+                        row_classes = "grid grid-cols-7 gap-4 px-6 py-4 hover:bg-purple-900/10 transition-colors"
+
+                    with ui.element("div").classes(row_classes):
+                        # Similarity score with color coding
+                        similarity_color = "text-green-400" if similarity_score > 0.8 else "text-yellow-400" if similarity_score > 0.6 else "text-orange-400"
+                        ui.label(similarity_percentage).classes(f"text-sm font-medium {similarity_color}")
+
+                        # Sighting ID
+                        ui.label(result["sighting_number"] or result["sighting_id"]).classes("text-gray-300 text-sm font-mono")
+
+                        # Date & Time
+                        date_str = str(result["sighted_date"]) if result["sighted_date"] else "N/A"
+                        time_str = str(result["sighted_time"]) if result["sighted_time"] else ""
+                        datetime_display = f"{date_str} {time_str}".strip()
+                        ui.label(datetime_display).classes("text-gray-300 text-sm")
+
+                        # Location
+                        ui.label(result["sighted_city"] or "Unknown").classes("text-gray-300 text-sm")
+
+                        # Witness
+                        ui.label(result["witness_name"] or "Anonymous").classes("text-gray-300 text-sm")
+
+                        # Confidence Level
+                        confidence_color = "text-green-400" if result["confidence_level"] == "High" else "text-yellow-400" if result["confidence_level"] == "Medium" else "text-orange-400"
+                        ui.label(result["confidence_level"] or "Unknown").classes(f"text-sm text-center {confidence_color}")
+
+                        # Actions
+                        with ui.row().classes("justify-center"):
+                            ui.button(
+                                "View Details",
+                                on_click=lambda r=result: handle_view_similarity_details(r),
+                            ).classes(
+                                "bg-purple-600/20 text-purple-300 px-3 py-1 rounded border border-purple-400/40 hover:bg-purple-500/30 transition-all text-xs"
+                            )
+
+            # AI Summary section
+            if similarity_results:
+                ui.separator().classes("my-6 bg-gray-600")
+                with ui.column().classes("w-full bg-purple-900/10 rounded-lg p-4 border border-purple-500/20"):
+                    with ui.row().classes("items-center mb-3"):
+                        ui.icon("auto_awesome", size="1.2rem").classes("text-purple-400 mr-2")
+                        ui.label("AI Analysis Summary").classes("text-purple-300 font-medium")
+
+                    # Show summary of the best match
+                    best_match = similarity_results[0]
+                    ui.label(f"Best Match: {best_match['ml_summary']}").classes("text-purple-100 text-sm italic leading-relaxed")
+
+
+def handle_view_similarity_details(similarity_result: dict):
+    """Handle viewing details of a similarity search result"""
+    ui.notify(f"Viewing details for sighting {similarity_result['sighting_number']}", type="info")
+    # In a real implementation, this would navigate to the sighting detail page
+    # ui.navigate.to(f"/sighting/{similarity_result['sighting_id']}")
 
 
 def get_unlinked_sightings(data_service: DataService) -> list:

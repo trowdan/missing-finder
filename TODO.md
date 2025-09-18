@@ -1,2 +1,3 @@
 - Add logging (right now exceptions are logged as notifications)
-- after the modification, the ml summary and embeddings should be resetted
+- after the modification, the ml summary and embeddings should be resetted-
+- Insert in the documentation Video intelligence buzzwords
