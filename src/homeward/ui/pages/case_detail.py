@@ -559,13 +559,6 @@ def create_sightings_table(case_id: str, data_service: DataService):
                             "bg-transparent text-gray-300 px-2 py-1 rounded-full border border-gray-500/60 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-200 transition-all duration-300 font-light text-xs tracking-wide"
                         )
 
-                        # Show investigation button if not investigated
-                        if not sighting.get("investigated", False):
-                            ui.button(
-                                "Investigate", on_click=lambda s=sighting: handle_investigate_sighting(s)
-                            ).classes(
-                                "bg-transparent text-blue-300 px-2 py-1 rounded-full border border-blue-500/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide"
-                            )
 
 
 def create_video_analysis_section():
