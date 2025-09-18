@@ -219,7 +219,8 @@ class MockDataService(DataService):
                 "sighted_city": "Mock City",
                 "witness_name": "John Doe",
                 "confidence_level": "High",
-                "ml_summary": "Mock sighting of person matching description near shopping center"
+                "ml_summary": "Mock sighting of person matching description near shopping center",
+                "distance_km": 2.1
             },
             {
                 "missing_person_id": missing_person_id,
@@ -232,6 +233,61 @@ class MockDataService(DataService):
                 "sighted_city": "Mock City",
                 "witness_name": "Jane Smith",
                 "confidence_level": "Medium",
-                "ml_summary": "Possible match reported at transit station, partial view"
+                "ml_summary": "Possible match reported at transit station, partial view",
+                "distance_km": 4.7
+            }
+        ]
+
+    def find_similar_missing_persons_for_sighting(self, sighting_id: str, search_radius_meters: float = 10000.0, delta_days: int = 30, top_k: int = 5) -> list[dict]:
+        """Mock implementation - returns sample similar missing person cases for testing"""
+        # Return mock similarity results for demonstration
+        return [
+            {
+                "sighting_id": sighting_id,
+                "sighting_number": "SGHT-001",
+                "similarity_distance": 0.18,
+                "id": "MP-2024-001",
+                "case_number": "MP001-2024",
+                "name": "John",
+                "surname": "Anderson",
+                "age": 28,
+                "gender": "Male",
+                "priority": "High",
+                "last_seen_date": "2024-01-10",
+                "last_seen_city": "Mock City",
+                "ml_summary": "Missing person case with similar physical description and circumstances in the area",
+                "distance_km": 1.8
+            },
+            {
+                "sighting_id": sighting_id,
+                "sighting_number": "SGHT-001",
+                "similarity_distance": 0.32,
+                "id": "MP-2024-002",
+                "case_number": "MP002-2024",
+                "name": "Michael",
+                "surname": "Brown",
+                "age": 25,
+                "gender": "Male",
+                "priority": "Medium",
+                "last_seen_date": "2024-01-08",
+                "last_seen_city": "Mock City North",
+                "ml_summary": "Young adult male with similar build and clothing description from nearby area",
+                "distance_km": 3.2
+            },
+            {
+                "sighting_id": sighting_id,
+                "sighting_number": "SGHT-001",
+                "similarity_distance": 0.45,
+                "id": "MP-2024-003",
+                "case_number": "MP003-2024",
+                "name": "David",
+                "surname": "Wilson",
+                "age": 30,
+                "gender": "Male",
+                "priority": "Low",
+                "last_seen_date": "2024-01-05",
+                "last_seen_city": "Mock City South",
+                "ml_summary": "Missing person with comparable age and general appearance characteristics",
+                "distance_km": 5.7
             }
         ]

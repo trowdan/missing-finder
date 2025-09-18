@@ -1874,3 +1874,128 @@ class BigQueryDataService(DataService):
         except Exception as e:
             print(f"Error executing similarity search: {str(e)}")
             return []
+
+    def find_similar_missing_persons_for_sighting(self, sighting_id: str, search_radius_meters: float = 10000.0, delta_days: int = 30, top_k: int = 5) -> list[dict]:
+        """Find missing persons similar to a sighting using vector search - reverse of sighting search"""
+        # First get the sighting details for geo/time filtering
+        sighting = self.get_sighting_by_id(sighting_id)
+        if not sighting:
+            print(f"Sighting with id {sighting_id} not found")
+            return []
+
+        # Verify that the sighting has embeddings
+        check_embeddings_query = """
+        SELECT
+            COUNT(*) as sighting_with_embeddings,
+            (SELECT COUNT(*) FROM `homeward.missing_persons` WHERE ml_summary_embedding IS NOT NULL AND ARRAY_LENGTH(ml_summary_embedding) > 0) as mp_with_embeddings
+        FROM `homeward.sightings`
+        WHERE id = @sighting_id
+        AND ml_summary_embedding IS NOT NULL
+        AND ARRAY_LENGTH(ml_summary_embedding) > 0
+        """
+
+        check_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("sighting_id", "STRING", sighting_id)
+            ]
+        )
+
+        try:
+            check_job = self.client.query(check_embeddings_query, job_config=check_job_config)
+            check_result = list(check_job.result())[0]
+
+            if check_result.sighting_with_embeddings == 0:
+                print(f"Sighting {sighting_id} has no embeddings calculated")
+                return []
+
+            if check_result.mp_with_embeddings == 0:
+                print("No missing persons have embeddings calculated")
+                return []
+
+            print(f"Found embeddings: {check_result.sighting_with_embeddings} sighting, {check_result.mp_with_embeddings} missing persons")
+
+        except Exception as e:
+            print(f"Error checking embeddings: {str(e)}")
+            return []
+
+        # Query structure based on SIMILARITY_SEARCH_SIGHTINGS_TO_MP_QUERY from demo notebook
+        SIMILARITY_SEARCH_SIGHTINGS_TO_MP_QUERY = """
+        SELECT
+        query.id as sighting_id,
+        query.sighting_number,
+        distance,
+        base.id,
+        base.case_number,
+        base.name,
+        base.surname,
+        base.age,
+        base.gender,
+        base.priority,
+        base.last_seen_date,
+        base.last_seen_city,
+        base.ml_summary,
+        ST_DISTANCE(
+          base.last_seen_geo,
+          ST_GEOGPOINT(@sighted_longitude, @sighted_latitude)
+        ) / 1000 as distance_km
+        FROM
+          VECTOR_SEARCH(
+            (
+              SELECT *
+              FROM
+                `homeward.missing_persons`
+              WHERE
+                DATE(created_date) >= DATE_SUB(@sighted_date, INTERVAL @delta_days DAY)
+            ),
+            'ml_summary_embedding',
+            (SELECT id, sighting_number, ml_summary_embedding FROM `homeward.sightings` WHERE id = @sighting_id),
+            top_k => @top_k,
+            distance_type => 'COSINE',
+            options => '{"fraction_lists_to_search": 0.005}')
+        WHERE ST_DWITHIN(
+          base.last_seen_geo,
+          ST_GEOGPOINT(@sighted_longitude, @sighted_latitude),
+          @search_radius_meters
+        );
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("sighting_id", "STRING", sighting_id),
+                bigquery.ScalarQueryParameter("sighted_latitude", "FLOAT64", sighting.sighted_location.latitude),
+                bigquery.ScalarQueryParameter("sighted_longitude", "FLOAT64", sighting.sighted_location.longitude),
+                bigquery.ScalarQueryParameter("search_radius_meters", "FLOAT64", search_radius_meters),
+                bigquery.ScalarQueryParameter("sighted_date", "DATE", sighting.sighted_date.date()),
+                bigquery.ScalarQueryParameter("delta_days", "INT64", delta_days),
+                bigquery.ScalarQueryParameter("top_k", "INT64", top_k)
+            ]
+        )
+
+        try:
+            query_job = self.client.query(SIMILARITY_SEARCH_SIGHTINGS_TO_MP_QUERY, job_config=job_config)
+            results = query_job.result()
+
+            similar_cases = []
+            for row in results:
+                similar_cases.append({
+                    "sighting_id": row[0],
+                    "sighting_number": row[1],
+                    "similarity_distance": float(row[2]),
+                    "id": row[3],
+                    "case_number": row[4],
+                    "name": row[5],
+                    "surname": row[6],
+                    "age": int(row[7]) if row[7] is not None else None,
+                    "gender": row[8],
+                    "priority": row[9],
+                    "last_seen_date": row[10],
+                    "last_seen_city": row[11],
+                    "ml_summary": row[12],
+                    "distance_km": float(row[13])
+                })
+
+            return similar_cases
+
+        except Exception as e:
+            print(f"Error executing reverse similarity search: {str(e)}")
+            return []
