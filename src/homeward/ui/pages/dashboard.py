@@ -2,6 +2,7 @@ from nicegui import ui
 
 from homeward.config import AppConfig
 from homeward.services.data_service import DataService
+from homeward.services.geocoding_service import GeocodingService
 from homeward.ui.components.cases_table import create_cases_table
 from homeward.ui.components.footer import create_footer
 from homeward.ui.components.kpi_cards import create_kpi_grid
@@ -66,7 +67,7 @@ def create_dashboard(data_service: DataService, config: AppConfig):
             with ui.column().classes("w-full"):
                 # Missing Persons Panel (shown by default)
                 with ui.column().classes("w-full") as missing_persons_panel:
-                    create_missing_persons_panel(data_service, latest_cases)
+                    create_missing_persons_panel(data_service, config, latest_cases)
 
                 # Sightings Panel (hidden by default)
                 with (
@@ -74,7 +75,7 @@ def create_dashboard(data_service: DataService, config: AppConfig):
                     .classes("w-full")
                     .style("display: none") as sightings_panel
                 ):
-                    create_sightings_panel(data_service, latest_sightings)
+                    create_sightings_panel(data_service, config, latest_sightings)
 
             # Store panel references for switching
             def show_panel(panel_type):
@@ -138,7 +139,7 @@ def handle_view_all_sightings_click():
     ui.notify("Navigate to all sightings page")
 
 
-def create_missing_persons_panel(data_service: DataService, latest_cases: list):
+def create_missing_persons_panel(data_service: DataService, config: AppConfig, latest_cases: list):
     """Create the Missing Persons panel with search and table"""
 
     with ui.card().classes(
@@ -163,7 +164,7 @@ def create_missing_persons_panel(data_service: DataService, latest_cases: list):
 
         # Now populate the search section
         with search_section:
-            create_search_form(data_service, latest_cases, "missing_persons", cases_table_container)
+            create_search_form(data_service, config, latest_cases, "missing_persons", cases_table_container)
 
         # Populate the results table
         with cases_table_container:
@@ -174,7 +175,7 @@ def create_missing_persons_panel(data_service: DataService, latest_cases: list):
             )
 
 
-def create_sightings_panel(data_service: DataService, latest_sightings: list):
+def create_sightings_panel(data_service: DataService, config: AppConfig, latest_sightings: list):
     """Create the Sightings panel with search and table"""
 
     with ui.card().classes(
@@ -201,7 +202,7 @@ def create_sightings_panel(data_service: DataService, latest_sightings: list):
 
         # Now populate the search section
         with search_section:
-            create_search_form(data_service, latest_sightings, "sightings", sightings_table_container)
+            create_search_form(data_service, config, latest_sightings, "sightings", sightings_table_container)
 
         # Populate the results table
         with sightings_table_container:
@@ -212,7 +213,7 @@ def create_sightings_panel(data_service: DataService, latest_sightings: list):
             )
 
 
-def create_search_form(data_service: DataService, data_source: list, panel_type: str, table_container):
+def create_search_form(data_service: DataService, config: AppConfig, data_source: list, panel_type: str, table_container):
     """Create search form for a specific panel"""
 
     # Search controls row
@@ -269,18 +270,10 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
         # Geographic search fields
         with ui.column().classes("w-full").style("display: none") as geographic_fields:
             with ui.row().classes("w-full gap-4"):
-                geographic_latitude_input = (
-                    ui.input("Latitude", placeholder="e.g., 45.4642")
+                geographic_address_input = (
+                    ui.input("Address", placeholder="Enter full address (e.g., 123 Main St, City, State)")
                     .classes(
-                        "w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg"
-                    )
-                    .props("outlined dense")
-                )
-
-                geographic_longitude_input = (
-                    ui.input("Longitude", placeholder="e.g., 9.1900")
-                    .classes(
-                        "w-32 bg-gray-700/50 text-white border-gray-500 rounded-lg"
+                        "flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg"
                     )
                     .props("outlined dense")
                 )
@@ -319,8 +312,7 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
     # Store field references for handlers
     keyword_fields.search_input = keyword_search_input
     keyword_fields.field_select = keyword_field_select
-    geographic_fields.latitude_input = geographic_latitude_input
-    geographic_fields.longitude_input = geographic_longitude_input
+    geographic_fields.address_input = geographic_address_input
     geographic_fields.radius_input = geographic_radius_input
     semantic_fields.description_input = semantic_description_input
 
@@ -349,6 +341,7 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
         "click",
         lambda: perform_panel_search_with_spinner(
             data_service,
+            config,
             data_source,
             panel_type,
             search_type_select,
@@ -363,6 +356,7 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
         "click",
         lambda: reset_panel_search_with_spinner(
             data_service,
+            config,
             data_source,
             panel_type,
             search_type_select,
@@ -515,6 +509,74 @@ def perform_geographic_search(
         return cases
 
 
+def perform_geographic_search_with_address(
+    data_service: DataService, config: AppConfig, address: str, radius: float, panel_type: str
+) -> tuple[list, int]:
+    """Perform geographic search using address and BigQuery geo functions"""
+    if not address or not address.strip():
+        ui.notify(
+            "Please enter an address for geographic search",
+            type="warning",
+        )
+        if panel_type == "missing_persons":
+            return data_service.get_cases(page=1, page_size=10)
+        else:
+            return data_service.get_sightings(page=1, page_size=10)
+
+    try:
+        # Initialize geocoding service
+        geocoding_service = GeocodingService(config)
+
+        # Geocode the address
+        geocoding_result = geocoding_service.geocode_address(address.strip())
+
+        if not geocoding_result:
+            ui.notify(
+                f"Could not find location for address: {address}",
+                type="warning",
+            )
+            if panel_type == "missing_persons":
+                return data_service.get_cases(page=1, page_size=10)
+            else:
+                return data_service.get_sightings(page=1, page_size=10)
+
+        search_lat = geocoding_result.latitude
+        search_lon = geocoding_result.longitude
+        search_radius = float(radius)
+
+        ui.notify(
+            f"Searching within {search_radius}km of {geocoding_result.formatted_address}",
+            type="info",
+        )
+
+        # Use data service geographic search methods
+        if panel_type == "missing_persons":
+            results, total_count = data_service.search_cases_by_location(
+                latitude=search_lat,
+                longitude=search_lon,
+                radius_km=search_radius,
+                page=1,
+                page_size=10
+            )
+        else:
+            results, total_count = data_service.search_sightings_by_location(
+                latitude=search_lat,
+                longitude=search_lon,
+                radius_km=search_radius,
+                page=1,
+                page_size=10
+            )
+
+        return results, total_count
+
+    except Exception as e:
+        ui.notify(f"Geographic search failed: {str(e)}", type="negative")
+        if panel_type == "missing_persons":
+            return data_service.get_cases(page=1, page_size=10)
+        else:
+            return data_service.get_sightings(page=1, page_size=10)
+
+
 def perform_semantic_search_dynamic(cases: list, description: str) -> list:
     """Perform AI-powered semantic search on case descriptions"""
     if not description:
@@ -605,6 +667,7 @@ def reset_dynamic_search(
 
 def perform_panel_search_with_spinner(
     data_service: DataService,
+    config: AppConfig,
     data_source: list,
     panel_type: str,
     search_type_select,
@@ -623,6 +686,7 @@ def perform_panel_search_with_spinner(
     try:
         perform_panel_search(
             data_service,
+            config,
             data_source,
             panel_type,
             search_type_select,
@@ -639,6 +703,7 @@ def perform_panel_search_with_spinner(
 
 def perform_panel_search(
     data_service: DataService,
+    config: AppConfig,
     data_source: list,
     panel_type: str,
     search_type_select,
@@ -679,13 +744,11 @@ def perform_panel_search(
                 results, total_count = data_service.search_sightings(query, field, page=1, page_size=10)
 
         elif search_type == "geographic":
-            latitude = geographic_fields.latitude_input.value
-            longitude = geographic_fields.longitude_input.value
+            address = geographic_fields.address_input.value
             radius = geographic_fields.radius_input.value
-            results = perform_geographic_search(
-                data_source, latitude, longitude, radius
+            results, total_count = perform_geographic_search_with_address(
+                data_service, config, address, radius, panel_type
             )
-            total_count = len(results)
         elif search_type == "semantic":
             description = semantic_fields.description_input.value
             results = perform_semantic_search_dynamic(data_source, description)
@@ -730,6 +793,7 @@ def perform_panel_search(
 
 def reset_panel_search_with_spinner(
     data_service: DataService,
+    config: AppConfig,
     data_source: list,
     panel_type: str,
     search_type_select,
@@ -748,6 +812,7 @@ def reset_panel_search_with_spinner(
     try:
         reset_panel_search(
             data_service,
+            config,
             data_source,
             panel_type,
             search_type_select,
@@ -764,6 +829,7 @@ def reset_panel_search_with_spinner(
 
 def reset_panel_search(
     data_service: DataService,
+    config: AppConfig,
     data_source: list,
     panel_type: str,
     search_type_select,
@@ -789,8 +855,7 @@ def reset_panel_search(
         # Clear all input fields first
         keyword_fields.search_input.value = ""
         keyword_fields.field_select.value = "all"
-        geographic_fields.latitude_input.value = ""
-        geographic_fields.longitude_input.value = ""
+        geographic_fields.address_input.value = ""
         geographic_fields.radius_input.value = 5.0
         semantic_fields.description_input.value = ""
         search_type_select.value = "keyword"

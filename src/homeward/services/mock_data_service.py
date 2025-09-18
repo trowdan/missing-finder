@@ -570,3 +570,79 @@ class MockDataService(DataService):
         except Exception as e:
             print(f"Mock: Error getting linked case for sighting: {str(e)}")
             return None
+
+    def search_cases_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Search missing person cases by geographic location (mock implementation)"""
+        import math
+
+        def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            """Calculate distance between two points using Haversine formula"""
+            lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+            c = 2 * math.asin(math.sqrt(a))
+            r = 6371  # Radius of earth in kilometers
+            return c * r
+
+        # Filter cases within the radius
+        filtered_cases = []
+        for case in self._cases:
+            if case.last_seen_location.latitude and case.last_seen_location.longitude:
+                distance = calculate_distance(
+                    latitude, longitude,
+                    case.last_seen_location.latitude,
+                    case.last_seen_location.longitude
+                )
+                if distance <= radius_km:
+                    filtered_cases.append((case, distance))
+
+        # Sort by distance
+        filtered_cases.sort(key=lambda x: x[1])
+        cases_only = [case for case, distance in filtered_cases]
+
+        # Apply pagination
+        total_count = len(cases_only)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_cases = cases_only[start_idx:end_idx]
+
+        return paginated_cases, total_count
+
+    def search_sightings_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Search sighting reports by geographic location (mock implementation)"""
+        import math
+
+        def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            """Calculate distance between two points using Haversine formula"""
+            lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+            c = 2 * math.asin(math.sqrt(a))
+            r = 6371  # Radius of earth in kilometers
+            return c * r
+
+        # Filter sightings within the radius
+        filtered_sightings = []
+        for sighting in self._sightings:
+            if sighting.sighted_location.latitude and sighting.sighted_location.longitude:
+                distance = calculate_distance(
+                    latitude, longitude,
+                    sighting.sighted_location.latitude,
+                    sighting.sighted_location.longitude
+                )
+                if distance <= radius_km:
+                    filtered_sightings.append((sighting, distance))
+
+        # Sort by distance
+        filtered_sightings.sort(key=lambda x: x[1])
+        sightings_only = [sighting for sighting, distance in filtered_sightings]
+
+        # Apply pagination
+        total_count = len(sightings_only)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_sightings = sightings_only[start_idx:end_idx]
+
+        return paginated_sightings, total_count

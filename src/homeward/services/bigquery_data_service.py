@@ -2292,3 +2292,302 @@ class BigQueryDataService(DataService):
         except Exception as e:
             print(f"Error getting linked case for sighting {sighting_id}: {str(e)}")
             return None
+
+    def search_cases_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Search missing person cases by geographic location using BigQuery geo functions"""
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Count query using ST_DWITHIN for geographic distance filtering
+        COUNT_QUERY = """
+        SELECT COUNT(id) as total_count
+        FROM `homeward.missing_persons`
+        WHERE last_seen_latitude IS NOT NULL
+            AND last_seen_longitude IS NOT NULL
+            AND ST_DWITHIN(
+                ST_GEOGPOINT(last_seen_longitude, last_seen_latitude),
+                ST_GEOGPOINT(@search_longitude, @search_latitude),
+                @radius_meters
+            )
+        """
+
+        # Data query with geographic filtering and distance calculation
+        CASES_QUERY = """
+        SELECT
+            id, case_number, name, surname, date_of_birth, gender,
+            height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
+            last_seen_date, last_seen_time, last_seen_address, last_seen_city,
+            last_seen_country, last_seen_postal_code, last_seen_latitude, last_seen_longitude,
+            circumstances, priority, status, description, medical_conditions, additional_info,
+            photo_url, reporter_name, reporter_phone, reporter_email, relationship,
+            created_date, updated_date, ml_summary,
+            ST_DISTANCE(
+                ST_GEOGPOINT(last_seen_longitude, last_seen_latitude),
+                ST_GEOGPOINT(@search_longitude, @search_latitude)
+            ) / 1000 as distance_km
+        FROM `homeward.missing_persons`
+        WHERE last_seen_latitude IS NOT NULL
+            AND last_seen_longitude IS NOT NULL
+            AND ST_DWITHIN(
+                ST_GEOGPOINT(last_seen_longitude, last_seen_latitude),
+                ST_GEOGPOINT(@search_longitude, @search_latitude),
+                @radius_meters
+            )
+        ORDER BY distance_km ASC, created_date DESC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        try:
+            # Convert radius from km to meters for BigQuery ST_DWITHIN
+            radius_meters = radius_km * 1000
+
+            # Execute count query
+            count_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("search_latitude", "FLOAT64", latitude),
+                    bigquery.ScalarQueryParameter("search_longitude", "FLOAT64", longitude),
+                    bigquery.ScalarQueryParameter("radius_meters", "FLOAT64", radius_meters)
+                ]
+            )
+            count_query_job = self.client.query(COUNT_QUERY, job_config=count_job_config)
+            count_results = count_query_job.result()
+            total_count = next(count_results).total_count
+
+            # Execute data query
+            data_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("search_latitude", "FLOAT64", latitude),
+                    bigquery.ScalarQueryParameter("search_longitude", "FLOAT64", longitude),
+                    bigquery.ScalarQueryParameter("radius_meters", "FLOAT64", radius_meters),
+                    bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                    bigquery.ScalarQueryParameter("offset", "INT64", offset)
+                ]
+            )
+            data_query_job = self.client.query(CASES_QUERY, job_config=data_job_config)
+            data_results = data_query_job.result()
+
+            # Convert results to MissingPersonCase objects
+            cases = []
+            for row in data_results:
+                case = self._row_to_missing_person_case(row)
+                cases.append(case)
+
+            return cases, total_count
+
+        except Exception as e:
+            print(f"Error searching cases by location: {str(e)}")
+            return [], 0
+
+    def search_sightings_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Search sighting reports by geographic location using BigQuery geo functions"""
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Count query using ST_DWITHIN for geographic distance filtering
+        COUNT_QUERY = """
+        SELECT COUNT(id) as total_count
+        FROM `homeward.sightings`
+        WHERE sighted_latitude IS NOT NULL
+            AND sighted_longitude IS NOT NULL
+            AND ST_DWITHIN(
+                ST_GEOGPOINT(sighted_longitude, sighted_latitude),
+                ST_GEOGPOINT(@search_longitude, @search_latitude),
+                @radius_meters
+            )
+        """
+
+        # Data query with geographic filtering and distance calculation
+        SIGHTINGS_QUERY = """
+        SELECT
+            id, witness_name, witness_email, witness_phone, sighted_date,
+            sighted_address, sighted_city, sighted_country, sighted_postal_code,
+            sighted_latitude, sighted_longitude, individual_age, apparent_gender,
+            height_estimate, weight_estimate, hair_color, clothing_description,
+            distinguishing_features, description, confidence_level, source_type,
+            created_date, updated_date, ml_summary,
+            ST_DISTANCE(
+                ST_GEOGPOINT(sighted_longitude, sighted_latitude),
+                ST_GEOGPOINT(@search_longitude, @search_latitude)
+            ) / 1000 as distance_km
+        FROM `homeward.sightings`
+        WHERE sighted_latitude IS NOT NULL
+            AND sighted_longitude IS NOT NULL
+            AND ST_DWITHIN(
+                ST_GEOGPOINT(sighted_longitude, sighted_latitude),
+                ST_GEOGPOINT(@search_longitude, @search_latitude),
+                @radius_meters
+            )
+        ORDER BY distance_km ASC, created_date DESC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        try:
+            # Convert radius from km to meters for BigQuery ST_DWITHIN
+            radius_meters = radius_km * 1000
+
+            # Execute count query
+            count_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("search_latitude", "FLOAT64", latitude),
+                    bigquery.ScalarQueryParameter("search_longitude", "FLOAT64", longitude),
+                    bigquery.ScalarQueryParameter("radius_meters", "FLOAT64", radius_meters)
+                ]
+            )
+            count_query_job = self.client.query(COUNT_QUERY, job_config=count_job_config)
+            count_results = count_query_job.result()
+            total_count = next(count_results).total_count
+
+            # Execute data query
+            data_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("search_latitude", "FLOAT64", latitude),
+                    bigquery.ScalarQueryParameter("search_longitude", "FLOAT64", longitude),
+                    bigquery.ScalarQueryParameter("radius_meters", "FLOAT64", radius_meters),
+                    bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                    bigquery.ScalarQueryParameter("offset", "INT64", offset)
+                ]
+            )
+            data_query_job = self.client.query(SIGHTINGS_QUERY, job_config=data_job_config)
+            data_results = data_query_job.result()
+
+            # Convert results to Sighting objects
+            sightings = []
+            for row in data_results:
+                sighting = self._row_to_sighting(row)
+                sightings.append(sighting)
+
+            return sightings, total_count
+
+        except Exception as e:
+            print(f"Error searching sightings by location: {str(e)}")
+            return [], 0
+
+    def _row_to_missing_person_case(self, row):
+        """Convert BigQuery row to MissingPersonCase object"""
+        # Combine date and time for last_seen_date
+        last_seen_date = row.last_seen_date
+        last_seen_time = row.last_seen_time
+
+        if last_seen_date and last_seen_time:
+            from datetime import datetime, time
+            if isinstance(last_seen_time, time):
+                last_seen_datetime = datetime.combine(last_seen_date, last_seen_time)
+            else:
+                last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time())
+        else:
+            last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time()) if last_seen_date else datetime.now()
+
+        # Create Location object
+        from homeward.models.case import Location, CaseStatus, CasePriority
+        location = Location(
+            address=row.last_seen_address or "",
+            city=row.last_seen_city or "",
+            country=row.last_seen_country or "",
+            postal_code=row.last_seen_postal_code,
+            latitude=row.last_seen_latitude,
+            longitude=row.last_seen_longitude
+        )
+
+        # Parse enum values
+        status = CaseStatus.ACTIVE
+        try:
+            status = CaseStatus(row.status)
+        except ValueError:
+            pass
+
+        priority = CasePriority.MEDIUM
+        try:
+            priority = CasePriority(row.priority)
+        except ValueError:
+            pass
+
+        # Convert date_of_birth from date to datetime
+        from datetime import datetime
+        date_of_birth = row.date_of_birth
+        if date_of_birth and not isinstance(date_of_birth, datetime):
+            date_of_birth = datetime.combine(date_of_birth, datetime.min.time())
+
+        # Create MissingPersonCase object
+        case = MissingPersonCase(
+            id=row.id,
+            name=row.name or "",
+            surname=row.surname or "",
+            date_of_birth=date_of_birth or datetime.now(),
+            gender=row.gender or "",
+            last_seen_date=last_seen_datetime,
+            last_seen_location=location,
+            status=status,
+            circumstances=row.circumstances or "",
+            reporter_name=row.reporter_name or "",
+            reporter_phone=row.reporter_phone or "",
+            relationship=row.relationship or "",
+            case_number=row.case_number,
+            height=row.height,
+            weight=row.weight,
+            hair_color=row.hair_color,
+            eye_color=row.eye_color,
+            distinguishing_marks=row.distinguishing_marks,
+            clothing_description=row.clothing_description,
+            medical_conditions=row.medical_conditions,
+            additional_info=row.additional_info,
+            description=row.description,
+            photo_url=row.photo_url,
+            reporter_email=row.reporter_email,
+            created_date=row.created_date or datetime.now(),
+            priority=priority,
+            ml_summary=row.ml_summary,
+        )
+        return case
+
+    def _row_to_sighting(self, row):
+        """Convert BigQuery row to Sighting object"""
+        from homeward.models.case import Location, Sighting, ConfidenceLevel, SourceType
+        from datetime import datetime
+
+        # Create Location object
+        location = Location(
+            address=row.sighted_address or "",
+            city=row.sighted_city or "",
+            country=row.sighted_country or "",
+            postal_code=row.sighted_postal_code,
+            latitude=row.sighted_latitude,
+            longitude=row.sighted_longitude
+        )
+
+        # Parse enum values
+        confidence_level = ConfidenceLevel.MEDIUM
+        try:
+            confidence_level = ConfidenceLevel(row.confidence_level)
+        except (ValueError, AttributeError):
+            pass
+
+        source_type = SourceType.WITNESS
+        try:
+            source_type = SourceType(row.source_type)
+        except (ValueError, AttributeError):
+            pass
+
+        # Create Sighting object
+        sighting = Sighting(
+            id=row.id,
+            witness_name=row.witness_name or "",
+            witness_email=row.witness_email or "",
+            witness_phone=row.witness_phone or "",
+            sighted_date=row.sighted_date or datetime.now(),
+            sighted_location=location,
+            individual_age=row.individual_age,
+            apparent_gender=row.apparent_gender or "",
+            height_estimate=row.height_estimate,
+            weight_estimate=row.weight_estimate,
+            hair_color=row.hair_color or "",
+            clothing_description=row.clothing_description or "",
+            distinguishing_features=row.distinguishing_features or "",
+            description=row.description or "",
+            confidence_level=confidence_level,
+            source_type=source_type,
+            created_date=row.created_date or datetime.now(),
+            ml_summary=row.ml_summary
+        )
+        return sighting

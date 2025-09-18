@@ -96,3 +96,13 @@ class DataService(ABC):
     def get_linked_case_for_sighting(self, sighting_id: str) -> dict:
         """Get the linked case information for a sighting. Returns case data dict or None if not linked."""
         pass
+
+    @abstractmethod
+    def search_cases_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Search missing person cases by geographic location using BigQuery geo functions. Returns (cases, total_count)"""
+        pass
+
+    @abstractmethod
+    def search_sightings_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Search sighting reports by geographic location using BigQuery geo functions. Returns (sightings, total_count)"""
+        pass
