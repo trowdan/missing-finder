@@ -51,3 +51,13 @@ class DataService(ABC):
     def update_sighting(self, sighting: Sighting) -> bool:
         """Update an existing sighting and return success status"""
         pass
+
+    @abstractmethod
+    def search_cases(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Search missing person cases with LIKE filtering. Returns (cases, total_count)"""
+        pass
+
+    @abstractmethod
+    def search_sightings(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Search sighting reports with LIKE filtering. Returns (sightings, total_count)"""
+        pass

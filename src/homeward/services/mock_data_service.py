@@ -106,3 +106,84 @@ class MockDataService(DataService):
                 self._sightings[i] = sighting
                 return True
         return False
+
+    def search_cases(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Search missing person cases with LIKE filtering"""
+        if not query or not query.strip():
+            return self.get_cases(page=page, page_size=page_size)
+
+        query = query.lower().strip()
+        results = []
+
+        for case in self._cases:
+            match = False
+
+            if field == "all" or field == "id":
+                if query in case.id.lower():
+                    match = True
+
+            if field == "all" or field == "full name":
+                full_name = f"{case.name} {case.surname}".lower()
+                if query in case.name.lower() or query in case.surname.lower() or query in full_name:
+                    match = True
+
+            if field == "all":
+                # When searching "all", include additional searchable fields
+                if case.description and query in case.description.lower():
+                    match = True
+                if case.circumstances and query in case.circumstances.lower():
+                    match = True
+                if (case.last_seen_location.address and query in case.last_seen_location.address.lower()) or \
+                   (case.last_seen_location.city and query in case.last_seen_location.city.lower()):
+                    match = True
+                if case.case_number and query in case.case_number.lower():
+                    match = True
+
+            if match:
+                results.append(case)
+
+        total_count = len(results)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_results = results[start_idx:end_idx]
+
+        return paginated_results, total_count
+
+    def search_sightings(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Search sighting reports with LIKE filtering"""
+        if not query or not query.strip():
+            return self.get_sightings(page=page, page_size=page_size)
+
+        query = query.lower().strip()
+        results = []
+
+        for sighting in self._sightings:
+            match = False
+
+            if field == "all" or field == "id":
+                if query in sighting.id.lower():
+                    match = True
+
+            if field == "all":
+                # When searching "all", include additional searchable fields
+                if sighting.description and query in sighting.description.lower():
+                    match = True
+                if sighting.circumstances and query in sighting.circumstances.lower():
+                    match = True
+                if (sighting.sighted_location.address and query in sighting.sighted_location.address.lower()) or \
+                   (sighting.sighted_location.city and query in sighting.sighted_location.city.lower()):
+                    match = True
+                if sighting.witness_name and query in sighting.witness_name.lower():
+                    match = True
+                if sighting.sighting_number and query in sighting.sighting_number.lower():
+                    match = True
+
+            if match:
+                results.append(sighting)
+
+        total_count = len(results)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_results = results[start_idx:end_idx]
+
+        return paginated_results, total_count

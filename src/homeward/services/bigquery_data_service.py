@@ -1355,3 +1355,301 @@ class BigQueryDataService(DataService):
         except Exception as e:
             print(f"Error updating sighting {sighting.id}: {str(e)}")
             return False
+
+    def search_cases(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[MissingPersonCase], int]:
+        """Search missing person cases with LIKE filtering"""
+        if not query or not query.strip():
+            return self.get_cases(page=page, page_size=page_size)
+
+        query = query.strip()
+        offset = (page - 1) * page_size
+
+        # Build WHERE clause based on field selection
+        where_conditions = []
+        if field == "all" or field == "id":
+            where_conditions.append("LOWER(id) LIKE @query")
+        if field == "all" or field == "full name":
+            where_conditions.append("(LOWER(name) LIKE @query OR LOWER(surname) LIKE @query OR LOWER(CONCAT(name, ' ', surname)) LIKE @query)")
+        if field == "all":
+            # When searching "all", include additional searchable fields
+            where_conditions.append("LOWER(description) LIKE @query")
+            where_conditions.append("LOWER(circumstances) LIKE @query")
+            where_conditions.append("(LOWER(last_seen_address) LIKE @query OR LOWER(last_seen_city) LIKE @query)")
+            where_conditions.append("LOWER(case_number) LIKE @query")
+
+        where_clause = " OR ".join(where_conditions) if where_conditions else "1=1"
+
+        # Count query
+        COUNT_QUERY = f"""
+        SELECT COUNT(id) as total_count
+        FROM `homeward.missing_persons`
+        WHERE {where_clause}
+        """
+
+        # Data query with pagination
+        SEARCH_QUERY = f"""
+        SELECT
+            id, case_number, name, surname, date_of_birth, gender,
+            height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
+            last_seen_date, last_seen_time, last_seen_address, last_seen_city,
+            last_seen_country, last_seen_postal_code, last_seen_latitude, last_seen_longitude,
+            circumstances, priority, status, description, medical_conditions, additional_info,
+            photo_url, reporter_name, reporter_phone, reporter_email, relationship,
+            created_date, updated_date, ml_summary
+        FROM `homeward.missing_persons`
+        WHERE {where_clause}
+        ORDER BY created_date DESC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        search_param = f"%{query.lower()}%"
+
+        # Execute count query
+        count_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("query", "STRING", search_param)
+            ]
+        )
+        count_job = self.client.query(COUNT_QUERY, job_config=count_job_config)
+        total_count = list(count_job.result())[0].total_count
+
+        # Execute data query
+        data_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("query", "STRING", search_param),
+                bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                bigquery.ScalarQueryParameter("offset", "INT64", offset)
+            ]
+        )
+        data_job = self.client.query(SEARCH_QUERY, job_config=data_job_config)
+
+        # Convert results to MissingPersonCase objects (reuse existing conversion logic)
+        cases = []
+        for row in data_job.result():
+            # Same conversion logic as in get_cases method
+            last_seen_date = row.last_seen_date
+            last_seen_time = row.last_seen_time
+
+            if last_seen_date and last_seen_time:
+                from datetime import datetime, time
+                if isinstance(last_seen_time, time):
+                    last_seen_datetime = datetime.combine(last_seen_date, last_seen_time)
+                else:
+                    last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time())
+            else:
+                last_seen_datetime = datetime.combine(last_seen_date, datetime.min.time()) if last_seen_date else datetime.now()
+
+            from homeward.models.case import Location, CaseStatus, CasePriority
+            location = Location(
+                address=row.last_seen_address or "",
+                city=row.last_seen_city or "",
+                country=row.last_seen_country or "",
+                postal_code=row.last_seen_postal_code,
+                latitude=row.last_seen_latitude,
+                longitude=row.last_seen_longitude
+            )
+
+            status = CaseStatus.ACTIVE
+            try:
+                status = CaseStatus(row.status)
+            except ValueError:
+                pass
+
+            priority = CasePriority.MEDIUM
+            try:
+                priority = CasePriority(row.priority)
+            except ValueError:
+                pass
+
+            from datetime import datetime
+            date_of_birth = row.date_of_birth
+            if date_of_birth and not isinstance(date_of_birth, datetime):
+                date_of_birth = datetime.combine(date_of_birth, datetime.min.time())
+
+            case = MissingPersonCase(
+                id=row.id,
+                name=row.name or "",
+                surname=row.surname or "",
+                date_of_birth=date_of_birth or datetime.now(),
+                gender=row.gender or "",
+                last_seen_date=last_seen_datetime,
+                last_seen_location=location,
+                status=status,
+                circumstances=row.circumstances or "",
+                reporter_name=row.reporter_name or "",
+                reporter_phone=row.reporter_phone or "",
+                relationship=row.relationship or "",
+                case_number=row.case_number,
+                height=row.height,
+                weight=row.weight,
+                hair_color=row.hair_color,
+                eye_color=row.eye_color,
+                distinguishing_marks=row.distinguishing_marks,
+                clothing_description=row.clothing_description,
+                medical_conditions=row.medical_conditions,
+                additional_info=row.additional_info,
+                description=row.description,
+                photo_url=row.photo_url,
+                reporter_email=row.reporter_email,
+                created_date=row.created_date or datetime.now(),
+                priority=priority,
+                ml_summary=row.ml_summary,
+            )
+            cases.append(case)
+
+        return cases, total_count
+
+    def search_sightings(self, query: str, field: str = "all", page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
+        """Search sighting reports with LIKE filtering"""
+        if not query or not query.strip():
+            return self.get_sightings(page=page, page_size=page_size)
+
+        query = query.strip()
+        offset = (page - 1) * page_size
+
+        # Build WHERE clause based on field selection
+        where_conditions = []
+        if field == "all" or field == "id":
+            where_conditions.append("LOWER(id) LIKE @query")
+        if field == "all":
+            # When searching "all", include additional searchable fields
+            where_conditions.append("LOWER(description) LIKE @query")
+            where_conditions.append("LOWER(circumstances) LIKE @query")
+            where_conditions.append("(LOWER(sighted_address) LIKE @query OR LOWER(sighted_city) LIKE @query)")
+            where_conditions.append("LOWER(witness_name) LIKE @query")
+            where_conditions.append("LOWER(sighting_number) LIKE @query")
+
+        where_clause = " OR ".join(where_conditions) if where_conditions else "1=1"
+
+        # Count query
+        COUNT_QUERY = f"""
+        SELECT COUNT(id) as total_count
+        FROM `homeward.sightings`
+        WHERE {where_clause}
+        """
+
+        # Data query with pagination
+        SEARCH_QUERY = f"""
+        SELECT
+            id, sighting_number, sighted_date, sighted_time, sighted_address, sighted_city,
+            sighted_country, sighted_postal_code, sighted_latitude, sighted_longitude,
+            apparent_gender, apparent_age_range, height_estimate, weight_estimate,
+            hair_color, eye_color, clothing_description, distinguishing_features,
+            description, circumstances, confidence_level, photo_url, video_url,
+            source_type, witness_name, witness_phone, witness_email,
+            video_analytics_result_id, status, priority, verified,
+            created_date, updated_date, created_by, notes, ml_summary
+        FROM `homeward.sightings`
+        WHERE {where_clause}
+        ORDER BY created_date DESC
+        LIMIT @page_size OFFSET @offset
+        """
+
+        search_param = f"%{query.lower()}%"
+
+        # Execute count query
+        count_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("query", "STRING", search_param)
+            ]
+        )
+        count_job = self.client.query(COUNT_QUERY, job_config=count_job_config)
+        total_count = list(count_job.result())[0].total_count
+
+        # Execute data query
+        data_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("query", "STRING", search_param),
+                bigquery.ScalarQueryParameter("page_size", "INT64", page_size),
+                bigquery.ScalarQueryParameter("offset", "INT64", offset)
+            ]
+        )
+        data_job = self.client.query(SEARCH_QUERY, job_config=data_job_config)
+
+        # Convert results to Sighting objects (reuse existing conversion logic)
+        sightings = []
+        for row in data_job.result():
+            # Same conversion logic as in get_sightings method
+            sighted_date = row.sighted_date
+            sighted_time = row.sighted_time
+
+            if sighted_date and sighted_time:
+                from datetime import datetime, time
+                if isinstance(sighted_time, time):
+                    sighted_datetime = datetime.combine(sighted_date, sighted_time)
+                else:
+                    sighted_datetime = datetime.combine(sighted_date, datetime.min.time())
+            else:
+                sighted_datetime = datetime.combine(sighted_date, datetime.min.time()) if sighted_date else datetime.now()
+
+            from homeward.models.case import Location, SightingStatus, SightingPriority, SightingConfidenceLevel, SightingSourceType
+            location = Location(
+                address=row.sighted_address or "",
+                city=row.sighted_city or "",
+                country=row.sighted_country or "",
+                postal_code=row.sighted_postal_code,
+                latitude=row.sighted_latitude,
+                longitude=row.sighted_longitude
+            )
+
+            status_map = {
+                "New": SightingStatus.NEW,
+                "Under_Review": SightingStatus.UNDER_REVIEW,
+                "Verified": SightingStatus.VERIFIED,
+                "False_Positive": SightingStatus.FALSE_POSITIVE,
+                "Archived": SightingStatus.ARCHIVED,
+            }
+
+            priority_map = {
+                "High": SightingPriority.HIGH,
+                "Medium": SightingPriority.MEDIUM,
+                "Low": SightingPriority.LOW,
+            }
+
+            confidence_map = {
+                "High": SightingConfidenceLevel.HIGH,
+                "Medium": SightingConfidenceLevel.MEDIUM,
+                "Low": SightingConfidenceLevel.LOW,
+            }
+
+            source_type_map = {
+                "Witness": SightingSourceType.WITNESS,
+                "Manual_Entry": SightingSourceType.MANUAL_ENTRY,
+                "Other": SightingSourceType.OTHER,
+            }
+
+            sighting = Sighting(
+                id=row.id,
+                sighting_number=row.sighting_number,
+                sighted_date=sighted_datetime,
+                sighted_location=location,
+                description=row.description or "",
+                confidence_level=confidence_map.get(row.confidence_level, SightingConfidenceLevel.MEDIUM),
+                source_type=source_type_map.get(row.source_type, SightingSourceType.OTHER),
+                apparent_gender=row.apparent_gender,
+                apparent_age_range=row.apparent_age_range,
+                height_estimate=row.height_estimate,
+                weight_estimate=row.weight_estimate,
+                hair_color=row.hair_color,
+                eye_color=row.eye_color,
+                clothing_description=row.clothing_description,
+                distinguishing_features=row.distinguishing_features,
+                circumstances=row.circumstances,
+                photo_url=row.photo_url,
+                video_url=row.video_url,
+                witness_name=row.witness_name,
+                witness_phone=row.witness_phone,
+                witness_email=row.witness_email,
+                video_analytics_result_id=row.video_analytics_result_id,
+                status=status_map.get(row.status, SightingStatus.NEW),
+                priority=priority_map.get(row.priority, SightingPriority.MEDIUM),
+                verified=row.verified or False,
+                created_date=row.created_date or datetime.now(),
+                updated_date=row.updated_date,
+                created_by=row.created_by,
+                notes=row.notes,
+                ml_summary=row.ml_summary
+            )
+            sightings.append(sighting)
+
+        return sightings, total_count

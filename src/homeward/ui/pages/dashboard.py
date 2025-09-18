@@ -154,11 +154,19 @@ def create_missing_persons_panel(data_service: DataService, latest_cases: list):
                 "bg-white/5 text-white w-10 h-10 rounded-full border border-white/60 hover:border-white hover:bg-white/15 backdrop-blur-sm transition-all duration-300 shadow-none"
             ).props("round dense flat")
 
-        # Search section
-        create_search_form(data_service, latest_cases, "missing_persons")
+        # Search section (appears first in UI)
+        with ui.column().classes("w-full") as search_section:
+            pass  # Will be populated by create_search_form
 
-        # Results table
-        with ui.column().classes("w-full mt-6"):
+        # Results table container (appears second in UI)
+        cases_table_container = ui.column().classes("w-full mt-6")
+
+        # Now populate the search section
+        with search_section:
+            create_search_form(data_service, latest_cases, "missing_persons", cases_table_container)
+
+        # Populate the results table
+        with cases_table_container:
             create_cases_table(
                 latest_cases,
                 on_case_click=handle_case_click,
@@ -184,11 +192,19 @@ def create_sightings_panel(data_service: DataService, latest_sightings: list):
                 "bg-white/5 text-white w-10 h-10 rounded-full border border-white/60 hover:border-white hover:bg-white/15 backdrop-blur-sm transition-all duration-300 shadow-none"
             ).props("round dense flat")
 
-        # Search section
-        create_search_form(data_service, latest_sightings, "sightings")
+        # Search section (appears first in UI)
+        with ui.column().classes("w-full") as search_section:
+            pass  # Will be populated by create_search_form
 
-        # Results table with real sightings data
-        with ui.column().classes("w-full mt-6"):
+        # Results table container (appears second in UI)
+        sightings_table_container = ui.column().classes("w-full mt-6")
+
+        # Now populate the search section
+        with search_section:
+            create_search_form(data_service, latest_sightings, "sightings", sightings_table_container)
+
+        # Populate the results table
+        with sightings_table_container:
             create_sightings_table(
                 latest_sightings,
                 on_sighting_click=handle_sighting_click,
@@ -196,7 +212,7 @@ def create_sightings_panel(data_service: DataService, latest_sightings: list):
             )
 
 
-def create_search_form(data_service: DataService, data_source: list, panel_type: str):
+def create_search_form(data_service: DataService, data_source: list, panel_type: str, table_container):
     """Create search form for a specific panel"""
 
     # Search controls row
@@ -331,7 +347,7 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
     # Update button handlers now that containers are defined
     search_button.on(
         "click",
-        lambda: perform_panel_search(
+        lambda: perform_panel_search_with_spinner(
             data_service,
             data_source,
             panel_type,
@@ -339,11 +355,13 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
             keyword_fields,
             geographic_fields,
             semantic_fields,
+            table_container,
+            search_button,
         ),
     )
     reset_button.on(
         "click",
-        lambda: reset_panel_search(
+        lambda: reset_panel_search_with_spinner(
             data_service,
             data_source,
             panel_type,
@@ -351,6 +369,8 @@ def create_search_form(data_service: DataService, data_source: list, panel_type:
             keyword_fields,
             geographic_fields,
             semantic_fields,
+            table_container,
+            reset_button,
         ),
     )
 
@@ -583,6 +603,40 @@ def reset_dynamic_search(
         ui.notify(f"❌ Reset failed: {str(e)}", type="negative")
 
 
+def perform_panel_search_with_spinner(
+    data_service: DataService,
+    data_source: list,
+    panel_type: str,
+    search_type_select,
+    keyword_fields,
+    geographic_fields,
+    semantic_fields,
+    table_container,
+    search_button,
+):
+    """Perform search within a specific panel with button spinner"""
+    # Show spinner in button
+    search_button.props("loading")
+    original_text = "Search"
+    search_button.text = ""
+
+    try:
+        perform_panel_search(
+            data_service,
+            data_source,
+            panel_type,
+            search_type_select,
+            keyword_fields,
+            geographic_fields,
+            semantic_fields,
+            table_container,
+        )
+    finally:
+        # Remove spinner from button
+        search_button.props(remove="loading")
+        search_button.text = original_text
+
+
 def perform_panel_search(
     data_service: DataService,
     data_source: list,
@@ -591,8 +645,21 @@ def perform_panel_search(
     keyword_fields,
     geographic_fields,
     semantic_fields,
+    table_container,
 ):
-    """Perform search within a specific panel"""
+    """Perform search within a specific panel using backend filtering"""
+
+    # Show loading spinner in table container
+    table_container.clear()
+    with table_container:
+        with ui.column().classes("w-full flex items-center justify-center py-16"):
+            with ui.column().classes("items-center"):
+                ui.spinner(size="xl").classes("text-blue-400 mb-4")
+                ui.label("Searching...").classes("text-gray-300 text-lg font-medium")
+
+    # Force UI update
+    ui.update()
+
     try:
         search_type = search_type_select.value
         panel_label = (
@@ -600,11 +667,17 @@ def perform_panel_search(
         )
 
         results = []
+        total_count = 0
 
         if search_type == "keyword":
             query = keyword_fields.search_input.value
             field = keyword_fields.field_select.value
-            results = perform_keyword_search(data_source, query, field)
+
+            if panel_type == "missing_persons":
+                results, total_count = data_service.search_cases(query, field, page=1, page_size=10)
+            else:
+                results, total_count = data_service.search_sightings(query, field, page=1, page_size=10)
+
         elif search_type == "geographic":
             latitude = geographic_fields.latitude_input.value
             longitude = geographic_fields.longitude_input.value
@@ -612,25 +685,81 @@ def perform_panel_search(
             results = perform_geographic_search(
                 data_source, latitude, longitude, radius
             )
+            total_count = len(results)
         elif search_type == "semantic":
             description = semantic_fields.description_input.value
             results = perform_semantic_search_dynamic(data_source, description)
+            total_count = len(results)
         else:
-            try:
-                results = sorted(
-                    data_source, key=lambda x: x.created_date, reverse=True
-                )
-            except (AttributeError, TypeError):
-                results = data_source
+            if panel_type == "missing_persons":
+                results, total_count = data_service.get_cases(page=1, page_size=10)
+            else:
+                results, total_count = data_service.get_sightings(page=1, page_size=10)
 
         # Update notification
-        ui.notify(f"🔍 Found {len(results)} matching {panel_label}", type="positive")
+        search_message = f"🔍 Found {total_count} matching {panel_label}"
+        if search_type == "keyword" and not (keyword_fields.search_input.value and keyword_fields.search_input.value.strip()):
+            search_message = f"📋 Showing all {panel_label}"
+        ui.notify(search_message, type="positive")
 
-        # In a real implementation, we would update the table reactively
-        # For now, we'll just show the notification
+        # Clear the loading spinner and show results
+        table_container.clear()
+        with table_container:
+            if panel_type == "missing_persons":
+                create_cases_table(
+                    results,
+                    on_case_click=handle_case_click,
+                    on_view_all_click=handle_view_all_cases_click,
+                )
+            else:
+                create_sightings_table(
+                    results,
+                    on_sighting_click=handle_sighting_click,
+                    on_view_all_click=handle_view_all_sightings_click,
+                )
 
     except Exception as e:
+        # Clear the loading spinner and show error
+        table_container.clear()
+        with table_container:
+            with ui.column().classes("w-full flex items-center justify-center py-12"):
+                ui.icon("error", size="2rem").classes("text-red-400 mb-2")
+                ui.label("Search failed").classes("text-red-300")
         ui.notify(f"❌ Search failed: {str(e)}", type="negative")
+
+
+def reset_panel_search_with_spinner(
+    data_service: DataService,
+    data_source: list,
+    panel_type: str,
+    search_type_select,
+    keyword_fields,
+    geographic_fields,
+    semantic_fields,
+    table_container,
+    reset_button,
+):
+    """Reset search fields within a specific panel with button spinner"""
+    # Show spinner in button
+    reset_button.props("loading")
+    original_text = "Reset"
+    reset_button.text = ""
+
+    try:
+        reset_panel_search(
+            data_service,
+            data_source,
+            panel_type,
+            search_type_select,
+            keyword_fields,
+            geographic_fields,
+            semantic_fields,
+            table_container,
+        )
+    finally:
+        # Remove spinner from button
+        reset_button.props(remove="loading")
+        reset_button.text = original_text
 
 
 def reset_panel_search(
@@ -641,10 +770,23 @@ def reset_panel_search(
     keyword_fields,
     geographic_fields,
     semantic_fields,
+    table_container,
 ):
     """Reset search fields within a specific panel"""
+
+    # Show loading spinner in table container
+    table_container.clear()
+    with table_container:
+        with ui.column().classes("w-full flex items-center justify-center py-16"):
+            with ui.column().classes("items-center"):
+                ui.spinner(size="xl").classes("text-blue-400 mb-4")
+                ui.label("Resetting...").classes("text-gray-300 text-lg font-medium")
+
+    # Force UI update
+    ui.update()
+
     try:
-        # Clear all input fields
+        # Clear all input fields first
         keyword_fields.search_input.value = ""
         keyword_fields.field_select.value = "all"
         geographic_fields.latitude_input.value = ""
@@ -653,16 +795,41 @@ def reset_panel_search(
         semantic_fields.description_input.value = ""
         search_type_select.value = "keyword"
 
-        # Show latest data
-        try:
-            sorted(data_source, key=lambda x: x.created_date, reverse=True)
-        except (AttributeError, TypeError):
-            pass
+        # Force update of the form fields
+        ui.update()
+
+        # Get ALL data from service (not limited to 10)
+        if panel_type == "missing_persons":
+            fresh_data, total_count = data_service.get_cases(page=1, page_size=10)
+        else:
+            fresh_data, total_count = data_service.get_sightings(page=1, page_size=10)
+
+        # Clear the loading spinner and show fresh data
+        table_container.clear()
+        with table_container:
+            if panel_type == "missing_persons":
+                create_cases_table(
+                    fresh_data,
+                    on_case_click=handle_case_click,
+                    on_view_all_click=handle_view_all_cases_click,
+                )
+            else:
+                create_sightings_table(
+                    fresh_data,
+                    on_sighting_click=handle_sighting_click,
+                    on_view_all_click=handle_view_all_sightings_click,
+                )
 
         panel_label = (
             "missing person reports" if panel_type == "missing_persons" else "sightings"
         )
-        ui.notify(f"🔄 Search reset - showing all {panel_label}", type="info")
+        ui.notify(f"🔄 Search reset - showing all {total_count} {panel_label}", type="info")
 
     except Exception as e:
+        # Clear the loading spinner and show error
+        table_container.clear()
+        with table_container:
+            with ui.column().classes("w-full flex items-center justify-center py-12"):
+                ui.icon("error", size="2rem").classes("text-red-400 mb-2")
+                ui.label("Reset failed").classes("text-red-300")
         ui.notify(f"❌ Reset failed: {str(e)}", type="negative")
