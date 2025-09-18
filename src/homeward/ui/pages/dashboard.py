@@ -337,9 +337,8 @@ def create_search_form(data_service: DataService, config: AppConfig, data_source
     search_type_select.on("update:model-value", lambda: update_field_visibility())
 
     # Update button handlers now that containers are defined
-    search_button.on(
-        "click",
-        lambda: perform_panel_search_with_spinner(
+    async def handle_search_click():
+        await perform_panel_search_with_spinner(
             data_service,
             config,
             data_source,
@@ -350,11 +349,10 @@ def create_search_form(data_service: DataService, config: AppConfig, data_source
             semantic_fields,
             table_container,
             search_button,
-        ),
-    )
-    reset_button.on(
-        "click",
-        lambda: reset_panel_search_with_spinner(
+        )
+
+    async def handle_reset_click():
+        await reset_panel_search_with_spinner(
             data_service,
             config,
             data_source,
@@ -365,8 +363,10 @@ def create_search_form(data_service: DataService, config: AppConfig, data_source
             semantic_fields,
             table_container,
             reset_button,
-        ),
-    )
+        )
+
+    search_button.on("click", handle_search_click)
+    reset_button.on("click", handle_reset_click)
 
     # Initialize with keyword fields visible
     update_field_visibility()
@@ -633,7 +633,7 @@ def reset_dynamic_search(
         ui.notify(f"❌ Reset failed: {str(e)}", type="negative")
 
 
-def perform_panel_search_with_spinner(
+async def perform_panel_search_with_spinner(
     data_service: DataService,
     config: AppConfig,
     data_source: list,
@@ -646,12 +646,23 @@ def perform_panel_search_with_spinner(
     search_button,
 ):
     """Perform search within a specific panel with button spinner"""
-    # Show spinner in button
-    search_button.props("loading")
-    original_text = "Search"
+    # Show spinner in button by replacing text with spinner
+    original_text = search_button.text
     search_button.text = ""
 
+    # Add loading spinner icon to button
+    with search_button:
+        search_button.clear()
+        ui.spinner(size="sm").classes("text-current")
+
+    # Disable button to prevent multiple clicks
+    search_button.disable()
+
     try:
+        # Add a small delay to ensure spinner is visible
+        import asyncio
+        await asyncio.sleep(0.1)
+
         perform_panel_search(
             data_service,
             config,
@@ -664,9 +675,10 @@ def perform_panel_search_with_spinner(
             table_container,
         )
     finally:
-        # Remove spinner from button
-        search_button.props(remove="loading")
+        # Restore button state
+        search_button.clear()
         search_button.text = original_text
+        search_button.enable()
 
 
 def perform_panel_search(
@@ -761,7 +773,7 @@ def perform_panel_search(
         ui.notify(f"❌ Search failed: {str(e)}", type="negative")
 
 
-def reset_panel_search_with_spinner(
+async def reset_panel_search_with_spinner(
     data_service: DataService,
     config: AppConfig,
     data_source: list,
@@ -774,12 +786,23 @@ def reset_panel_search_with_spinner(
     reset_button,
 ):
     """Reset search fields within a specific panel with button spinner"""
-    # Show spinner in button
-    reset_button.props("loading")
-    original_text = "Reset"
+    # Show spinner in button by replacing text with spinner
+    original_text = reset_button.text
     reset_button.text = ""
 
+    # Add loading spinner icon to button
+    with reset_button:
+        reset_button.clear()
+        ui.spinner(size="sm").classes("text-current")
+
+    # Disable button to prevent multiple clicks
+    reset_button.disable()
+
     try:
+        # Add a small delay to ensure spinner is visible
+        import asyncio
+        await asyncio.sleep(0.1)
+
         reset_panel_search(
             data_service,
             config,
@@ -792,9 +815,10 @@ def reset_panel_search_with_spinner(
             table_container,
         )
     finally:
-        # Remove spinner from button
-        reset_button.props(remove="loading")
+        # Restore button state
+        reset_button.clear()
         reset_button.text = original_text
+        reset_button.enable()
 
 
 def reset_panel_search(
