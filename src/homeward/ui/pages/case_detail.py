@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, date
 
 from nicegui import run, ui
 
@@ -378,7 +378,7 @@ def create_case_detail_page(
                         )
 
                     # Video analysis form
-                    create_video_analysis_section()
+                    create_video_analysis_section(case)
 
                     # AI Analysis results section with styled box
                     ui.separator().classes("my-6 bg-gray-600")
@@ -564,7 +564,7 @@ def create_sightings_table(case_id: str, data_service: DataService):
 
 
 
-def create_video_analysis_section():
+def create_video_analysis_section(case: MissingPersonCase):
     """Create the video analysis form section"""
     with ui.column().classes("w-full space-y-6"):
         # Temporal Filters Row
@@ -575,12 +575,12 @@ def create_video_analysis_section():
             with ui.row().classes("gap-4"):
                 with ui.column().classes("w-48"):
                     ui.label("Start Date").classes("text-gray-300 text-xs mb-1")
-                    ui.input("", value="2023-12-01").classes(
+                    ui.input("", value=case.last_seen_date.strftime("%Y-%m-%d")).classes(
                         "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg text-sm"
                     ).props("outlined dense type=date")
                 with ui.column().classes("w-48"):
                     ui.label("End Date").classes("text-gray-300 text-xs mb-1")
-                    ui.input("", value="2023-12-03").classes(
+                    ui.input("", value=date.today().strftime("%Y-%m-%d")).classes(
                         "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg text-sm"
                     ).props("outlined dense type=date")
                 with ui.column().classes("w-36"):

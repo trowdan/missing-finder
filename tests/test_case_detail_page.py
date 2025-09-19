@@ -335,6 +335,10 @@ class TestCaseDetailComponents:
         """Test video analysis section creation"""
         from homeward.ui.pages.case_detail import create_video_analysis_section
 
+        # Create a mock case object
+        mock_case = Mock()
+        mock_case.last_seen_date = datetime(2023, 12, 1, 10, 30)
+
         mock_ui.column.return_value.__enter__ = Mock()
         mock_ui.column.return_value.__exit__ = Mock()
         mock_ui.row.return_value.__enter__ = Mock()
@@ -343,7 +347,7 @@ class TestCaseDetailComponents:
         mock_ui.number.return_value = Mock()
         mock_ui.select.return_value = Mock()
 
-        create_video_analysis_section()
+        create_video_analysis_section(mock_case)
 
         # Verify form elements are created
         assert mock_ui.column.called
