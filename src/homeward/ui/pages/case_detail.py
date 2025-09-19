@@ -1,6 +1,7 @@
+import logging
 from datetime import datetime
 
-from nicegui import ui
+from nicegui import run, ui
 
 from homeward.config import AppConfig
 from homeward.models.case import CaseStatus, CasePriority, MissingPersonCase
@@ -9,6 +10,8 @@ from homeward.services.data_service import DataService
 from homeward.services.video_analysis_service import VideoAnalysisService
 from homeward.ui.components.footer import create_footer
 from homeward.ui.components.missing_person_form import create_missing_person_form
+
+logger = logging.getLogger(__name__)
 
 
 def create_case_detail_page(
@@ -1140,55 +1143,193 @@ def handle_link_sighting_to_case_modal(
         ui.notify(f"❌ Failed to link sighting: {str(e)}", type="negative")
 
 
-def handle_analyze_video(
+async def handle_analyze_video(
     case_id: str,
     video_analysis_service: VideoAnalysisService,
     case: MissingPersonCase,
     results_container,
 ):
-    """Handle AI video analysis request"""
+    """Handle AI video analysis request using BigQuery and Gemini with run.io_bound()"""
     ui.notify(
         f"🤖 Starting AI-powered video analysis for case {case_id}...", type="info"
     )
 
-    # Get form values (in a real implementation, these would come from the form)
+    # Show loading state immediately with progress updates
+    results_container.clear()
+    with results_container:
+        with ui.column().classes("w-full items-center justify-center py-8"):
+            with ui.column().classes("items-center"):
+                ui.spinner(size="xl").classes("text-purple-400 mb-4")
+                ui.label("AI Video Analysis in Progress").classes("text-gray-300 text-lg font-medium")
+                progress_status = ui.label("Initializing BigQuery video analysis...").classes("text-gray-400 text-sm mt-2")
+                ui.label("This may take up to 5 minutes").classes("text-gray-500 text-xs mt-1")
 
-    request = VideoAnalysisRequest(
-        case_id=case_id,
-        start_date=datetime(2023, 12, 1),
-        end_date=datetime(2023, 12, 3),
-        time_range="All Day",
-        last_seen_latitude=case.last_seen_location.latitude,
-        last_seen_longitude=case.last_seen_location.longitude,
-        search_radius_km=5.0,
-    )
+                # Add a progress indicator
+                with ui.row().classes("items-center mt-4 gap-2"):
+                    ui.icon("schedule", size="1rem").classes("text-purple-300")
+                    elapsed_time = ui.label("0s").classes("text-purple-300 text-sm")
 
-    # Call the video analysis service
+    # Progress update function
+    start_time = datetime.now()
+
+    def update_progress():
+        elapsed = (datetime.now() - start_time).total_seconds()
+        elapsed_time.text = f"{int(elapsed)}s"
+
+        # Update status message based on elapsed time
+        if elapsed < 10:
+            progress_status.text = "🔧 Connecting to BigQuery and Gemini AI..."
+        elif elapsed < 30:
+            progress_status.text = "🔍 Querying video database with AI.GENERATE..."
+        elif elapsed < 60:
+            progress_status.text = "🤖 Gemini AI is analyzing surveillance footage..."
+        elif elapsed < 120:
+            progress_status.text = "📊 Processing video content and extracting features..."
+        elif elapsed < 180:
+            progress_status.text = "⏳ Complex analysis in progress - large dataset detected..."
+        else:
+            progress_status.text = "🔄 Still processing - this is a comprehensive analysis..."
+
+    # Start progress timer
+    progress_timer = ui.timer(1.0, update_progress)
+
     try:
-        results = video_analysis_service.analyze_videos(request)
+        # Prepare missing person data for the AI prompt
+        missing_person_data = {
+            "gender": case.gender,
+            "age": case.age,
+            "height": case.height,
+            "weight": case.weight,
+            "hair_color": case.hair_color,
+            "clothing_description": case.clothing_description,
+            "distinguishing_marks": case.distinguishing_marks,
+        }
 
-        # Clear existing content and display results
+        # Create the video analysis request with form values
+        request = VideoAnalysisRequest(
+            case_id=case_id,
+            start_date=datetime(2023, 12, 1),  # TODO: Get from form
+            end_date=datetime(2023, 12, 3),    # TODO: Get from form
+            time_range="All Day",              # TODO: Get from form
+            last_seen_latitude=case.last_seen_location.latitude or 0.0,
+            last_seen_longitude=case.last_seen_location.longitude or 0.0,
+            search_radius_km=5.0,              # TODO: Get from form
+        )
+
+        logger.info(f"Starting video analysis for case {case_id}")
+        ui.notify("🔍 Querying BigQuery for video analysis with Gemini AI...", type="info")
+
+        def run_video_analysis():
+            """Run the BigQuery video analysis"""
+            analysis_stats = None
+            if hasattr(video_analysis_service, 'analyze_videos'):
+                # Check if it's the BigQuery service that returns stats
+                try:
+                    result = video_analysis_service.analyze_videos(request, missing_person_data)
+                    # Handle both old format (just results) and new format (results, stats)
+                    if isinstance(result, tuple) and len(result) == 2:
+                        results, analysis_stats = result
+                    else:
+                        results = result
+                except TypeError:
+                    # Fallback for services that don't accept missing_person_data parameter
+                    result = video_analysis_service.analyze_videos(request)
+                    if isinstance(result, tuple) and len(result) == 2:
+                        results, analysis_stats = result
+                    else:
+                        results = result
+            else:
+                results = video_analysis_service.analyze_videos(request)
+
+            return results, analysis_stats
+
+        # Use run.io_bound to execute the blocking BigQuery operation
+        results, analysis_stats = await run.io_bound(run_video_analysis)
+
+        logger.info(f"Video analysis completed with {len(results)} results")
+
+        # Stop progress timer and clear loading spinner
+        progress_timer.cancel()
         results_container.clear()
 
+        # Display analysis statistics first
+        if analysis_stats:
+            with results_container:
+                create_analysis_stats_section(analysis_stats)
+
         if results:
-            create_analysis_results_table(
-                results, video_analysis_service, case_id, results_container
-            )
+            with results_container:
+                if analysis_stats:
+                    ui.separator().classes("my-4 bg-gray-600")
+                create_analysis_results_table(
+                    results, video_analysis_service, case_id, results_container
+                )
             ui.notify(
-                f"✅ Analysis complete! Found {len(results)} potential matches",
+                f"✅ Analysis complete! Found {len(results)} matches out of {analysis_stats.get('total_analyzed', 'unknown')} videos analyzed" if analysis_stats else f"✅ Analysis complete! Found {len(results)} potential matches",
                 type="positive",
             )
         else:
-            with results_container:
-                with ui.column().classes("w-full items-center justify-center py-8"):
-                    ui.icon("search_off", size="2.5rem").classes("text-gray-500 mb-4")
-                    ui.label(
-                        "No matches found in the specified area and time range"
-                    ).classes("text-gray-400 text-sm text-center")
-            ui.notify("No matches found in the specified criteria", type="warning")
+            if not analysis_stats:
+                # If no stats available, show the old message
+                with results_container:
+                    with ui.column().classes("w-full items-center justify-center py-8"):
+                        ui.icon("search_off", size="2.5rem").classes("text-gray-500 mb-4")
+                        ui.label(
+                            "No matches found in the specified area and time range"
+                        ).classes("text-gray-400 text-sm text-center")
+                        ui.label(
+                            "Try adjusting the search parameters or time range"
+                        ).classes("text-gray-500 text-xs mt-2 text-center")
+                ui.notify("No matches found in the specified criteria", type="warning")
+            else:
+                # With stats, show more detailed message
+                total_analyzed = analysis_stats.get('total_analyzed', 0)
+                if total_analyzed > 0:
+                    with results_container:
+                        with ui.column().classes("w-full items-center justify-center py-8"):
+                            ui.icon("analytics", size="2.5rem").classes("text-blue-400 mb-4")
+                            ui.label(
+                                f"No matches found, but {total_analyzed} videos were successfully analyzed"
+                            ).classes("text-gray-300 text-sm text-center font-medium")
+                            ui.label(
+                                "The missing person was not detected in any of the surveillance footage"
+                            ).classes("text-gray-400 text-xs mt-2 text-center")
+                    ui.notify(f"Analysis complete: {total_analyzed} videos analyzed, no matches found", type="info")
+                else:
+                    with results_container:
+                        with ui.column().classes("w-full items-center justify-center py-8"):
+                            ui.icon("warning", size="2.5rem").classes("text-orange-400 mb-4")
+                            ui.label(
+                                "No videos were found matching the search criteria"
+                            ).classes("text-gray-300 text-sm text-center font-medium")
+                            ui.label(
+                                "Try expanding the search radius or time range"
+                            ).classes("text-gray-400 text-xs mt-2 text-center")
+                    ui.notify("No videos found in the specified area and time range", type="warning")
 
     except Exception as e:
-        ui.notify(f"❌ Analysis failed: {str(e)}", type="negative")
+        logger.error(f"Video analysis failed: {e}")
+
+        # Stop progress timer and clear loading spinner
+        progress_timer.cancel()
+        results_container.clear()
+
+        # Handle timeout errors specifically
+        if isinstance(e, TimeoutError) or "timeout" in str(e).lower():
+            with results_container:
+                with ui.column().classes("w-full items-center justify-center py-8"):
+                    ui.icon("schedule", size="2.5rem").classes("text-orange-400 mb-4")
+                    ui.label("Video Analysis Timed Out").classes("text-orange-300 text-center font-medium")
+                    ui.label("The analysis took longer than expected (5 minutes)").classes("text-orange-400 text-sm mt-2 text-center")
+                    ui.label("Try reducing the search time range or area to speed up processing").classes("text-gray-400 text-xs mt-2 text-center")
+            ui.notify("⏱️ Analysis timed out. Try reducing search parameters.", type="warning")
+        else:
+            with results_container:
+                with ui.column().classes("w-full items-center justify-center py-8"):
+                    ui.icon("error", size="2.5rem").classes("text-red-400 mb-4")
+                    ui.label("Video Analysis Failed").classes("text-red-300 text-center font-medium")
+                    ui.label(f"Error: {str(e)}").classes("text-red-400 text-xs mt-2 text-center")
+            ui.notify(f"❌ Analysis failed: {str(e)}", type="negative")
 
 
 def handle_view_sighting(sighting: dict):
@@ -1209,6 +1350,65 @@ def handle_investigate_sighting(sighting: dict):
     """Handle starting investigation of a case sighting"""
     sighting_id = sighting.get("sighting_id", "Unknown")
     ui.notify(f"Starting investigation of sighting {sighting_id}", type="info")
+
+
+def create_analysis_stats_section(analysis_stats: dict):
+    """Create and display video analysis statistics"""
+    total_analyzed = analysis_stats.get('total_analyzed', 0)
+    matches_found = analysis_stats.get('matches_found', 0)
+    no_person_found = analysis_stats.get('no_person_found', 0)
+    errors = analysis_stats.get('errors', 0)
+
+    with ui.column().classes("w-full"):
+        with ui.row().classes("items-center mb-4"):
+            ui.icon("analytics", size="1.5rem").classes("text-blue-400 mr-3")
+            ui.label("Video Analysis Summary").classes("text-gray-300 font-medium text-lg")
+
+        # Stats grid
+        with ui.row().classes("w-full gap-4"):
+            # Total videos analyzed
+            with ui.card().classes("flex-1 p-4 bg-blue-900/20 border border-blue-500/30"):
+                with ui.column().classes("items-center"):
+                    ui.label(str(total_analyzed)).classes("text-2xl font-bold text-blue-400")
+                    ui.label("Videos Analyzed").classes("text-blue-300 text-sm")
+
+            # Matches found
+            with ui.card().classes("flex-1 p-4 bg-green-900/20 border border-green-500/30"):
+                with ui.column().classes("items-center"):
+                    ui.label(str(matches_found)).classes("text-2xl font-bold text-green-400")
+                    ui.label("Matches Found").classes("text-green-300 text-sm")
+
+            # No person found
+            with ui.card().classes("flex-1 p-4 bg-gray-900/20 border border-gray-500/30"):
+                with ui.column().classes("items-center"):
+                    ui.label(str(no_person_found)).classes("text-2xl font-bold text-gray-400")
+                    ui.label("No Person Found").classes("text-gray-300 text-sm")
+
+            # Errors
+            if errors > 0:
+                with ui.card().classes("flex-1 p-4 bg-red-900/20 border border-red-500/30"):
+                    with ui.column().classes("items-center"):
+                        ui.label(str(errors)).classes("text-2xl font-bold text-red-400")
+                        ui.label("Processing Errors").classes("text-red-300 text-sm")
+
+        # Analysis details
+        if total_analyzed > 0:
+            success_rate = ((total_analyzed - errors) / total_analyzed) * 100
+            match_rate = (matches_found / total_analyzed) * 100 if total_analyzed > 0 else 0
+
+            with ui.row().classes("w-full mt-4 gap-6"):
+                with ui.column().classes("flex-1"):
+                    ui.label(f"Success Rate: {success_rate:.1f}%").classes("text-gray-300 text-sm")
+                    with ui.element("div").classes("w-full bg-gray-700 rounded-full h-2"):
+                        with ui.element("div").classes("bg-blue-500 h-2 rounded-full").style(f"width: {success_rate}%"):
+                            pass
+
+                with ui.column().classes("flex-1"):
+                    ui.label(f"Match Rate: {match_rate:.1f}%").classes("text-gray-300 text-sm")
+                    with ui.element("div").classes("w-full bg-gray-700 rounded-full h-2"):
+                        color_class = "bg-green-500" if match_rate > 0 else "bg-gray-500"
+                        with ui.element("div").classes(f"{color_class} h-2 rounded-full").style(f"width: {max(match_rate, 2)}%"):  # Minimum 2% width for visibility
+                            pass
 
 
 def create_analysis_results_table(
