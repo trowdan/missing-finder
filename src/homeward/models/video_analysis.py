@@ -4,7 +4,7 @@ from datetime import datetime
 
 @dataclass
 class VideoAnalysisResult:
-    """Data model for AI video analysis results"""
+    """Data model for AI visual intelligence insights"""
 
     id: str
     timestamp: datetime

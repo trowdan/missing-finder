@@ -1,5 +1,5 @@
 /* Video Analytics Results Table Creation Script for BigQuery
-   This table stores the raw results from AI video analysis before they are converted to sightings
+   This table stores the raw results from AI visual intelligence insights before they are converted to sightings
    Contains detected persons from surveillance footage that can be reviewed and matched to cases */
 
 CREATE TABLE IF NOT EXISTS `homeward.video_analytics_results` (
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `homeward.video_analytics_results` (
 PARTITION BY DATE(video_timestamp)
 CLUSTER BY camera_id, created_date
 OPTIONS(
-  description="Table storing raw AI video analysis results before conversion to sightings",
+  description="Table storing raw AI visual intelligence insights before conversion to sightings",
   labels=[("environment", "hackathon"), ("application", "homeward"), ("data_type", "video_analytics")]
 );
 

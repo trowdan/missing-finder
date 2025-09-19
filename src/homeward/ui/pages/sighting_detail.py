@@ -697,7 +697,7 @@ def show_link_case_modal(sighting_id: str, data_service: DataService):
 
                 with ui.row().classes("w-full justify-center") as search_row:
                     search_button = ui.button(
-                        "Search Similar Cases"
+                        "Smart Discovery of Similar Cases"
                     ).classes(
                         "bg-transparent text-purple-300 px-8 py-4 rounded-full border-2 border-purple-400/80 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-purple-400/20 hover:ring-purple-200/40 hover:ring-4"
                     )
@@ -720,7 +720,7 @@ def show_link_case_modal(sighting_id: str, data_service: DataService):
                     ):
                         ui.icon("search", size="3rem").classes("text-gray-500 mb-4")
                         ui.label(
-                            'Click "Search Similar Cases" to find missing persons that could match this sighting'
+                            'Click "Smart Discovery of Similar Cases" to find missing persons that could match this sighting'
                         ).classes("text-gray-400 text-center")
                         ui.label(
                             "Find cases that could match this sighting's details"
@@ -829,7 +829,7 @@ def search_and_display_cases(
 
                 # Restore search button
                 search_button.props(remove="loading")
-                search_button.text = "Search Similar Cases"
+                search_button.text = "Smart Discovery of Similar Cases"
                 search_button.enable()
 
         except Exception as e:
@@ -844,7 +844,7 @@ def search_and_display_cases(
 
         # Restore search button
         search_button.props(remove="loading")
-        search_button.text = "Search Similar Cases"
+        search_button.text = "Smart Discovery of Similar Cases"
         search_button.enable()
 
     # Start the search with a small delay to allow UI update

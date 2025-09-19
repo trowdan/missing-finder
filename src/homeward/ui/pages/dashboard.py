@@ -222,7 +222,7 @@ def create_search_form(data_service: DataService, config: AppConfig, data_source
         search_type_select = (
             ui.select(
                 options=["keyword", "geographic", "semantic"],
-                label="Search Type",
+                label="Smart Discovery Type",
                 value="keyword",
             )
             .classes("w-40 bg-gray-700/50 text-white border-gray-500 rounded-lg")
@@ -231,7 +231,7 @@ def create_search_form(data_service: DataService, config: AppConfig, data_source
 
         # Search and Reset buttons
         search_button = ui.button(
-            "Search",
+            "Smart Discovery",
             on_click=lambda: None,  # Will be updated after field containers are defined
         ).classes(
             "bg-transparent text-blue-300 px-4 py-2 rounded-full border border-blue-400/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide"
@@ -250,7 +250,7 @@ def create_search_form(data_service: DataService, config: AppConfig, data_source
         with ui.column().classes("w-full") as keyword_fields:
             with ui.row().classes("w-full gap-4"):
                 keyword_search_input = (
-                    ui.input("Search Term", placeholder="Enter ID or full name...")
+                    ui.input("Smart Discovery Term", placeholder="Enter ID or full name...")
                     .classes(
                         "flex-1 bg-gray-700/50 text-white border-gray-500 rounded-lg"
                     )

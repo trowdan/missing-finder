@@ -353,7 +353,7 @@ def create_case_detail_page(
                     # Sightings table - now uses real data from case_sightings table
                     create_sightings_table(case.id, data_service)
 
-                # AI-Powered Video Analysis Section
+                # AI-Powered Video Intelligence Section
                 with ui.card().classes(
                     "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl relative"
                 ):
@@ -373,7 +373,7 @@ def create_case_detail_page(
                         ui.icon("video_library", size="1.5rem").classes(
                             "text-cyan-400 mr-3"
                         )
-                        ui.label("Video Analysis").classes(
+                        ui.label("Video Intelligence").classes(
                             "text-xl font-light text-white"
                         )
 
@@ -408,7 +408,7 @@ def create_case_detail_page(
                                         "text-gray-500 mb-4"
                                     )
                                     ui.label(
-                                        'Click "AI Video Analysis" to start intelligent video processing'
+                                        'Click "AI Video Intelligence" to start intelligent video processing'
                                     ).classes("text-gray-400 text-sm text-center")
                                     ui.label("Powered by Google Gemini").classes(
                                         "text-purple-400 text-xs mt-2 font-medium"
@@ -417,7 +417,7 @@ def create_case_detail_page(
                         # AI Analysis button with consistent styling - positioned after results container for proper scoping
                         with ui.row().classes("w-full justify-center mt-6"):
                             ui.button(
-                                "AI Video Analysis",
+                                "AI Video Intelligence",
                                 on_click=lambda: handle_analyze_video(
                                     case.id,
                                     video_analysis_service,
@@ -653,7 +653,7 @@ def open_link_sighting_modal(case_id: str, data_service: DataService):
 
                 with ui.row().classes("w-full justify-center") as search_row:
                     search_button = ui.button(
-                        "Search Available Sightings"
+                        "Smart Discovery of Available Sightings"
                     ).classes(
                         "bg-transparent text-purple-300 px-8 py-4 rounded-full border-2 border-purple-400/80 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-purple-400/20 hover:ring-purple-200/40 hover:ring-4"
                     )
@@ -676,7 +676,7 @@ def open_link_sighting_modal(case_id: str, data_service: DataService):
                     ):
                         ui.icon("search", size="3rem").classes("text-gray-500 mb-4")
                         ui.label(
-                            'Click "Search Available Sightings" to find unlinked sightings'
+                            'Click "Smart Discovery of Available Sightings" to find unlinked sightings'
                         ).classes("text-gray-400 text-center")
                         ui.label(
                             "Find sightings that could match this missing person case"
@@ -785,7 +785,7 @@ def search_and_display_sightings(
 
                 # Restore search button
                 search_button.props(remove="loading")
-                search_button.text = "Search Available Sightings"
+                search_button.text = "Smart Discovery of Available Sightings"
                 search_button.enable()
 
         except Exception as e:
@@ -1160,7 +1160,7 @@ async def handle_analyze_video(
         with ui.column().classes("w-full items-center justify-center py-8"):
             with ui.column().classes("items-center"):
                 ui.spinner(size="xl").classes("text-purple-400 mb-4")
-                ui.label("AI Video Analysis in Progress").classes("text-gray-300 text-lg font-medium")
+                ui.label("AI Video Intelligence in Progress").classes("text-gray-300 text-lg font-medium")
                 progress_status = ui.label("Initializing BigQuery video analysis...").classes("text-gray-400 text-sm mt-2")
                 ui.label("This may take up to 5 minutes").classes("text-gray-500 text-xs mt-1")
 
@@ -1319,7 +1319,7 @@ async def handle_analyze_video(
             with results_container:
                 with ui.column().classes("w-full items-center justify-center py-8"):
                     ui.icon("schedule", size="2.5rem").classes("text-orange-400 mb-4")
-                    ui.label("Video Analysis Timed Out").classes("text-orange-300 text-center font-medium")
+                    ui.label("Video Intelligence Timed Out").classes("text-orange-300 text-center font-medium")
                     ui.label("The analysis took longer than expected (5 minutes)").classes("text-orange-400 text-sm mt-2 text-center")
                     ui.label("Try reducing the search time range or area to speed up processing").classes("text-gray-400 text-xs mt-2 text-center")
             ui.notify("⏱️ Analysis timed out. Try reducing search parameters.", type="warning")
@@ -1327,7 +1327,7 @@ async def handle_analyze_video(
             with results_container:
                 with ui.column().classes("w-full items-center justify-center py-8"):
                     ui.icon("error", size="2.5rem").classes("text-red-400 mb-4")
-                    ui.label("Video Analysis Failed").classes("text-red-300 text-center font-medium")
+                    ui.label("Video Intelligence Failed").classes("text-red-300 text-center font-medium")
                     ui.label(f"Error: {str(e)}").classes("text-red-400 text-xs mt-2 text-center")
             ui.notify(f"❌ Analysis failed: {str(e)}", type="negative")
 
@@ -1362,7 +1362,7 @@ def create_analysis_stats_section(analysis_stats: dict):
     with ui.column().classes("w-full"):
         with ui.row().classes("items-center mb-4"):
             ui.icon("analytics", size="1.5rem").classes("text-blue-400 mr-3")
-            ui.label("Video Analysis Summary").classes("text-gray-300 font-medium text-lg")
+            ui.label("Video Intelligence Summary").classes("text-gray-300 font-medium text-lg")
 
         # Stats grid
         with ui.row().classes("w-full gap-4"):
@@ -1417,7 +1417,7 @@ def create_analysis_results_table(
     case_id: str,
     container,
 ):
-    """Create and display video analysis results table"""
+    """Create and display visual intelligence insights table"""
     with container:
         with ui.column().classes("w-full space-y-4"):
             # Results summary (no duplicate header since it's already in the parent container)

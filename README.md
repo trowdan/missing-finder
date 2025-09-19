@@ -72,7 +72,7 @@ The **Homeward application**, built with Python and the NiceGUI library, serves 
 
 ## 3. Core Functionalities
 
-### 3.1. Missing Person Case Management
+### 3.1. Missing Person Investigation Command Center
 
 #### 3.1.1. Register New Missing Person
 
