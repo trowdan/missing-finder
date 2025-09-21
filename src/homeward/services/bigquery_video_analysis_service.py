@@ -303,6 +303,22 @@ Your final output MUST be a single JSON object. Do not include any text or expla
           )
         """
 
+        # Add geographic filtering if coordinates and radius are provided
+        if (hasattr(request, 'last_seen_latitude') and hasattr(request, 'last_seen_longitude') and
+            hasattr(request, 'search_radius_km') and
+            request.last_seen_latitude and request.last_seen_longitude and request.search_radius_km):
+
+            query += f"""
+          AND ST_DWITHIN(
+            ST_GEOGPOINT(
+              CAST((SELECT value FROM UNNEST(metadata) WHERE name = 'longitude') AS FLOAT64),
+              CAST((SELECT value FROM UNNEST(metadata) WHERE name = 'latitude') AS FLOAT64)
+            ),
+            ST_GEOGPOINT({request.last_seen_longitude}, {request.last_seen_latitude}),
+            {request.search_radius_km * 1000}  -- Convert km to meters for ST_DWITHIN
+          )
+        """
+
         return query
 
     def _get_time_range_condition(self, time_range: str) -> str:
