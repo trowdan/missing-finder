@@ -1,160 +1,288 @@
+# Homeward: AI-Powered missing persons finder
 
-# Homeward: Missing persons finder
+**🥽 This repo contains my submission for the [BigQuery AI Hackathon](https://www.kaggle.com/competitions/bigquery-ai-hackathon)**
 
-## 1. Introduction
+![Homeward Logo](docs/img/homeward_logo.png)
 
-### 1.1. Project Overview
+## Overview
 
-The **"Homeward"** is a specialized software application designed to assist law enforcement agencies and governmental bodies in the critical task of locating missing individuals. This system leverages Artificial Intelligence (AI), specifically Large Language Models (LLMs) like Google's Gemini, to analyze vast amounts of unstructured data such as video surveillance footage and photographs. By integrating with **Google BigQuery** AI capabilities, the solution aims to accelerate the search process, improve accuracy, and enhance collaboration among the different entities involved in a missing person case.
-
-### 1.2. Goals and Objectives
+**Homeward** is an innovative missing persons finder application that leverages the power of Google Cloud Platform's AI capabilities to help law enforcement agencies locate missing individuals through video surveillance analysis and semantic matching between case reports and sightings.
 
 The primary goals and objectives of the Homeward application are:
 
-* **Accelerate Search Operations**: Significantly reduce the time required to find a missing person by automating the analysis of video footage and other data sources.
-* **Improve Investigation Accuracy**: Leverage AI to identify potential sightings and connections that might be missed by human operators.
-* **Centralize Case Information**: Provide a single, unified platform for registering missing persons, logging sightings, and managing all related case data.
-* **Enhance Collaboration**: Facilitate seamless information sharing and coordinated efforts among different police departments and government agencies.
-* **Provide Actionable Intelligence**: Offer data-driven suggestions, such as optimal search radii based on last known locations and sighting patterns, to guide investigation efforts.
-
-### 1.3. Target Audience
+* **Accelerate search operations**: Significantly reduce the time required to find a missing person by automating the analysis of video footage and the matching of case reports and sightings.
+* **Improve investigation accuracy**: Leverage AI to identify potential sightings and connections that might be missed by human operators.
+* **Centralize case information**: Provide a single, unified platform for registering missing persons, logging sightings, and managing all related case data.
 
 The primary users of this application are:
 
-* **Law Enforcement Officers**: Police officers and detectives directly responsible for investigating missing person cases.
-* **Government Agency Personnel**: Staff from national or regional centers for missing persons who are involved in the coordination and management of these cases.
-* **Data Analysts**: Specialists who support investigations by analyzing system-generated data and the insights produced by the AI models.
+* **Law enforcement officers**: Police officers and detectives directly responsible for investigating missing person cases.
+* **Government agency personnel**: Staff from national or regional centers for missing persons who are involved in the coordination and management of these cases.
+
+## 🎯 Hackathon Highlights
+
+This submission showcases several innovative features of BigQuery:
+
+1. **Object tables for Video processing**: Utilizing BigQuery's object tables to create external references to video files in Cloud Storage
+2. **Multimodal data analysis**: Analyzing video content through Gemini models for person detection and matching with just SQL.
+3. **Object table metadata enrichment and filtering**: Using object metadata to filter-out unwanted files (time-filtering and geo-filtering) and let Gemini analyze only the needed files.
+4. **Semantic matching**: Leveraging Gemini summarizations, embeddings and vector similarity to match cases with sightings.
+5. **Semantic search**: Natural language queries for finding specific missing cases.
+
+## 🏗️ Architecture
+![Google Cloud Architecture](./docs/img/architecture.png "Google Cloud Architecture")
+
+### Technology Stack
+
+- **Frontend/Backend**: Python with NiceGUI framework
+- **Database**: Google BigQuery
+- **Object Storage**: Google Cloud Storage
+- **AI/ML**: Google Gemini multimodal models and Vertex AI embedding models
+
+### Data Flow - Case registration
+
+### Data Flow - Sighting registration
+
+### Data Flow - Video intelligence
+
+1. **Video ingestion**: Videos are uploaded to Google Cloud Storage with the following naming convention: `CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION.mp4`
+2. **Metadata reference**: BigQuery object tables reference processed videos
+4. **AI Analysis**: Gemini models analyze video content based on missing person descriptions
+5. **Result Management**: Interactive dashboard for case and sighting management
+
+### Data Flow - Semantic Matching
+
+### Data Flow - Semantic Search
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Google Cloud Platform account with billing enabled
+- `gcloud` CLI installed and authenticated
+- Python 3.8+ with `uv` package manager
+- Access to the following GCP APIs:
+  - BigQuery API
+  - Cloud Storage API
+  - Vertex AI API
+  - Geocoding API
+
+### Project setup
+This repository includes two versions of the same use case:
+- A jupyter notebook with a light version of the use case (same functionalities and BQ queries)
+- A web application with a UI interface to interact with BigQuery (suggested if you want to see all the capabilities of the solution)
+
+Depending of the version you want to try, you can follow the following instructions for the setup:
+
+#### Project Setup - 📊 Notebook
+
+Open the `demo-notebook.ipynb` file with your preferred Jupyter notebook editor or run the following command:
+
+```bash
+jupyter notebook demo-notebook.ipynb
+```
+
+The notebook contains the code for:
+- Setting up BigQuery object tables for video files
+- Creating Gemini model connections
+- Running multimodal AI queries on video content
+- Processing results and extracting insights
+
+#### Project Setup - Web Application
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd missing-finder
+   ```
+
+2. **Run the setup script:**
+   ```bash
+   ./setup.sh --project-id your-project-id --region us-central1
+   ```
+
+   **Optional: Include demo data**
+   ```bash
+   ./setup.sh --project-id your-project-id --region us-central1 --demo-folder ./demo
+   ```
+
+   The setup script will:
+   - Create necessary GCP resources (storage buckets, BigQuery datasets, connections)
+   - Configure IAM permissions
+   - Set up Gemini AI model endpoints
+   - Populate demo data if specified
+
+3. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your specific configuration
+   ```
+
+4. **Run the application:**
+   ```bash
+   uv run --env-file=.env python src/homeward/main.py
+   ```
+
+   The application will be available at `http://localhost:8080`
+
+## 🎮 Core Features
+
+### Missing Person Case Management
+- **Comprehensive Forms**: Detailed missing person registration with photos and metadata
+- **Case Timeline**: Track all sightings and analysis results
+- **CRUD Operations**: Full case management capabilities
+
+### AI-Powered Video Analysis
+- **Geographic Filtering**: Select cameras by location and search radius
+- **Temporal Filtering**: Analyze videos within specific time ranges
+- **Semantic Matching**: Natural language descriptions for person identification
+- **Confidence Scoring**: AI-generated confidence levels for potential matches
+
+### Sighting Management
+- **Manual Registration**: Allow manual sighting reports from various sources
+- **Automatic Linking**: Connect AI-detected sightings to existing cases
+- **Timeline Integration**: Visualize sightings on case timelines
+
+### Interactive Dashboard
+- **KPI Cards**: Real-time statistics on cases, sightings, and analysis results
+- **Interactive Maps**: Visualize camera locations and sighting patterns
+- **Result Management**: Review and confirm AI-generated matches
+
+## 📁 Project Structure
+
+```
+homeward/
+├── src/homeward/           # Main application code
+│   ├── ui/                 # NiceGUI user interface components
+│   ├── services/           # Business logic and data services
+│   ├── models/             # Data models and schemas
+│   └── main.py             # Application entry point
+├── demo/                   # Demo data and examples
+│   ├── videos/             # Sample surveillance footage
+│   └── reports/            # Sample case and sighting data
+├── sql/                    # Database schemas and migrations
+├── setup.sh                # Automated GCP setup script
+├── demo-notebook.ipynb     # Interactive BigQuery + Gemini demo
+├── limitations.ipynb       # Known limitations and workarounds
+└── README.md               # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+The application uses the following environment variables (see `.env.example`):
+
+```bash
+# Application Configuration
+HOMEWARD_VERSION=0.1.0
+HOMEWARD_DATA_SOURCE=bigquery  # or "mock" for development
+
+# BigQuery Configuration
+HOMEWARD_BIGQUERY_PROJECT_ID=your-project-id
+HOMEWARD_BIGQUERY_DATASET=homeward
+
+# Google Cloud Storage
+HOMEWARD_VIDEO_BUCKET=your-video-bucket
+HOMEWARD_GCS_BUCKET_INGESTION=your-ingestion-bucket
+HOMEWARD_GCS_BUCKET_PROCESSED=your-processed-bucket
+
+# BigQuery AI Configuration
+HOMEWARD_BQ_CONNECTION=homeward_gcp_connection
+HOMEWARD_BQ_TABLE=video_objects
+HOMEWARD_BQ_MODEL=gemini_2_5_pro
+
+# API Keys
+HOMEWARD_GEOCODING_API_KEY=your-geocoding-api-key
+
+# Service Account
+HOMEWARD_SERVICE_ACCOUNT_KEY_PATH=downloads/key.json
+```
+
+### Setup Script Parameters
+
+The `setup.sh` script accepts the following parameters:
+
+- `--project-id`: Google Cloud Project ID (required)
+- `--region`: Google Cloud region (required, e.g., `us-central1`)
+- `--demo-folder`: Path to demo data folder (optional)
+
+## 🎯 BigQuery AI Integration
+
+### Object Tables
+
+The project leverages BigQuery's object tables to create direct references to video files:
+
+```sql
+CREATE EXTERNAL TABLE `project.dataset.video_objects`
+OPTIONS (
+  object_metadata = 'SIMPLE',
+  max_staleness = INTERVAL 1 HOUR,
+  metadata_cache_mode = 'AUTOMATIC'
+);
+```
+
+### Gemini Model Integration
+
+Videos are analyzed using Google's Gemini models through BigQuery:
+
+```sql
+SELECT ml_generate_text_llm_result
+FROM ML.GENERATE_TEXT(
+  MODEL `project.dataset.gemini_model`,
+  TABLE `project.dataset.video_objects`,
+  STRUCT(
+    'Find a person matching this description: tall, wearing red jacket' AS prompt,
+    TRUE AS FLATTEN_JSON_OUTPUT
+  )
+);
+```
+
+## ⚠️ Known Limitations
+
+Based on our development experience, we've identified several limitations with the current BigQuery AI integration:
+
+### 1. Manual Cache Refresh Issues
+- **Problem**: Manual cache refresh for object tables doesn't work as expected
+- **Impact**: May require waiting for automatic cache refresh cycles
+- **Workaround**: Use automatic cache refresh with appropriate `max_staleness` settings
+
+### 2. ML.GENERATE_TEXT with Object Tables
+- **Problem**: Direct use of `ML.GENERATE_TEXT` with object tables encounters issues with both global and regional endpoints
+- **Impact**: Limits direct video analysis capabilities
+- **Current Status**: Under investigation, may require alternative approaches
+
+### 3. Object Table as Standard Table Treatment
+- **Problem**: Treating object tables as standard tables in `ML.GENERATE_TEXT` queries fails
+- **Impact**: Requires specific handling for video content analysis
+- **Workaround**: Use object table-specific functions and configurations
+
+For detailed technical information about these limitations, see `limitations.ipynb`.
+
+## 🤝 Contributing
+
+This project was developed as a submission for the BigQuery AI Hackathon. While the core functionality demonstrates the integration possibilities, there are several areas for future enhancement:
+
+1. **Advanced Video Analytics**: Implement more sophisticated video processing algorithms
+2. **Real-time Processing**: Add streaming capabilities for live video analysis
+3. **Machine Learning Pipeline**: Develop custom ML models for person identification
+4. **Mobile Application**: Create companion mobile app for field officers
+5. **Integration APIs**: Develop REST APIs for integration with existing law enforcement systems
+
+## 📄 License
+
+This project is developed as a proof-of-concept for the BigQuery AI Hackathon. Please see individual component licenses for third-party dependencies.
+
+## 🙏 Acknowledgments
+
+- **Google Cloud Platform**: For providing the robust AI and data analytics infrastructure
+- **BigQuery Team**: For the innovative object tables and ML integration capabilities
+- **Gemini AI**: For powerful multimodal analysis capabilities
+- **NiceGUI**: For the excellent Python-based UI framework
+- **VIRAT Dataset**: For providing sample video data for demonstration purposes
 
 ---
 
-## 2. System Architecture and Data Flow
+**Built with ❤️ for the [BigQuery AI Hackathon](https://www.kaggle.com/competitions/bigquery-ai-hackathon)**
 
-The system is built upon a **serverless, event-driven architecture** on the Google Cloud Platform (GCP), designed for scalability and the efficient processing of large video files. The data flows through the following distinct stages:
-
-### 2.1. Video Ingestion and Enrichment
-
-1.  **Upload to Ingestion Bucket**: Video files are uploaded to a dedicated Google Cloud Storage (GCS) bucket named `[Project-ID]-video-ingestion`.
-    * **Strict Naming Convention**: File uploads must adhere to the following naming convention to provide initial metadata: `CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE.mp4`.
-2.  **Event-Driven Trigger**: Google Eventarc is configured to monitor the ingestion bucket. When a new video is successfully uploaded, Eventarc triggers a Cloud Function to begin processing.
-3.  **Metadata Enrichment (Cloud Function)**: A Python-based Cloud Function is executed to enrich the file's metadata.
-    * The function parses the filename to extract the `CameraID`, `Timestamp`, and other static details.
-    * It adds a comprehensive set of metadata to the video file object, including:
-        * `gps_coordinates` (Latitude, Longitude)
-        * `camera_type` (e.g., Fixed, PTZ, Dome)
-        * `camera_address` (e.g., "Via Roma 10, Milan, Italy")
-        * `video_resolution` (e.g., "1920x1080")
-    * Finally, the function moves the enriched video file to a separate, processed GCS bucket: `[Project-ID]-video-processed`.
-
-### 2.2. Data Warehousing with BigQuery
-
-The processed GCS bucket serves as a direct data source for Google BigQuery.
-
-* An **external table** is created in a BigQuery dataset. This table directly references the video files located in the `[Project-ID]-video-processed` GCS bucket.
-* The table schema is designed to include columns for all the enriched metadata, along with a URI that points to the specific video file in GCS.
-
-### 2.3. AI-Powered Analysis with Gemini
-
-The core video analysis is performed using Google's powerful multimodal models (Gemini).
-
-* When a user initiates a search from the application, the backend constructs a detailed query for the model.
-* This query includes the URIs of the relevant video files (selected from the BigQuery external table based on location and time) and a detailed text prompt derived from the missing person's case file (e.g., "Find a person matching this description: male, approximately 180cm tall, wearing a red jacket and blue jeans").
-* The Gemini model processes the video(s) against the text prompt and returns potential matches, including precise timestamps and confidence scores for each sighting.
-
-### 2.4. Application Layer
-
-The **Homeward application**, built with Python and the NiceGUI library, serves as the primary user interface. It connects securely to Google BigQuery to perform the following actions:
-
-* Perform full **CRUD (Create, Read, Update, Delete)** operations on case and sighting information.
-* Query the video external table to populate the map interface with camera locations and to filter videos for analysis.
-* Receive and display the analysis results generated by the AI model in a user-friendly format.
-
----
-
-## 3. Core Functionalities
-
-### 3.1. Missing Person Investigation Command Center
-
-#### 3.1.1. Register New Missing Person
-
-This module allows users to create a new case file for a missing individual through a comprehensive form.
-
-* **View: New Missing Person Form**
-    * **Personal Details Section**:
-        * `Name`: Text Field, **Mandatory**.
-        * `Surname`: Text Field, **Mandatory**.
-        * `Date of Birth`: Date Picker, **Mandatory**.
-        * `Gender`: Dropdown (Options: Male, Female, Other), **Mandatory**.
-        * `Height (cm)`: Numeric Field.
-        * `Weight (kg)`: Numeric Field.
-        * `Distinguishing Features`: Text Area (for details like scars, tattoos, glasses).
-    * **Photographs Section**:
-        * `Photo Upload`: File Uploader that allows multiple images (formats: JPEG, PNG). At least one clear, recent photo is **Mandatory**. The system should allow for tagging photos (e.g., "Most Recent," "Side Profile").
-    * **Last Sighting Information Section**:
-        * `Date of Last Sighting`: Date and Time Picker, **Mandatory**.
-        * `Location of Last Sighting`: Text Field with map integration (e.g., Google Maps API) to pinpoint coordinates, **Mandatory**.
-        * `Description of Clothing`: Text Area, **Mandatory**.
-        * `Circumstances of Disappearance`: Text Area, providing context for the disappearance.
-    * **Contact Information Section**:
-        * `Reporting Person's Name`: Text Field.
-        * `Reporting Person's Contact`: Text Field (for Phone/Email).
-* **Actions**:
-    * `Save Case` Button: Validates the form and saves the information to the appropriate BigQuery table. On success, the user is redirected to the Case Dashboard.
-    * `Cancel` Button: Discards all input and returns the user to the main dashboard.
-
-#### 3.1.2. View/Edit Existing Case
-
-Users can access and modify the details of an existing missing person case.
-
-* **View: Case Details Page**
-    * Displays all information entered during registration in a read-only format.
-    * An **`Edit`** button allows authorized users to modify the case details, which opens the same form as in the registration process, pre-filled with the existing data.
-    * Includes a timeline view of all associated sightings and system-generated alerts.
-
-### 3.2. Sighting Management
-
-#### 3.2.1. Register New Sighting
-
-This feature allows users to manually log a potential sighting of a missing person, which can then be linked to an existing case.
-
-* **View: New Sighting Form**
-    * `Date and Time of Sighting`: Date and Time Picker, **Mandatory**.
-    * `Location of Sighting`: Text Field with map integration, **Mandatory**.
-    * `Description of Sighting`: Text Area for a detailed description of the person seen, their clothing, and behavior.
-    * `Source of Information`: Text Field (e.g., "Citizen report," "CCTV footage").
-    * `Upload Media`: File Uploader for photos or short video clips related to the sighting.
-* **Actions**:
-    * `Save Sighting` Button: Saves the sighting information to BigQuery.
-    * `Link to Missing Person Case`: A search/dropdown field to associate this sighting with an existing missing person record.
-
-### 3.3. AI-Powered Video Analysis
-
-This is the core intelligent feature of the system. Once a case is created, the system can automatically or manually trigger an analysis of video feeds from registered cameras.
-
-* **View: Video Analysis Dashboard**
-    * **Analysis Configuration Section**:
-        * `Select Missing Person`: Dropdown menu to choose the case to analyze.
-        * `Timeframe for Analysis`: Date/Time Range Picker (with options like "Last 24 hours" or a "Custom Range").
-        * `Geographic Area`: An interactive map displaying registered camera locations. The system will automatically suggest a search radius based on the last sighting location, which the user can manually adjust by drawing a circle or polygon on the map.
-    * **Analysis Parameters (derived from case file)**:
-        * The system will automatically use the missing person's description (height, clothing, features) to create a detailed search query for the LLM.
-* **Actions**:
-    * `Start Analysis` Button: Initiates the backend process to query BigQuery for relevant video URIs and sends the analysis request to the Gemini model.
-* **Results Section**:
-    * A list or gallery of potential matches will be displayed. Each result will include:
-        * A thumbnail/snapshot from the video.
-        * Camera ID/Location.
-        * Timestamp of the potential sighting.
-        * **Confidence Score (%)**: An AI-generated score indicating the likelihood of a match.
-    * Users can click on a result to view the video clip and either **confirm** or **dismiss** the match. Confirmed matches will automatically generate a new sighting record and link it to the case.
-
-### 3.4. Match Sightings
-
-This functionality allows users to review and link unassociated sightings to existing missing person cases.
-
-* **View: Match Sightings Page**
-    * **Layout**: A single-panel interface that displays a list of unassigned sightings, showing key details like Date, Location, a Brief Description, and any associated media.
-* **Workflow**:
-    1.  The system automatically searches for and suggests relevant missing person cases based on the similarity of descriptions between the unassigned sighting and the case files.
-    2.  The user reviews the suggested matches and selects the most appropriate case.
-    3.  A **`Link`** button confirms the association between the sighting and the selected case.
-    4.  The system then semantically links the two records, officially adding the sighting to the case's historical timeline.
+For questions or support, please refer to the technical documentation in the `docs/` directory or raise an issue in the project repository.
