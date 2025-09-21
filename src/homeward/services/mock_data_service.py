@@ -646,3 +646,33 @@ class MockDataService(DataService):
         paginated_sightings = sightings_only[start_idx:end_idx]
 
         return paginated_sightings, total_count
+
+    def get_video_evidence_for_case(self, case_id: str) -> list[dict]:
+        """Get all video evidence linked to a specific case (mock implementation)"""
+        # Mock video evidence data - in real implementation would query the database
+
+        # Return empty list for mock - could be enhanced with mock data if needed
+        mock_evidence = []
+
+        # For demonstration, you could add some mock evidence like this:
+        # mock_evidence = [
+        #     {
+        #         "result_id": "evidence_001",
+        #         "case_id": case_id,
+        #         "created_date": datetime.now(),
+        #         "status": "Evidence",
+        #         "video_timestamp": datetime(2023, 12, 1, 14, 30),
+        #         "camera_id": "CAM_001",
+        #         "camera_type": "CCTV",
+        #         "latitude": 43.6532,
+        #         "longitude": -79.3832,
+        #         "address": "100 Queen St W, Toronto, ON",
+        #         "distance_km": 1.2,
+        #         "video_url": "gs://bucket/video_001.mp4",
+        #         "confidence_score": 0.85,
+        #         "ai_description": "Person matching description walking eastbound",
+        #         "ai_summary": "High confidence match identified"
+        #     }
+        # ]
+
+        return mock_evidence

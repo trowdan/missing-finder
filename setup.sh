@@ -448,6 +448,84 @@ create_bigquery_dataset() {
     print_info "Dataset ID saved to environment: HOMEWARD_BQ_DATASET"
 }
 
+# Create service account for video downloads
+create_video_downloader_service_account() {
+    print_step "Creating Video Downloader Service Account"
+
+    local service_account_name="video-downloader-sa"
+    local service_account_display_name="Video Downloader Service Account"
+    local service_account_description="Service account for downloading video files from GCS"
+
+    # Check if service account already exists
+    if gcloud iam service-accounts describe "${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com" \
+        --project="$PROJECT_ID" > /dev/null 2>&1; then
+        print_success "Using existing service account: ${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com"
+    else
+        # Create the service account
+        print_info "Creating service account: $service_account_display_name"
+        if gcloud iam service-accounts create "$service_account_name" \
+            --project="$PROJECT_ID" \
+            --display-name="$service_account_display_name" \
+            --description="$service_account_description"; then
+            print_success "Service account created successfully: ${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com"
+        else
+            print_error "Failed to create service account"
+            exit 1
+        fi
+    fi
+
+    # Grant storage.objectViewer role to the service account
+    print_info "Granting storage.objectViewer role to service account..."
+    if gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+        --member="serviceAccount:${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com" \
+        --role="roles/storage.objectViewer"; then
+        print_success "Storage object viewer role granted successfully"
+    else
+        print_error "Failed to grant storage object viewer role"
+        exit 1
+    fi
+
+    # Create downloads directory if it doesn't exist
+    if [[ ! -d "downloads" ]]; then
+        print_info "Creating downloads directory..."
+        mkdir -p downloads
+        print_success "Downloads directory created"
+    fi
+
+    # Generate and download private key
+    local key_file="downloads/key.json"
+    print_info "Generating private key for service account..."
+
+    # Remove existing key file if it exists
+    if [[ -f "$key_file" ]]; then
+        print_warning "Existing key file found, backing up to ${key_file}.bak"
+        mv "$key_file" "${key_file}.bak"
+    fi
+
+    if gcloud iam service-accounts keys create "$key_file" \
+        --iam-account="${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com" \
+        --project="$PROJECT_ID"; then
+        print_success "Private key generated and saved to: $key_file"
+
+        # Set restrictive permissions on the key file
+        chmod 600 "$key_file"
+        print_info "Key file permissions set to 600 (owner read/write only)"
+
+        # Store the key path in environment
+        export HOMEWARD_SERVICE_ACCOUNT_KEY_PATH="$key_file"
+        if ! grep -q "^HOMEWARD_SERVICE_ACCOUNT_KEY_PATH=" .env 2>/dev/null; then
+            echo "HOMEWARD_SERVICE_ACCOUNT_KEY_PATH=$key_file" >> .env
+        fi
+        print_info "Service account key path saved to environment"
+
+    else
+        print_error "Failed to generate private key"
+        exit 1
+    fi
+
+    print_success "Video downloader service account setup completed"
+}
+
 # Create and configure geocoding API key
 create_geocoding_api_key() {
     print_step "Creating Geocoding API Key"
@@ -821,6 +899,7 @@ main() {
     create_storage_bucket
     create_bigquery_connection
     create_bigquery_dataset
+    create_video_downloader_service_account
     parse_video_config
     process_videos
     create_bigquery_object_table
@@ -842,10 +921,13 @@ main() {
     print_info "BigQuery dataset: $HOMEWARD_BQ_DATASET"
     print_info "BigQuery object table: $HOMEWARD_BQ_TABLE"
     print_info "Geocoding API key: $(echo "$HOMEWARD_GEOCODING_API_KEY" | cut -c1-10)... (configured)"
+    print_info "Video downloader service account: video-downloader-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+    print_info "Service account key: ${HOMEWARD_SERVICE_ACCOUNT_KEY_PATH:-downloads/key.json}"
     print_info "Project ID: $PROJECT_ID"
     print_info "Region: $REGION"
     print_info "Videos processed: $VIDEO_COUNT"
     echo ""
+    print_warning "IMPORTANT: Keep the service account key file secure and do not commit it to version control!"
 }
 
 # Execute main function with all arguments

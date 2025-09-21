@@ -197,6 +197,8 @@ confirm_destruction() {
         echo "  - Geocoding API key (if exists)"
     fi
 
+    echo "  - Video downloader service account: video-downloader-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+    echo "  - Service account key file: downloads/key.json"
     echo "  - All uploaded videos and metadata"
     echo ""
     
@@ -300,6 +302,67 @@ delete_bigquery_dataset() {
         print_error "Failed to delete BigQuery dataset"
         exit 1
     fi
+}
+
+# Delete video downloader service account
+delete_video_downloader_service_account() {
+    print_step "Deleting Video Downloader Service Account"
+
+    local service_account_name="video-downloader-sa"
+    local service_account_email="${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+    # Check if service account exists
+    if ! gcloud iam service-accounts describe "$service_account_email" \
+        --project="$PROJECT_ID" > /dev/null 2>&1; then
+        print_warning "Video downloader service account does not exist: $service_account_email"
+    else
+        # Remove IAM policy binding first
+        print_info "Removing storage.objectViewer role from service account..."
+        if gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+            --member="serviceAccount:$service_account_email" \
+            --role="roles/storage.objectViewer" > /dev/null 2>&1; then
+            print_success "Storage object viewer role removed"
+        else
+            print_warning "Failed to remove storage object viewer role (may not have been assigned)"
+        fi
+
+        # Delete the service account
+        print_info "Deleting service account: $service_account_email"
+        if gcloud iam service-accounts delete "$service_account_email" \
+            --project="$PROJECT_ID" \
+            --quiet; then
+            print_success "Video downloader service account deleted successfully"
+        else
+            print_error "Failed to delete video downloader service account"
+            exit 1
+        fi
+    fi
+
+    # Clean up the key file
+    local key_file="downloads/key.json"
+    if [[ -f "$key_file" ]]; then
+        print_info "Removing service account key file: $key_file"
+        if rm -f "$key_file"; then
+            print_success "Service account key file removed"
+        else
+            print_warning "Failed to remove service account key file"
+        fi
+    fi
+
+    # Clean up backup key file if it exists
+    if [[ -f "${key_file}.bak" ]]; then
+        print_info "Removing backup key file: ${key_file}.bak"
+        rm -f "${key_file}.bak" || true
+    fi
+
+    # Remove downloads directory if it's empty
+    if [[ -d "downloads" ]] && [[ -z "$(ls -A downloads 2>/dev/null)" ]]; then
+        print_info "Removing empty downloads directory..."
+        rmdir downloads || true
+        print_success "Empty downloads directory removed"
+    fi
+
+    print_success "Video downloader service account cleanup completed"
 }
 
 # Delete geocoding API key
@@ -437,6 +500,7 @@ cleanup_environment() {
             sed -i '' '/^HOMEWARD_BQ_DATASET=/d' .env 2>/dev/null || true
             sed -i '' '/^HOMEWARD_BQ_TABLE=/d' .env 2>/dev/null || true
             sed -i '' '/^HOMEWARD_GEOCODING_API_KEY=/d' .env 2>/dev/null || true
+            sed -i '' '/^HOMEWARD_SERVICE_ACCOUNT_KEY_PATH=/d' .env 2>/dev/null || true
         else
             # GNU sed
             sed -i '/^HOMEWARD_VIDEO_BUCKET=/d' .env 2>/dev/null || true
@@ -444,6 +508,7 @@ cleanup_environment() {
             sed -i '/^HOMEWARD_BQ_DATASET=/d' .env 2>/dev/null || true
             sed -i '/^HOMEWARD_BQ_TABLE=/d' .env 2>/dev/null || true
             sed -i '/^HOMEWARD_GEOCODING_API_KEY=/d' .env 2>/dev/null || true
+            sed -i '/^HOMEWARD_SERVICE_ACCOUNT_KEY_PATH=/d' .env 2>/dev/null || true
         fi
         
         # Remove .env file if it's empty
@@ -505,6 +570,7 @@ main() {
     delete_bigquery_object_table
     delete_bigquery_dataset
     delete_bigquery_connection
+    delete_video_downloader_service_account
     delete_geocoding_api_key
     delete_storage_bucket
     cleanup_environment

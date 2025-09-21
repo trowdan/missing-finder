@@ -106,3 +106,8 @@ class DataService(ABC):
     def search_sightings_by_location(self, latitude: float, longitude: float, radius_km: float, page: int = 1, page_size: int = 20) -> tuple[list[Sighting], int]:
         """Search sighting reports by geographic location using BigQuery geo functions. Returns (sightings, total_count)"""
         pass
+
+    @abstractmethod
+    def get_video_evidence_for_case(self, case_id: str) -> list[dict]:
+        """Get all video evidence linked to a specific case from the video_analytics_results table. Returns list of video evidence data."""
+        pass

@@ -9,8 +9,9 @@ from homeward.models.case import CasePriority, CaseStatus, Location, MissingPers
 class TestCaseDetailPage:
     """Test cases for the case detail page"""
 
+    @patch("homeward.ui.pages.case_detail.GCSService")
     @patch("homeward.ui.pages.case_detail.ui")
-    def test_create_case_detail_page_with_no_case_found(self, mock_ui):
+    def test_create_case_detail_page_with_no_case_found(self, mock_ui, mock_gcs_service):
         """Test case detail page creation when case is not found"""
         from homeward.ui.pages.case_detail import create_case_detail_page
 
@@ -44,9 +45,10 @@ class TestCaseDetailPage:
         assert mock_ui.label.call_count >= 3  # Header, error message, and description
         assert mock_ui.button.call_count >= 1  # Back to dashboard button
 
+    @patch("homeward.ui.pages.case_detail.GCSService")
     @patch("homeward.ui.pages.case_detail.ui")
     @patch("homeward.ui.pages.case_detail.create_footer")
-    def test_create_case_detail_page_with_real_case(self, mock_footer, mock_ui):
+    def test_create_case_detail_page_with_real_case(self, mock_footer, mock_ui, mock_gcs_service):
         """Test case detail page creation with real case data"""
         from homeward.ui.pages.case_detail import create_case_detail_page
 
@@ -91,6 +93,7 @@ class TestCaseDetailPage:
         mock_data_service = Mock()
         mock_data_service.get_case_by_id.return_value = case
         mock_data_service.get_case_sightings.return_value = []
+        mock_data_service.get_video_evidence_for_case.return_value = []
 
         mock_config = Mock()
         mock_config.version = "2.0.0"
@@ -219,9 +222,12 @@ class TestCaseDetailHelpers:
         mock_timer = Mock()
         mock_ui.timer.return_value = mock_timer
 
+        # Create mock GCS service
+        mock_gcs_service = Mock()
+
         await handle_analyze_video(
             "MP001", mock_video_analysis_service, case, mock_results_container,
-            "2023-12-01", "2023-12-03", "All Day", 5.0
+            "2023-12-01", "2023-12-03", "All Day", 5.0, mock_gcs_service
         )
 
         # Verify initial notification

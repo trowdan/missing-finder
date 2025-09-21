@@ -18,6 +18,7 @@ class AppConfig:
     gcs_bucket_ingestion: Optional[str] = None
     gcs_bucket_processed: Optional[str] = None
     geocoding_api_key: Optional[str] = None
+    service_account_key_path: Optional[str] = None
 
 
 def load_config() -> AppConfig:
@@ -37,4 +38,5 @@ def load_config() -> AppConfig:
         gcs_bucket_ingestion=os.getenv("HOMEWARD_GCS_BUCKET_INGESTION"),
         gcs_bucket_processed=os.getenv("HOMEWARD_GCS_BUCKET_PROCESSED"),
         geocoding_api_key=os.getenv("HOMEWARD_GEOCODING_API_KEY"),
+        service_account_key_path=os.getenv("HOMEWARD_SERVICE_ACCOUNT_KEY_PATH", "downloads/key.json"),
     )

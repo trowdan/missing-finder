@@ -2926,3 +2926,69 @@ class BigQueryDataService(DataService):
             print(f"Error performing semantic search on sightings: {str(e)}")
             # Fallback to regular sightings if semantic search fails
             return self.get_sightings(page=page, page_size=page_size)
+
+    def get_video_evidence_for_case(self, case_id: str) -> list[dict]:
+        """Get all video evidence linked to a specific case from the video_analytics_results table"""
+        try:
+            # Use the same hardcoded format as other methods in this class
+            query = """
+            SELECT
+                var.result_id,
+                var.case_id,
+                var.created_date,
+                var.status,
+                -- Get video analysis data from the AI analysis view
+                va.video_timestamp,
+                va.video_camera_id,
+                va.video_camera_type,
+                va.video_latitude,
+                va.video_longitude,
+                va.video_address,
+                va.distance_from_last_seen_km,
+                va.video_gcs_uri,
+                va.confidence_score,
+                va.ai_description,
+                va.ai_summary
+            FROM `homeward.video_analytics_results` var
+            LEFT JOIN `homeward.video_analysis_ai_view` va
+                ON var.result_id = va.analysis_id
+            WHERE var.case_id = @case_id
+                AND var.status = 'Evidence'
+            ORDER BY var.created_date DESC
+            """
+
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("case_id", "STRING", case_id)
+                ]
+            )
+
+            query_job = self.client.query(query, job_config=job_config)
+            results = query_job.result()
+
+            video_evidence = []
+            for row in results:
+                evidence = {
+                    "result_id": row.result_id,
+                    "case_id": row.case_id,
+                    "created_date": row.created_date,
+                    "status": row.status,
+                    "video_timestamp": row.video_timestamp,
+                    "camera_id": row.video_camera_id,
+                    "camera_type": row.video_camera_type,
+                    "latitude": row.video_latitude,
+                    "longitude": row.video_longitude,
+                    "address": row.video_address,
+                    "distance_km": row.distance_from_last_seen_km,
+                    "video_url": row.video_gcs_uri,
+                    "confidence_score": row.confidence_score,
+                    "ai_description": row.ai_description,
+                    "ai_summary": row.ai_summary
+                }
+                video_evidence.append(evidence)
+
+            return video_evidence
+
+        except Exception as e:
+            print(f"Error getting video evidence for case {case_id}: {str(e)}")
+            return []

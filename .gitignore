@@ -209,3 +209,11 @@ __marimo__/
 # Claude
 CLAUDE.md
 .claude
+
+# Google Cloud Service Account Keys (Security)
+key.json
+**/key.json
+service-account-*.json
+gcp-*.json
+downloads/key.json
+downloads/*.json

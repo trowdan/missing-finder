@@ -7,6 +7,7 @@ from homeward.config import AppConfig
 from homeward.models.case import CaseStatus, CasePriority, MissingPersonCase
 from homeward.models.video_analysis import VideoAnalysisRequest, VideoAnalysisResult
 from homeward.services.data_service import DataService
+from homeward.services.gcs_service import GCSService
 from homeward.services.video_analysis_service import VideoAnalysisService
 from homeward.ui.components.footer import create_footer
 from homeward.ui.components.missing_person_form import create_missing_person_form
@@ -22,6 +23,9 @@ def create_case_detail_page(
     on_back_to_dashboard: callable,
 ):
     """Create the case detail page"""
+
+    # Initialize GCS service for video downloads
+    gcs_service = GCSService(config)
 
     # Get case data
     case = data_service.get_case_by_id(case_id)
@@ -369,9 +373,9 @@ def create_case_detail_page(
                             "text-xs text-purple-400 font-medium"
                         )
 
-                    with ui.row().classes("items-center mb-6"):
+                    with ui.column().classes("items-center mb-6"):
                         ui.icon("video_library", size="1.5rem").classes(
-                            "text-cyan-400 mr-3"
+                            "text-cyan-400 mb-2"
                         )
                         ui.label("Video Intelligence").classes(
                             "text-xl font-light text-white"
@@ -428,10 +432,26 @@ def create_case_detail_page(
                                     end_date_input.value,
                                     time_range_select.value,
                                     search_radius_input.value,
+                                    gcs_service,
                                 ),
                             ).classes(
                                 "bg-transparent text-purple-300 px-8 py-4 rounded-full border-2 border-purple-400/80 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-purple-400/20 hover:ring-purple-200/40 hover:ring-4"
                             )
+
+                # Video Evidence Section
+                with ui.card().classes(
+                    "w-full p-6 bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-none rounded-xl"
+                ):
+                    with ui.column().classes("items-center mb-6"):
+                        ui.icon("video_library", size="1.5rem").classes(
+                            "text-cyan-400 mb-2"
+                        )
+                        ui.label("Video Evidence").classes(
+                            "text-xl font-light text-white"
+                        )
+
+                    # Video evidence table
+                    create_video_evidence_table(case.id, data_service, gcs_service)
 
                 # Action Buttons Section
                 with ui.row().classes("w-full justify-center gap-6 mt-12"):
@@ -452,6 +472,107 @@ def create_case_detail_page(
             # Footer
             ui.element("div").classes("mt-16")  # Spacer
             create_footer(config.version)
+
+
+def create_video_evidence_table(case_id: str, data_service: DataService, gcs_service: GCSService):
+    """Create the video evidence table using real data from video_analytics_results table"""
+    # Get video evidence from the database
+    video_evidence = data_service.get_video_evidence_for_case(case_id)
+
+    if not video_evidence:
+        with ui.column().classes(
+            "w-full items-center justify-center py-8 bg-gray-800/30 rounded-lg border border-gray-700/50"
+        ):
+            ui.label("No video evidence linked to this case yet").classes("text-gray-400 text-center")
+            ui.label("Use 'Add' button from video analysis results to add evidence").classes("text-gray-500 text-xs mt-2 text-center")
+    else:
+        with ui.element("div").classes(
+            "w-full bg-gray-800/30 rounded-lg border border-gray-700/50 overflow-hidden"
+        ):
+            # Table header
+            with ui.element("div").classes(
+                "grid grid-cols-7 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-700/50"
+            ):
+                ui.label("Date & Time").classes("text-gray-300 font-medium text-sm")
+                ui.label("Location").classes("text-gray-300 font-medium text-sm")
+                ui.label("Distance").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Camera").classes("text-gray-300 font-medium text-sm")
+                ui.label("AI Description").classes("text-gray-300 font-medium text-sm")
+                ui.label("Confidence").classes("text-gray-300 font-medium text-sm text-center")
+                ui.label("Actions").classes("text-gray-300 font-medium text-sm text-center")
+
+            # Table rows
+            for i, evidence in enumerate(video_evidence):
+                is_last = i == len(video_evidence) - 1
+                row_classes = "grid grid-cols-7 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center"
+                if not is_last:
+                    row_classes += " border-b border-gray-700/30"
+
+                with ui.element("div").classes(row_classes):
+                    # Date & Time
+                    if evidence.get("video_timestamp"):
+                        if hasattr(evidence["video_timestamp"], 'strftime'):
+                            date_str = evidence["video_timestamp"].strftime("%m/%d %H:%M")
+                        else:
+                            date_str = str(evidence["video_timestamp"])[:16] if evidence["video_timestamp"] else "N/A"
+                    else:
+                        date_str = "N/A"
+                    ui.label(date_str).classes("text-gray-100 text-sm")
+
+                    # Location (truncated address)
+                    address = evidence.get("address", "Unknown")
+                    address_short = address.split(",")[0] if address and "," in address else address
+                    ui.label(address_short).classes("text-gray-100 text-sm truncate").props(f'title="{address}"')
+
+                    # Distance
+                    with ui.element("div").classes("flex justify-center"):
+                        distance_km = evidence.get("distance_km")
+                        if distance_km is not None:
+                            distance_color = "text-green-400" if distance_km < 2 else "text-yellow-400" if distance_km < 5 else "text-orange-400"
+                            ui.label(f"{distance_km:.1f}km").classes(f"text-sm {distance_color}")
+                        else:
+                            ui.label("N/A").classes("text-gray-400 text-sm")
+
+                    # Camera Info
+                    camera_info = f"{evidence.get('camera_id', 'Unknown')}"
+                    if evidence.get('camera_type'):
+                        camera_info += f" ({evidence['camera_type']})"
+                    ui.label(camera_info).classes("text-gray-100 text-sm")
+
+                    # AI Description (truncated)
+                    description = evidence.get("ai_description", "No description")
+                    description_short = description[:40] + "..." if len(description) > 40 else description
+                    ui.label(description_short).classes("text-gray-100 text-sm truncate").props(f'title="{description}"')
+
+                    # Confidence
+                    with ui.element("div").classes("flex justify-center"):
+                        confidence = evidence.get("confidence_score", 0)
+                        if confidence:
+                            confidence_pct = f"{confidence:.0%}"
+                            confidence_color = "text-green-400" if confidence >= 0.8 else "text-yellow-400" if confidence >= 0.6 else "text-orange-400"
+                            ui.label(confidence_pct).classes(f"text-sm {confidence_color}")
+                        else:
+                            ui.label("N/A").classes("text-gray-400 text-sm")
+
+                    # Actions
+                    with ui.element("div").classes("flex justify-center"):
+                        ui.button(
+                            "View",
+                            on_click=lambda e=evidence: handle_view_evidence_video(e.get("video_url"), gcs_service)
+                        ).classes(
+                            "bg-transparent text-cyan-300 px-2 py-1 rounded border border-cyan-500/60 hover:bg-cyan-200 hover:text-cyan-900 hover:border-cyan-200 transition-all duration-300 font-light text-xs tracking-wide"
+                        )
+
+
+def handle_view_evidence_video(video_url: str, gcs_service: GCSService):
+    """Handle downloading/viewing video evidence from GCS"""
+    if video_url and video_url.startswith('gs://'):
+        gcs_service.download_video_file(video_url)
+        ui.notify("📥 Downloading video evidence...", type="info")
+    elif video_url:
+        ui.notify(f"Opening video: {video_url}", type="info")
+    else:
+        ui.notify("❌ Video URL not available", type="negative")
 
 
 def create_info_field(label: str, value: str):
@@ -1160,6 +1281,7 @@ async def handle_analyze_video(
     end_date_str: str,
     time_range: str,
     search_radius_km: float,
+    gcs_service: GCSService,
 ):
     """Handle AI video analysis request using BigQuery and Gemini with run.io_bound()"""
     ui.notify(
@@ -1283,7 +1405,7 @@ async def handle_analyze_video(
                 if analysis_stats:
                     ui.separator().classes("my-4 bg-gray-600")
                 create_analysis_results_table(
-                    results, video_analysis_service, case_id, results_container
+                    results, video_analysis_service, case_id, results_container, gcs_service
                 )
             ui.notify(
                 f"✅ Analysis complete! Found {len(results)} matches out of {analysis_stats.get('total_analyzed', 'unknown')} videos analyzed" if analysis_stats else f"✅ Analysis complete! Found {len(results)} potential matches",
@@ -1437,6 +1559,7 @@ def create_analysis_results_table(
     video_analysis_service: VideoAnalysisService,
     case_id: str,
     container,
+    gcs_service: GCSService,
 ):
     """Create and display visual intelligence insights table"""
     with container:
@@ -1507,7 +1630,7 @@ def create_analysis_results_table(
                             ui.button(
                                 "View",
                                 on_click=lambda r=result: handle_view_video(
-                                    r.video_url
+                                    r.video_url, gcs_service
                                 ),
                             ).classes(
                                 "bg-transparent text-blue-300 px-2 py-1 rounded border border-blue-500/60 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-200 transition-all duration-300 font-light text-xs tracking-wide"
@@ -1549,9 +1672,12 @@ def create_analysis_results_table(
                             )
 
 
-def handle_view_video(video_url: str):
-    """Handle viewing video from analysis result"""
-    ui.notify(f"Opening video: {video_url}", type="info")
+def handle_view_video(video_url: str, gcs_service: GCSService):
+    """Handle downloading video from analysis result"""
+    if video_url.startswith('gs://'):
+        gcs_service.download_video_file(video_url)
+    else:
+        ui.notify(f"Opening video: {video_url}", type="info")
 
 
 def handle_add_evidence(

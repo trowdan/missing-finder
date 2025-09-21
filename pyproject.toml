@@ -23,6 +23,7 @@ dependencies = [
 
     # Utilities
     "typing-extensions>=4.7.0",
+    "six>=1.16.0",
     
     # Logging and Monitoring
     "structlog>=23.1.0",

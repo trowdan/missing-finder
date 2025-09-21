@@ -1066,6 +1066,7 @@ dependencies = [
     { name = "nicegui" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "six" },
     { name = "structlog" },
     { name = "typing-extensions" },
 ]
@@ -1105,6 +1106,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "six", specifier = ">=1.16.0" },
     { name = "structlog", specifier = ">=23.1.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0" },
