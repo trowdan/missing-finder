@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `homeward.video_analytics_results` (
   /* Primary identifiers */
   id STRING NOT NULL OPTIONS(description="Unique analytics result identifier"),
   analysis_session_id STRING NOT NULL OPTIONS(description="Identifier for the analysis batch/session"),
-  
+  case_id STRING NOT NULL OPTIONS(description="The case the analysis has been run from"),
   /* Video Source Information */
   video_url STRING NOT NULL OPTIONS(description="URL/path to the analyzed video file"),
   video_filename STRING NOT NULL OPTIONS(description="Original filename of the video"),

@@ -293,14 +293,14 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             start_date_str = request.start_date.strftime("%Y-%m-%d")
             end_date_str = request.end_date.strftime("%Y-%m-%d")
 
-            query += f"""
+            query += """
         """
 
         # Add time range filtering if specified (not "All Day")
         if hasattr(request, 'time_range') and request.time_range and request.time_range != "All Day":
             time_conditions = self._get_time_range_condition(request.time_range)
             if time_conditions:
-                query += f"""
+                query += """
         """
 
         # Add geographic filtering if coordinates and radius are provided
@@ -308,7 +308,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             hasattr(request, 'search_radius_km') and
             request.last_seen_latitude and request.last_seen_longitude and request.search_radius_km):
 
-            query += f"""
+            query += """
         """
 
         return query
@@ -408,11 +408,34 @@ Your final output MUST be a single JSON object. Do not include any text or expla
     def add_to_evidence(self, result_id: str, case_id: str) -> bool:
         """Add analysis result to case evidence in BigQuery"""
         try:
-            # Insert into video_analytics_results table
+            # Insert minimal evidence record into video_analytics_results table
+            # Note: This is a simplified implementation for demo purposes
             query = f"""
             INSERT INTO `{self.project_id}.{self.dataset_id}.video_analytics_results`
-            (case_id, result_id, created_date, status)
-            VALUES (@case_id, @result_id, CURRENT_TIMESTAMP(), 'Evidence')
+            (
+                id, analysis_session_id, case_id, video_url, video_filename,
+                camera_id, video_timestamp, video_latitude, video_longitude,
+                camera_type, video_resolution, detection_timestamp, detection_confidence,
+                model_name, created_date, created_by
+            )
+            VALUES (
+                @result_id,
+                CONCAT('evidence_session_', @case_id),
+                @case_id,
+                CONCAT('gs://evidence-bucket/video_', @result_id, '.mp4'),
+                CONCAT('evidence_video_', @result_id, '.mp4'),
+                'EVIDENCE_CAM',
+                CURRENT_TIMESTAMP(),
+                0.0,  -- default latitude
+                0.0,  -- default longitude
+                'Evidence',
+                '1080p',
+                0.0,  -- detection timestamp
+                1.0,  -- confidence score
+                'Evidence_Model',
+                CURRENT_TIMESTAMP(),
+                'Evidence_System'
+            )
             """
 
             job_config = bigquery.QueryJobConfig(

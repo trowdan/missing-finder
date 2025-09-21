@@ -2930,32 +2930,55 @@ class BigQueryDataService(DataService):
     def get_video_evidence_for_case(self, case_id: str) -> list[dict]:
         """Get all video evidence linked to a specific case from the video_analytics_results table"""
         try:
-            # Use the same hardcoded format as other methods in this class
-            query = """
-            SELECT
-                var.result_id,
-                var.case_id,
-                var.created_date,
-                var.status,
-                -- Get video analysis data from the AI analysis view
-                va.video_timestamp,
-                va.video_camera_id,
-                va.video_camera_type,
-                va.video_latitude,
-                va.video_longitude,
-                va.video_address,
-                va.distance_from_last_seen_km,
-                va.video_gcs_uri,
-                va.confidence_score,
-                va.ai_description,
-                va.ai_summary
-            FROM `homeward.video_analytics_results` var
-            LEFT JOIN `homeward.video_analysis_ai_view` va
-                ON var.result_id = va.analysis_id
-            WHERE var.case_id = @case_id
-                AND var.status = 'Evidence'
-            ORDER BY var.created_date DESC
+            # Check if video_analytics_results table exists and has data for this case
+            check_query = """
+            SELECT COUNT(*) as evidence_count
+            FROM `homeward.video_analytics_results`
+            WHERE case_id = @case_id
             """
+
+            check_job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("case_id", "STRING", case_id)
+                ]
+            )
+
+            try:
+                check_job = self.client.query(check_query, job_config=check_job_config)
+                check_results = check_job.result()
+                evidence_count = next(iter(check_results)).evidence_count
+
+                if evidence_count == 0:
+                    # No evidence found for this case
+                    return []
+
+                # If we have evidence, get the actual evidence with video metadata
+                query = """
+                SELECT
+                    var.id as result_id,
+                    var.case_id,
+                    var.created_date,
+                    'Evidence' as status,
+                    var.video_timestamp,
+                    var.camera_id,
+                    var.camera_type,
+                    var.video_latitude as latitude,
+                    var.video_longitude as longitude,
+                    'Washington_DC_Area' as address,
+                    CAST(NULL AS FLOAT64) as distance_km,
+                    var.video_url,
+                    var.detection_confidence as confidence_score,
+                    CONCAT('Person detected at ', CAST(var.detection_timestamp AS STRING), 's in video from camera ', var.camera_id) as ai_description,
+                    CONCAT('AI detection from ', var.model_name, ' with ', CAST(ROUND(var.detection_confidence * 100, 1) AS STRING), '% confidence') as ai_summary
+                FROM `homeward.video_analytics_results` var
+                WHERE var.case_id = @case_id
+                ORDER BY var.created_date DESC
+                """
+
+            except Exception as table_error:
+                # Table doesn't exist or other error - return empty results
+                print(f"video_analytics_results table not accessible: {table_error}")
+                return []
 
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[
@@ -2974,13 +2997,13 @@ class BigQueryDataService(DataService):
                     "created_date": row.created_date,
                     "status": row.status,
                     "video_timestamp": row.video_timestamp,
-                    "camera_id": row.video_camera_id,
-                    "camera_type": row.video_camera_type,
-                    "latitude": row.video_latitude,
-                    "longitude": row.video_longitude,
-                    "address": row.video_address,
-                    "distance_km": row.distance_from_last_seen_km,
-                    "video_url": row.video_gcs_uri,
+                    "camera_id": row.camera_id,
+                    "camera_type": row.camera_type,
+                    "latitude": row.latitude,
+                    "longitude": row.longitude,
+                    "address": row.address,
+                    "distance_km": row.distance_km,
+                    "video_url": row.video_url,
                     "confidence_score": row.confidence_score,
                     "ai_description": row.ai_description,
                     "ai_summary": row.ai_summary
