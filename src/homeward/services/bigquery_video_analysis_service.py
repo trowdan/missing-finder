@@ -70,22 +70,12 @@ class BigQueryVideoAnalysisService(VideoAnalysisService):
                         analysis_result = self._parse_ai_result(ai_result_text)
 
                         if analysis_result:
-                            # TEMPORARY: Invert logic to show non-matching videos as matches for UI demo
-                            if not analysis_result.get("personFound"):
+                            if analysis_result.get("personFound"):
                                 videos_with_person_found += 1
                                 # Extract video metadata from URI
                                 video_metadata = self._extract_video_metadata(row.uri)
 
-                                # Create VideoAnalysisResult with fake data for demo
-                                import random
-                                fake_confidence = round(random.uniform(0.65, 0.95), 2)
-                                fake_descriptions = [
-                                    "Person matching description spotted walking near camera position at timestamp 00:14:32",
-                                    "Individual with similar clothing and build observed crossing street at 00:08:15",
-                                    "Potential match detected - person with matching height and hair color at 00:22:45",
-                                    "Subject wearing similar blue shirt and dark pants identified at 00:19:08",
-                                    "Possible sighting of missing person near building entrance at 00:31:12"
-                                ]
+                                # Create VideoAnalysisResult
 
                                 video_result = VideoAnalysisResult(
                                     id=f"video_{hash(row.uri)}",
@@ -100,8 +90,8 @@ class BigQueryVideoAnalysisService(VideoAnalysisService):
                                         request.last_seen_longitude
                                     ),
                                     video_url=row.uri,
-                                    confidence_score=fake_confidence,
-                                    ai_description=random.choice(fake_descriptions),
+                                    confidence_score=analysis_result.get("confidenceScore", 0.0),
+                                    ai_description=analysis_result.get("summaryOfFindings", "AI analysis result"),
                                     camera_id=video_metadata.get("camera_id", "Unknown"),
                                     camera_type=video_metadata.get("camera_type", "Unknown")
                                 )
@@ -294,6 +284,12 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             end_date_str = request.end_date.strftime("%Y-%m-%d")
 
             query += """
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND PARSE_DATETIME('%Y%m%d%H%M%S', meta.value) BETWEEN
+                DATETIME('{start_date_str}') AND DATETIME('{end_date_str} 23:59:59')
+          )
         """
 
         # Add time range filtering if specified (not "All Day")
@@ -301,6 +297,11 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             time_conditions = self._get_time_range_condition(request.time_range)
             if time_conditions:
                 query += """
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND EXTRACT(HOUR FROM PARSE_DATETIME('%Y%m%d%H%M%S', meta.value)) {time_conditions}
+          )
         """
 
         # Add geographic filtering if coordinates and radius are provided
@@ -309,6 +310,11 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             request.last_seen_latitude and request.last_seen_longitude and request.search_radius_km):
 
             query += """
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND EXTRACT(HOUR FROM PARSE_DATETIME('%Y%m%d%H%M%S', meta.value)) {time_conditions}
+          )
         """
 
         return query
