@@ -220,7 +220,8 @@ class TestCaseDetailHelpers:
         mock_ui.timer.return_value = mock_timer
 
         await handle_analyze_video(
-            "MP001", mock_video_analysis_service, case, mock_results_container
+            "MP001", mock_video_analysis_service, case, mock_results_container,
+            "2023-12-01", "2023-12-03", "All Day", 5.0
         )
 
         # Verify initial notification

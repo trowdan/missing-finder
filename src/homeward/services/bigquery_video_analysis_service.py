@@ -255,7 +255,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
         return complete_prompt
 
     def _build_video_analysis_query(self, request: VideoAnalysisRequest, video_analysis_prompt: str) -> str:
-        """Build the BigQuery query for video analysis"""
+        """Build the BigQuery query for video analysis with metadata filtering"""
 
         # Escape the prompt for SQL
         escaped_prompt = video_analysis_prompt.encode("unicode-escape").replace(b'"', b'\\"').decode("utf-8")
@@ -277,10 +277,43 @@ Your final output MUST be a single JSON object. Do not include any text or expla
         WHERE 1=1
         """
 
-        # Add temporal filtering if needed
-        # Note: This would require metadata extraction from video filenames or separate metadata table
+        # Add date filtering using metadata timestamp
+        if request.start_date and request.end_date:
+            start_date_str = request.start_date.strftime("%Y-%m-%d")
+            end_date_str = request.end_date.strftime("%Y-%m-%d")
+
+            query += f"""
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND PARSE_DATETIME('%Y%m%d%H%M%S', meta.value) BETWEEN
+                DATETIME('{start_date_str}') AND DATETIME('{end_date_str} 23:59:59')
+          )
+        """
+
+        # Add time range filtering if specified (not "All Day")
+        if hasattr(request, 'time_range') and request.time_range and request.time_range != "All Day":
+            time_conditions = self._get_time_range_condition(request.time_range)
+            if time_conditions:
+                query += f"""
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND EXTRACT(HOUR FROM PARSE_DATETIME('%Y%m%d%H%M%S', meta.value)) {time_conditions}
+          )
+        """
 
         return query
+
+    def _get_time_range_condition(self, time_range: str) -> str:
+        """Get SQL condition for time range filtering"""
+        time_conditions = {
+            "Morning": "BETWEEN 6 AND 11",      # 6 AM - 11:59 AM
+            "Afternoon": "BETWEEN 12 AND 17",   # 12 PM - 5:59 PM
+            "Evening": "BETWEEN 18 AND 21",     # 6 PM - 9:59 PM
+            "Night": "NOT BETWEEN 6 AND 21"     # 10 PM - 5:59 AM
+        }
+        return time_conditions.get(time_range, "")
 
     def _parse_ai_result(self, ai_result_text: str) -> Optional[dict]:
         """Parse the AI analysis result JSON"""

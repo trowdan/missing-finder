@@ -377,8 +377,8 @@ def create_case_detail_page(
                             "text-xl font-light text-white"
                         )
 
-                    # Video analysis form
-                    create_video_analysis_section(case)
+                    # Video analysis form - store form elements for access
+                    start_date_input, end_date_input, time_range_select, search_radius_input = create_video_analysis_section(case)
 
                     # AI Analysis results section with styled box
                     ui.separator().classes("my-6 bg-gray-600")
@@ -423,6 +423,11 @@ def create_case_detail_page(
                                     video_analysis_service,
                                     case,
                                     results_container,
+                                    # Get current form values when button is clicked
+                                    start_date_input.value,
+                                    end_date_input.value,
+                                    time_range_select.value,
+                                    search_radius_input.value,
                                 ),
                             ).classes(
                                 "bg-transparent text-purple-300 px-8 py-4 rounded-full border-2 border-purple-400/80 hover:bg-purple-200 hover:text-purple-900 hover:border-purple-200 transition-all duration-300 font-light text-sm tracking-wide ring-2 ring-purple-400/20 hover:ring-purple-200/40 hover:ring-4"
@@ -565,7 +570,8 @@ def create_sightings_table(case_id: str, data_service: DataService):
 
 
 def create_video_analysis_section(case: MissingPersonCase):
-    """Create the video analysis form section"""
+    """Create the video analysis form section and return form elements for access"""
+
     with ui.column().classes("w-full space-y-6"):
         # Temporal Filters Row
         with ui.column().classes("w-full"):
@@ -575,17 +581,17 @@ def create_video_analysis_section(case: MissingPersonCase):
             with ui.row().classes("gap-4"):
                 with ui.column().classes("w-48"):
                     ui.label("Start Date").classes("text-gray-300 text-xs mb-1")
-                    ui.input("", value=case.last_seen_date.strftime("%Y-%m-%d")).classes(
+                    start_date_input = ui.input("", value=case.last_seen_date.strftime("%Y-%m-%d")).classes(
                         "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg text-sm"
                     ).props("outlined dense type=date")
                 with ui.column().classes("w-48"):
                     ui.label("End Date").classes("text-gray-300 text-xs mb-1")
-                    ui.input("", value=date.today().strftime("%Y-%m-%d")).classes(
+                    end_date_input = ui.input("", value=date.today().strftime("%Y-%m-%d")).classes(
                         "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg text-sm"
                     ).props("outlined dense type=date")
                 with ui.column().classes("w-36"):
                     ui.label("Time Range").classes("text-gray-300 text-xs mb-1")
-                    ui.select(
+                    time_range_select = ui.select(
                         ["All Day", "Morning", "Afternoon", "Evening", "Night"],
                         value="All Day",
                     ).classes(
@@ -611,9 +617,11 @@ def create_video_analysis_section(case: MissingPersonCase):
                             ui.label("AI").classes(
                                 "text-purple-400 text-xs font-medium"
                             )
-                    ui.number("", value=5, min=1, max=50).classes(
+                    search_radius_input = ui.number("", value=5, min=1, max=50).classes(
                         "w-full bg-gray-700/50 text-white border-gray-500 rounded-lg text-sm"
                     ).props("outlined dense")
+
+    return start_date_input, end_date_input, time_range_select, search_radius_input
 
 
 def open_link_sighting_modal(case_id: str, data_service: DataService):
@@ -1148,6 +1156,10 @@ async def handle_analyze_video(
     video_analysis_service: VideoAnalysisService,
     case: MissingPersonCase,
     results_container,
+    start_date_str: str,
+    end_date_str: str,
+    time_range: str,
+    search_radius_km: float,
 ):
     """Handle AI video analysis request using BigQuery and Gemini with run.io_bound()"""
     ui.notify(
@@ -1205,15 +1217,24 @@ async def handle_analyze_video(
             "distinguishing_marks": case.distinguishing_marks,
         }
 
-        # Create the video analysis request with form values
+        # Parse form values for the video analysis request
+        try:
+            start_date = datetime.fromisoformat(start_date_str) if start_date_str else case.last_seen_date
+            end_date = datetime.fromisoformat(end_date_str) if end_date_str else datetime.now()
+        except ValueError:
+            # Fallback to case date if parsing fails
+            start_date = case.last_seen_date
+            end_date = datetime.now()
+
+        # Create the video analysis request with actual form values
         request = VideoAnalysisRequest(
             case_id=case_id,
-            start_date=datetime(2023, 12, 1),  # TODO: Get from form
-            end_date=datetime(2023, 12, 3),    # TODO: Get from form
-            time_range="All Day",              # TODO: Get from form
+            start_date=start_date,
+            end_date=end_date,
+            time_range=time_range or "All Day",
             last_seen_latitude=case.last_seen_location.latitude or 0.0,
             last_seen_longitude=case.last_seen_location.longitude or 0.0,
-            search_radius_km=5.0,              # TODO: Get from form
+            search_radius_km=search_radius_km or 5.0,
         )
 
         logger.info(f"Starting video analysis for case {case_id}")
