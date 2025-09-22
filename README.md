@@ -39,20 +39,76 @@ This submission showcases several innovative features of BigQuery:
 - **Object Storage**: Google Cloud Storage
 - **AI/ML**: Google Gemini multimodal models and Vertex AI embedding models
 
-### Data Flow - Case registration
+### Data Model
 
-### Data Flow - Sighting registration
+The application consists of the following core tables:
 
-### Data Flow - Video intelligence
+- **`missing_persons`**: Central registry of missing person cases with demographics, descriptions, and case metadata
+- **`sightings`**: Individual sighting reports from various sources (manual reports, AI analysis)
+- **`case_sightings`**: Junction table linking sightings to specific missing person cases
+- **`video_objects`**: External table referencing video files in Cloud Storage with metadata
+- **`video_analytics_results`**: AI analysis results from Gemini model processing
 
-1. **Video ingestion**: Videos are uploaded to Google Cloud Storage with the following naming convention: `CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION.mp4`
-2. **Metadata reference**: BigQuery object tables reference processed videos
-4. **AI Analysis**: Gemini models analyze video content based on missing person descriptions
-5. **Result Management**: Interactive dashboard for case and sighting management
+If you want to know more the `sql` folder contains the DDL and DML of the application.
+
+### Data Flow - Case Registration
+
+1. **Case intake**: Law enforcement officers input missing person details through the NiceGUI interface
+2. **Location geocoding**: Addresses are geocoded using Google's Geocoding API
+3. **AI Summarization**: Gemini 2.5 Flash generates standardized summaries of the missing person
+4. **Embedding generation**: Text embedding models (text-embedding-004) create vector representations of case descriptions
+5. **Storage**: Case data, embeddings, and metadata are stored in the `missing_persons` table
+
+### Data Flow - Sighting Registration
+
+1. **Manual sighting input**: Officers or citizens report potential sightings through the application interface
+2. **Location geocoding**: Addresses are geocoded using Google's Geocoding API
+3. **AI Summarization**: Sighting descriptions are summarized using Gemini 2.5 Flash
+4. **Embedding creation**: Vector embeddings are generated for semantic similarity matching
+5. **Storage**: Sightings are stored in BigQuery
+
+### Data Flow - Video Intelligence
+
+1. **Video Ingestion**: Surveillance videos are uploaded to Cloud Storage using the naming convention: `CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION.mp4`
+2. **Metadata Extraction**: BigQuery object tables automatically detect filename metadata (timestamp, location, camera details)
+3. **Geographic Filtering**: Native BigQuery geocoding functions like `ST_GEOGPOINT` and `ST_DWITHIN` are used to filter videos by proximity to case locations
+4. **Temporal Filtering**: Time-based filtering selects relevant video footage based on case timelines
+5. **AI Analysis**: Gemini 2.5 Pro models analyze video content using missing person descriptions as prompts
+6. **Result Processing**: Analysis results are structured and stored in `video_analytics_results` with confidence scores
+7. **Sighting Generation**: High-confidence matches automatically create sighting records
 
 ### Data Flow - Semantic Matching
 
+1. **Vector Similarity**: Text embeddings from missing person cases are compared against sighting embeddings using cosine similarity
+2. **Threshold Filtering**: Matches above configurable similarity thresholds are identified as potential links
+3. **Contextual Analysis**: Gemini models provide additional context and reasoning for potential matches
+4. **Confidence Scoring**: Multi-factor confidence scores incorporate semantic similarity, temporal proximity, and geographic correlation
+5. **Link Creation**: Validated matches create entries in the `case_sightings` junction table
+
 ### Data Flow - Semantic Search
+
+1. **User input**: The user type natural language query in the search bar of the NiceGUI UI
+2. **Query Processing**: Natural language search queries are converted to embeddings using the same text-embedding-004 model
+3. **Vector Search**: BigQuery performs similarity searches against stored case and sighting embeddings
+4. **Result Ranking**: Results are ranked by semantic similarity and filtered by relevance thresholds
+5. **Context Enhancement**: Gemini models enrich search results with explanatory context and highlights
+
+### BigQuery data integration points
+
+#### Object Tables Configuration
+```sql
+CREATE EXTERNAL TABLE `{project}.{dataset}.video_objects`
+OPTIONS (
+  object_metadata = 'SIMPLE',
+  max_staleness = INTERVAL 1 HOUR,
+  metadata_cache_mode = 'AUTOMATIC'
+);
+```
+
+#### Spatial Operations
+- **Geocoding**: Geocoding APIs from Google Maps are used to retrieve coordinates starting from an address in a case or a sighting
+- **ST_GEOGPOINT()**: Convert latitude/longitude from video filenames to geographic points within BigQuery
+- **ST_DWITHIN()**: Proximity-based filtering for relevant surveillance footage within BigQuery
 
 ## 🚀 Quick Start
 
@@ -69,12 +125,13 @@ This submission showcases several innovative features of BigQuery:
 
 ### Project setup
 This repository includes two versions of the same use case:
-- A jupyter notebook with a light version of the use case (same functionalities and BQ queries)
+- A Jupyter notebook with a light version of the use case (same functionalities and BQ queries)
 - A web application with a UI interface to interact with BigQuery (suggested if you want to see all the capabilities of the solution)
 
 Depending of the version you want to try, you can follow the following instructions for the setup:
 
-#### Project Setup - 📊 Notebook
+### Project Setup - 📊 Notebook
+---
 
 Open the `demo-notebook.ipynb` file with your preferred Jupyter notebook editor or run the following command:
 
@@ -88,7 +145,8 @@ The notebook contains the code for:
 - Running multimodal AI queries on video content
 - Processing results and extracting insights
 
-#### Project Setup - Web Application
+### Project Setup - 💻 Web Application
+---
 
 1. **Clone the repository:**
    ```bash
@@ -207,40 +265,10 @@ The `setup.sh` script accepts the following parameters:
 - `--region`: Google Cloud region (required, e.g., `us-central1`)
 - `--demo-folder`: Path to demo data folder (optional)
 
-## 🎯 BigQuery AI Integration
-
-### Object Tables
-
-The project leverages BigQuery's object tables to create direct references to video files:
-
-```sql
-CREATE EXTERNAL TABLE `project.dataset.video_objects`
-OPTIONS (
-  object_metadata = 'SIMPLE',
-  max_staleness = INTERVAL 1 HOUR,
-  metadata_cache_mode = 'AUTOMATIC'
-);
-```
-
-### Gemini Model Integration
-
-Videos are analyzed using Google's Gemini models through BigQuery:
-
-```sql
-SELECT ml_generate_text_llm_result
-FROM ML.GENERATE_TEXT(
-  MODEL `project.dataset.gemini_model`,
-  TABLE `project.dataset.video_objects`,
-  STRUCT(
-    'Find a person matching this description: tall, wearing red jacket' AS prompt,
-    TRUE AS FLATTEN_JSON_OUTPUT
-  )
-);
-```
 
 ## ⚠️ Known Limitations
 
-Based on our development experience, we've identified several limitations with the current BigQuery AI integration:
+Based on our development experience, I've experienced the following limitations with BigQuery + Gemini:
 
 ### 1. Manual Cache Refresh Issues
 - **Problem**: Manual cache refresh for object tables doesn't work as expected
@@ -273,16 +301,8 @@ This project was developed as a submission for the BigQuery AI Hackathon. While 
 
 This project is developed as a proof-of-concept for the BigQuery AI Hackathon. Please see individual component licenses for third-party dependencies.
 
-## 🙏 Acknowledgments
-
-- **Google Cloud Platform**: For providing the robust AI and data analytics infrastructure
-- **BigQuery Team**: For the innovative object tables and ML integration capabilities
-- **Gemini AI**: For powerful multimodal analysis capabilities
-- **NiceGUI**: For the excellent Python-based UI framework
-- **VIRAT Dataset**: For providing sample video data for demonstration purposes
-
 ---
 
 **Built with ❤️ for the [BigQuery AI Hackathon](https://www.kaggle.com/competitions/bigquery-ai-hackathon)**
 
-For questions or support, please refer to the technical documentation in the `docs/` directory or raise an issue in the project repository.
+For questions or support, please raise an issue in the project repository.
