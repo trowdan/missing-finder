@@ -743,64 +743,233 @@ parse_video_config() {
         print_info "No demo folder specified - skipping video configuration parsing"
         return 0
     fi
-    
+
     print_step "Parsing Video Configuration"
-    
+
     # Set path to video sources CSV file
     local video_config_file="$DEMO_FOLDER/videos/metadata/video_sources.csv"
-    
-    # Validate CSV file exists
+
+    # Check if CSV file exists
     if [[ ! -f "$video_config_file" ]]; then
-        print_error "Video sources configuration not found: $video_config_file"
-        exit 1
+        print_warning "Video sources configuration not found: $video_config_file"
+        print_info "Will process only media files from videos/media/ folder if available"
+        VIDEO_COUNT=0
+        return 0
     fi
-    
+
     # Count videos in configuration
     VIDEO_COUNT=$(wc -l < "$video_config_file" | tr -d ' ')
-    print_info "Found $VIDEO_COUNT videos to process"
-    
+    print_info "Found $VIDEO_COUNT videos to process from CSV configuration"
+
     if [[ $VIDEO_COUNT -eq 0 ]]; then
-        print_error "No video entries found in configuration file"
-        exit 1
+        print_warning "No video entries found in configuration file"
+        print_info "Will process only media files from videos/media/ folder if available"
+        return 0
     fi
-    
+
     # Store the video config file path for later use
     export VIDEO_CONFIG_FILE="$video_config_file"
-    
+
     print_success "Video configuration validated successfully"
+}
+
+# Parse filename to extract metadata according to Homeward naming convention
+parse_filename_metadata() {
+    local filename="$1"
+    local basename_file=$(basename "$filename" | sed 's/\.[^.]*$//')  # Remove extension
+
+    # Expected format: CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION
+    # Split by underscore
+    IFS='_' read -ra PARTS <<< "$basename_file"
+
+    if [[ ${#PARTS[@]} -lt 6 ]]; then
+        return 1  # Not enough parts
+    fi
+
+    # Extract metadata
+    PARSED_CAMERA_ID="${PARTS[0]}"
+    PARSED_TIMESTAMP="${PARTS[1]}"
+    PARSED_LATITUDE="${PARTS[2]}"
+    PARSED_LONGITUDE="${PARTS[3]}"
+    PARSED_CAMERA_TYPE="${PARTS[4]}"
+    PARSED_RESOLUTION="${PARTS[5]}"
+
+    # Validate timestamp format (YYYYMMDDHHMMSS)
+    if [[ ! "$PARSED_TIMESTAMP" =~ ^[0-9]{14}$ ]]; then
+        return 1
+    fi
+
+    # Validate coordinates (basic check for numeric values)
+    if [[ ! "$PARSED_LATITUDE" =~ ^-?[0-9]+\.?[0-9]*$ ]] || [[ ! "$PARSED_LONGITUDE" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Process media files from demo folder's videos/media/ directory
+process_media_files() {
+    # Skip if no demo folder specified
+    if [[ -z "$DEMO_FOLDER" ]]; then
+        print_info "No demo folder specified - skipping media file processing"
+        return 0
+    fi
+
+    local media_folder="$DEMO_FOLDER/videos/media"
+
+    # Check if media folder exists
+    if [[ ! -d "$media_folder" ]]; then
+        print_info "Media folder not found: $media_folder - skipping media file processing"
+        return 0
+    fi
+
+    print_step "Processing Media Files from Demo Folder"
+    print_info "Scanning media folder: $media_folder"
+
+    # Find media files (mp4, avi, mov, mkv)
+    local media_files=()
+    while IFS= read -r -d '' file; do
+        media_files+=("$file")
+    done < <(find "$media_folder" -type f \( -iname "*.mp4" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.mkv" \) -print0)
+
+    if [[ ${#media_files[@]} -eq 0 ]]; then
+        print_warning "No media files found in: $media_folder"
+        return 0
+    fi
+
+    print_info "Found ${#media_files[@]} media files to process"
+
+    local success_count=0
+    local failure_count=0
+    local file_number=0
+
+    for media_file in "${media_files[@]}"; do
+        ((file_number++))
+        local filename=$(basename "$media_file")
+
+        print_info "Processing media file $file_number/${#media_files[@]}: $filename"
+
+        # Try to parse filename for metadata
+        if parse_filename_metadata "$filename"; then
+            print_success "  Parsed metadata from filename:"
+            print_info "    Camera ID: $PARSED_CAMERA_ID"
+            print_info "    Timestamp: $PARSED_TIMESTAMP"
+            print_info "    Latitude: $PARSED_LATITUDE"
+            print_info "    Longitude: $PARSED_LONGITUDE"
+            print_info "    Camera Type: $PARSED_CAMERA_TYPE"
+            print_info "    Resolution: $PARSED_RESOLUTION"
+
+            # Determine MIME type based on file extension
+            local file_ext="${filename##*.}"
+            local mime_type="video/mp4"
+            case "${file_ext,,}" in
+                avi) mime_type="video/x-msvideo" ;;
+                mov) mime_type="video/quicktime" ;;
+                mkv) mime_type="video/x-matroska" ;;
+            esac
+
+            # Generate video ID from filename
+            local video_id="${PARSED_CAMERA_ID}_${PARSED_TIMESTAMP}"
+
+            # Upload to GCS with parsed metadata
+            print_info "  Uploading media file to GCS with parsed metadata..."
+            if gsutil -h "Content-Type:$mime_type" \
+                      -h "x-goog-meta-video-id:$video_id" \
+                      -h "x-goog-meta-camera-id:$PARSED_CAMERA_ID" \
+                      -h "x-goog-meta-timestamp:$PARSED_TIMESTAMP" \
+                      -h "x-goog-meta-latitude:$PARSED_LATITUDE" \
+                      -h "x-goog-meta-longitude:$PARSED_LONGITUDE" \
+                      -h "x-goog-meta-camera-type:$PARSED_CAMERA_TYPE" \
+                      -h "x-goog-meta-resolution:$PARSED_RESOLUTION" \
+                      -h "x-goog-meta-upload-date:$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                      -h "x-goog-meta-processed-by:homeward-setup-script" \
+                      -h "x-goog-meta-source-dataset:Demo Media Files" \
+                      cp "$media_file" "gs://$HOMEWARD_VIDEO_BUCKET/$filename"; then
+                print_success "  Media file uploaded successfully with parsed metadata"
+                ((success_count++))
+            else
+                print_error "  Failed to upload media file: $filename"
+                ((failure_count++))
+            fi
+        else
+            print_warning "  Could not parse metadata from filename: $filename"
+            print_warning "  Expected format: CameraID_YYYYMMDDHHMMSS_LATITUDE_LONGITUDE_CAMERATYPE_RESOLUTION"
+            print_info "  Uploading with basic metadata only..."
+
+            # Generate basic metadata
+            local video_id="unknown_$(date +%s)"
+            local current_timestamp=$(date -u +%Y%m%d%H%M%S)
+
+            # Upload with minimal metadata
+            if gsutil -h "Content-Type:video/mp4" \
+                      -h "x-goog-meta-video-id:$video_id" \
+                      -h "x-goog-meta-camera-id:unknown" \
+                      -h "x-goog-meta-timestamp:$current_timestamp" \
+                      -h "x-goog-meta-latitude:0.0" \
+                      -h "x-goog-meta-longitude:0.0" \
+                      -h "x-goog-meta-camera-type:unknown" \
+                      -h "x-goog-meta-resolution:unknown" \
+                      -h "x-goog-meta-upload-date:$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                      -h "x-goog-meta-processed-by:homeward-setup-script" \
+                      -h "x-goog-meta-source-dataset:Demo Media Files" \
+                      -h "x-goog-meta-parsing-status:failed" \
+                      cp "$media_file" "gs://$HOMEWARD_VIDEO_BUCKET/$filename"; then
+                print_success "  Media file uploaded with basic metadata"
+                ((success_count++))
+            else
+                print_error "  Failed to upload media file: $filename"
+                ((failure_count++))
+            fi
+        fi
+
+        echo ""
+    done
+
+    print_step "Media File Processing Summary"
+    print_success "Successfully processed: $success_count media files"
+    if [[ $failure_count -gt 0 ]]; then
+        print_warning "Failed to process: $failure_count media files"
+    fi
+
+    # Update global video count
+    if [[ -n "$VIDEO_COUNT" ]]; then
+        VIDEO_COUNT=$((VIDEO_COUNT + success_count))
+    else
+        VIDEO_COUNT=$success_count
+    fi
 }
 
 # Download and upload videos to GCS (only if demo folder is specified)
 process_videos() {
     # Skip if no demo folder specified or no video config
     if [[ -z "$DEMO_FOLDER" || -z "$VIDEO_CONFIG_FILE" ]]; then
-        print_info "No demo folder or video configuration - skipping video processing"
+        print_info "No demo folder or video configuration - skipping CSV-based video processing"
         return 0
     fi
-    
-    print_step "Processing and Uploading Videos"
-    
+
+    print_step "Processing and Uploading Videos from CSV Configuration"
+
     # Create temporary directory for downloads
     TEMP_DIR=$(mktemp -d)
     print_info "Using temporary directory: $TEMP_DIR"
-    
+
     # Ensure cleanup on exit
     trap "rm -rf $TEMP_DIR" EXIT
-    
+
     local success_count=0
     local failure_count=0
-    
+
     local line_number=0
     while IFS='|' read -r video_id download_url camera_id timestamp latitude longitude camera_type resolution location duration_seconds mime_type; do
         ((line_number++))
-        
+
         # Generate filename according to Homeward naming convention
         local filename="${camera_id}_${timestamp}_${latitude}_${longitude}_${camera_type}_${resolution}.mp4"
         local temp_file="$TEMP_DIR/$filename"
-        
+
         print_info "Processing video $line_number/$VIDEO_COUNT: $video_id"
         print_info "  Filename: $filename"
-        
+
         # Download video file
         print_info "  Downloading from: $download_url"
         if curl -L -f -o "$temp_file" "$download_url" --connect-timeout 30 --max-time 300; then
@@ -810,8 +979,8 @@ process_videos() {
             ((failure_count++))
             continue
         fi
-        
-        
+
+
         # Upload video to GCS with proper content type and custom metadata
         print_info "  Uploading video to GCS with metadata..."
         if gsutil -h "Content-Type:$mime_type" \
@@ -832,25 +1001,24 @@ process_videos() {
             ((failure_count++))
             continue
         fi
-        
-        
+
+
         # Clean up temporary files
         rm -f "$temp_file"
-        
+
         ((success_count++))
         print_success "  Video $video_id processed successfully ($line_number/$VIDEO_COUNT completed)"
         echo ""
     done < "$VIDEO_CONFIG_FILE"
-    
-    print_step "Video Processing Summary"
+
+    print_step "CSV-based Video Processing Summary"
     print_success "Successfully processed: $success_count videos"
     if [[ $failure_count -gt 0 ]]; then
         print_warning "Failed to process: $failure_count videos"
     fi
-    
+
     if [[ $success_count -eq 0 ]]; then
-        print_error "No videos were successfully processed"
-        exit 1
+        print_warning "No videos were successfully processed from CSV configuration"
     fi
 }
 
@@ -904,6 +1072,7 @@ main() {
     create_video_downloader_service_account
     parse_video_config
     process_videos
+    process_media_files
     create_bigquery_object_table
     
     # Execute SQL scripts in required order
@@ -927,7 +1096,11 @@ main() {
     print_info "Service account key: ${HOMEWARD_SERVICE_ACCOUNT_KEY_PATH:-downloads/key.json}"
     print_info "Project ID: $PROJECT_ID"
     print_info "Region: $REGION"
-    print_info "Videos processed: $VIDEO_COUNT"
+    if [[ -n "$VIDEO_COUNT" && $VIDEO_COUNT -gt 0 ]]; then
+        print_info "Videos processed: $VIDEO_COUNT"
+    else
+        print_info "Videos processed: 0"
+    fi
     echo ""
     print_warning "IMPORTANT: Keep the service account key file secure and do not commit it to version control!"
 }
