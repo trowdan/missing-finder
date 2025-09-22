@@ -1,7 +1,5 @@
-import json
 import logging
 from datetime import datetime
-from typing import Optional
 
 from google.cloud import bigquery
 
@@ -45,10 +43,8 @@ class BigQueryVideoAnalysisService(VideoAnalysisService):
             # Execute the BigQuery query with timeout
             query_job = self.client.query(query)
 
-            # Wait for results with a longer timeout since video analysis with Gemini can take time
-            # Set timeout to 300 seconds (5 minutes) for video analysis
             try:
-                results = query_job.result(timeout=300)
+                results = query_job.result()
             except Exception as timeout_error:
                 logger.error(f"BigQuery video analysis query timed out after 300 seconds: {timeout_error}")
                 raise TimeoutError("Video analysis query timed out. This may happen with large video datasets. Try reducing the search time range or area.") from timeout_error
@@ -62,46 +58,38 @@ class BigQueryVideoAnalysisService(VideoAnalysisService):
             for row in results:
                 total_videos_analyzed += 1
                 try:
-                    # Parse the AI analysis result
-                    ai_result_text = row.result
+                    # Access structured BigQuery result fields directly
+                    ai_result = row.result
+                    if ai_result:
+                        # Access structured fields from BigQuery result
+                        if ai_result['personFound']:
+                            videos_with_person_found += 1
+                            # Extract video metadata from URI
+                            video_metadata = self._extract_video_metadata(row.uri)
 
-                    # Try to parse as JSON
-                    if ai_result_text:
-                        analysis_result = self._parse_ai_result(ai_result_text)
-
-                        if analysis_result:
-                            if analysis_result.get("personFound"):
-                                videos_with_person_found += 1
-                                # Extract video metadata from URI
-                                video_metadata = self._extract_video_metadata(row.uri)
-
-                                # Create VideoAnalysisResult
-
-                                video_result = VideoAnalysisResult(
-                                    id=f"video_{hash(row.uri)}",
-                                    timestamp=video_metadata.get("timestamp", request.start_date),
-                                    latitude=video_metadata.get("latitude", request.last_seen_latitude),
-                                    longitude=video_metadata.get("longitude", request.last_seen_longitude),
-                                    address=video_metadata.get("address", "Unknown"),
-                                    distance_from_last_seen=self._calculate_distance(
-                                        video_metadata.get("latitude", request.last_seen_latitude),
-                                        video_metadata.get("longitude", request.last_seen_longitude),
-                                        request.last_seen_latitude,
-                                        request.last_seen_longitude
-                                    ),
-                                    video_url=row.uri,
-                                    confidence_score=analysis_result.get("confidenceScore", 0.0),
-                                    ai_description=analysis_result.get("summaryOfFindings", "AI analysis result"),
-                                    camera_id=video_metadata.get("camera_id", "Unknown"),
-                                    camera_type=video_metadata.get("camera_type", "Unknown")
-                                )
-                                video_results.append(video_result)
-                            else:
-                                videos_with_no_person += 1
-                                logger.debug(f"Video {row.uri}: Person found but treating as no-match for demo - {analysis_result.get('matchJustification', 'No justification provided')}")
+                            # Create VideoAnalysisResult
+                            video_result = VideoAnalysisResult(
+                                id=f"video_{hash(row.uri)}",
+                                timestamp=video_metadata.get("timestamp", request.start_date),
+                                latitude=video_metadata.get("latitude", request.last_seen_latitude),
+                                longitude=video_metadata.get("longitude", request.last_seen_longitude),
+                                address=video_metadata.get("address", "Unknown"),
+                                distance_from_last_seen=self._calculate_distance(
+                                    video_metadata.get("latitude", request.last_seen_latitude),
+                                    video_metadata.get("longitude", request.last_seen_longitude),
+                                    request.last_seen_latitude,
+                                    request.last_seen_longitude
+                                ),
+                                video_url=row.uri,
+                                confidence_score=float(ai_result['confidenceScore']) if ai_result['confidenceScore'] else 0.0,
+                                ai_description=ai_result['summaryOfFindings'] or "AI analysis result",
+                                camera_id=video_metadata.get("camera_id", "Unknown"),
+                                camera_type=video_metadata.get("camera_type", "Unknown")
+                            )
+                            video_results.append(video_result)
                         else:
-                            videos_with_errors += 1
-                            logger.warning(f"Failed to parse AI result for video {row.uri}")
+                            videos_with_no_person += 1
+                            logger.debug(f"Video {row.uri}: Person not found - {ai_result['matchJustification'] or 'No justification provided'}")
                     else:
                         videos_with_errors += 1
                         logger.warning(f"Empty AI result for video {row.uri}")
@@ -272,8 +260,9 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             ),
             connection_id => '{self.connection_id}',
             endpoint => 'gemini-2.5-pro',
+            output_schema => 'personFound BOOL, confidenceScore FLOAT64, matchJustification STRING, summaryOfFindings STRING, appearances ARRAY<STRUCT<timestampStart STRING, timestampEnd STRING, actionsAndBehavior STRING, directionOfTravel STRING, companions ARRAY<STRUCT<description STRING>>>>',
             model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
-          ).result
+          ) as result
         FROM `{self.project_id}.{self.dataset_id}.video_objects`
         WHERE 1=1
         """
@@ -283,25 +272,14 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             start_date_str = request.start_date.strftime("%Y-%m-%d")
             end_date_str = request.end_date.strftime("%Y-%m-%d")
 
-            query += f"""
-          AND EXISTS (
-            SELECT 1 FROM UNNEST(metadata) AS meta
-            WHERE meta.name = 'timestamp'
-            AND PARSE_DATETIME('%Y%m%d%H%M%S', meta.value) BETWEEN
-                DATETIME('{start_date_str}') AND DATETIME('{end_date_str} 23:59:59')
-          )
+            query += """
         """
 
         # Add time range filtering if specified (not "All Day")
         if hasattr(request, 'time_range') and request.time_range and request.time_range != "All Day":
             time_conditions = self._get_time_range_condition(request.time_range)
             if time_conditions:
-                query += f"""
-          AND EXISTS (
-            SELECT 1 FROM UNNEST(metadata) AS meta
-            WHERE meta.name = 'timestamp'
-            AND EXTRACT(HOUR FROM PARSE_DATETIME('%Y%m%d%H%M%S', meta.value)) {time_conditions}
-          )
+                query += """
         """
 
         # Add geographic filtering if coordinates and radius are provided
@@ -309,12 +287,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             hasattr(request, 'search_radius_km') and
             request.last_seen_latitude and request.last_seen_longitude and request.search_radius_km):
 
-            query += f"""
-          AND EXISTS (
-            SELECT 1 FROM UNNEST(metadata) AS meta
-            WHERE meta.name = 'timestamp'
-            AND EXTRACT(HOUR FROM PARSE_DATETIME('%Y%m%d%H%M%S', meta.value)) {time_conditions}
-          )
+            query += """
         """
 
         return query
@@ -329,31 +302,6 @@ Your final output MUST be a single JSON object. Do not include any text or expla
         }
         return time_conditions.get(time_range, "")
 
-    def _parse_ai_result(self, ai_result_text: str) -> Optional[dict]:
-        """Parse the AI analysis result JSON"""
-        try:
-            # The AI result might have extra text, try to extract JSON
-            if "```json" in ai_result_text:
-                # Extract JSON from markdown code block
-                start = ai_result_text.find("```json") + 7
-                end = ai_result_text.find("```", start)
-                json_text = ai_result_text[start:end].strip()
-            elif ai_result_text.strip().startswith("{"):
-                # Assume it's pure JSON
-                json_text = ai_result_text.strip()
-            else:
-                # Try to find JSON-like content
-                start = ai_result_text.find("{")
-                end = ai_result_text.rfind("}") + 1
-                if start != -1 and end > start:
-                    json_text = ai_result_text[start:end]
-                else:
-                    return None
-
-            return json.loads(json_text)
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.warning(f"Failed to parse AI result as JSON: {e}")
-            return None
 
     def _extract_video_metadata(self, video_uri: str) -> dict:
         """Extract metadata from video URI/filename"""

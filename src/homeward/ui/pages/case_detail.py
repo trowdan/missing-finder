@@ -1296,7 +1296,7 @@ async def handle_analyze_video(
                 ui.spinner(size="xl").classes("text-purple-400 mb-4")
                 ui.label("AI Video Intelligence in Progress").classes("text-gray-300 text-lg font-medium")
                 progress_status = ui.label("Initializing BigQuery video analysis...").classes("text-gray-400 text-sm mt-2")
-                ui.label("This may take up to 5 minutes").classes("text-gray-500 text-xs mt-1")
+                ui.label("This may take up to 15 minutes").classes("text-gray-500 text-xs mt-1")
 
                 # Add a progress indicator
                 with ui.row().classes("items-center mt-4 gap-2"):
