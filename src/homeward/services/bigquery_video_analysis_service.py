@@ -336,11 +336,10 @@ You must perform the following steps in your analysis:
 
         return distance
 
-    def add_to_evidence(self, result_id: str, case_id: str) -> bool:
+    def add_to_evidence(self, result, case_id: str) -> bool:
         """Add analysis result to case evidence in BigQuery"""
         try:
-            # Insert minimal evidence record into video_analytics_results table
-            # Note: This is a simplified implementation for demo purposes
+            # Use the actual video analysis result data
             query = f"""
             INSERT INTO `{self.config.bigquery_project_id}.{self.config.bigquery_dataset}.video_analytics_results`
             (
@@ -353,17 +352,17 @@ You must perform the following steps in your analysis:
                 @result_id,
                 CONCAT('evidence_session_', @case_id),
                 @case_id,
-                CONCAT('gs://evidence-bucket/video_', @result_id, '.mp4'),
-                CONCAT('evidence_video_', @result_id, '.mp4'),
-                'EVIDENCE_CAM',
-                CURRENT_TIMESTAMP(),
-                0.0,  -- default latitude
-                0.0,  -- default longitude
-                'Evidence',
-                '1080p',
-                0.0,  -- detection timestamp
-                1.0,  -- confidence score
-                'Evidence_Model',
+                @video_url,
+                @video_filename,
+                @camera_id,
+                @video_timestamp,
+                @video_latitude,
+                @video_longitude,
+                @camera_type,
+                '1080p',  -- default resolution
+                0.0,
+                @confidence_score,
+                'gemini-2.5-flash',
                 CURRENT_TIMESTAMP(),
                 'Evidence_System'
             )
@@ -371,15 +370,23 @@ You must perform the following steps in your analysis:
 
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[
+                    bigquery.ScalarQueryParameter("result_id", "STRING", result.id),
                     bigquery.ScalarQueryParameter("case_id", "STRING", case_id),
-                    bigquery.ScalarQueryParameter("result_id", "STRING", result_id),
+                    bigquery.ScalarQueryParameter("video_url", "STRING", result.video_url),
+                    bigquery.ScalarQueryParameter("video_filename", "STRING", result.video_url.split("/")[-1]),
+                    bigquery.ScalarQueryParameter("camera_id", "STRING", result.camera_id),
+                    bigquery.ScalarQueryParameter("video_timestamp", "TIMESTAMP", result.timestamp),
+                    bigquery.ScalarQueryParameter("video_latitude", "FLOAT64", result.latitude),
+                    bigquery.ScalarQueryParameter("video_longitude", "FLOAT64", result.longitude),
+                    bigquery.ScalarQueryParameter("camera_type", "STRING", result.camera_type),
+                    bigquery.ScalarQueryParameter("confidence_score", "FLOAT64", result.confidence_score),
                 ]
             )
 
             query_job = self.client.query(query, job_config=job_config)
             query_job.result()  # Wait for completion
 
-            logger.info(f"Added video analysis result {result_id} to evidence for case {case_id}")
+            logger.info(f"Added video analysis result {result.id} to evidence for case {case_id}")
             return True
 
         except Exception as e:

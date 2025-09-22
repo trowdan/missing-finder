@@ -491,11 +491,9 @@ def create_video_evidence_table(case_id: str, data_service: DataService, gcs_ser
         ):
             # Table header
             with ui.element("div").classes(
-                "grid grid-cols-7 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-700/50"
+                "grid grid-cols-5 gap-4 px-6 py-4 bg-gray-800/70 border-b border-gray-700/50"
             ):
                 ui.label("Date & Time").classes("text-gray-300 font-medium text-sm")
-                ui.label("Location").classes("text-gray-300 font-medium text-sm")
-                ui.label("Distance").classes("text-gray-300 font-medium text-sm text-center")
                 ui.label("Camera").classes("text-gray-300 font-medium text-sm")
                 ui.label("AI Description").classes("text-gray-300 font-medium text-sm")
                 ui.label("Confidence").classes("text-gray-300 font-medium text-sm text-center")
@@ -504,7 +502,7 @@ def create_video_evidence_table(case_id: str, data_service: DataService, gcs_ser
             # Table rows
             for i, evidence in enumerate(video_evidence):
                 is_last = i == len(video_evidence) - 1
-                row_classes = "grid grid-cols-7 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center"
+                row_classes = "grid grid-cols-5 gap-4 px-6 py-4 hover:bg-gray-700/30 transition-colors items-center"
                 if not is_last:
                     row_classes += " border-b border-gray-700/30"
 
@@ -518,20 +516,6 @@ def create_video_evidence_table(case_id: str, data_service: DataService, gcs_ser
                     else:
                         date_str = "N/A"
                     ui.label(date_str).classes("text-gray-100 text-sm")
-
-                    # Location (truncated address)
-                    address = evidence.get("address", "Unknown")
-                    address_short = address.split(",")[0] if address and "," in address else address
-                    ui.label(address_short).classes("text-gray-100 text-sm truncate").props(f'title="{address}"')
-
-                    # Distance
-                    with ui.element("div").classes("flex justify-center"):
-                        distance_km = evidence.get("distance_km")
-                        if distance_km is not None:
-                            distance_color = "text-green-400" if distance_km < 2 else "text-yellow-400" if distance_km < 5 else "text-orange-400"
-                            ui.label(f"{distance_km:.1f}km").classes(f"text-sm {distance_color}")
-                        else:
-                            ui.label("N/A").classes("text-gray-400 text-sm")
 
                     # Camera Info
                     camera_info = f"{evidence.get('camera_id', 'Unknown')}"
@@ -1641,7 +1625,7 @@ def create_analysis_results_table(
                             ui.button(
                                 "Add",
                                 on_click=lambda r=result: handle_add_evidence(
-                                    r.id, case_id, video_analysis_service
+                                    r, case_id, video_analysis_service
                                 ),
                             ).classes(
                                 "bg-transparent text-green-300 px-2 py-1 rounded border border-green-500/60 hover:bg-green-200 hover:text-green-900 hover:border-green-200 transition-all duration-300 font-light text-xs tracking-wide"
@@ -1681,11 +1665,11 @@ def handle_view_video(video_url: str, gcs_service: GCSService):
 
 
 def handle_add_evidence(
-    result_id: str, case_id: str, video_analysis_service: VideoAnalysisService
+    result, case_id: str, video_analysis_service: VideoAnalysisService
 ):
     """Handle adding analysis result to case evidence"""
     try:
-        success = video_analysis_service.add_to_evidence(result_id, case_id)
+        success = video_analysis_service.add_to_evidence(result, case_id)
         if success:
             ui.notify("✅ Evidence added to case", type="positive")
         else:

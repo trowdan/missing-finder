@@ -97,9 +97,9 @@ class MockVideoAnalysisService(VideoAnalysisService):
 
         return results
 
-    def add_to_evidence(self, result_id: str, case_id: str) -> bool:
+    def add_to_evidence(self, result, case_id: str) -> bool:
         """Add analysis result to case evidence (mock implementation)"""
-        evidence_key = f"{case_id}:{result_id}"
+        evidence_key = f"{case_id}:{result.id}"
         self._evidence_store.add(evidence_key)
         return True
 

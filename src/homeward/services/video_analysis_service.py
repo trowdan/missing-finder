@@ -22,12 +22,12 @@ class VideoAnalysisService(ABC):
         pass
 
     @abstractmethod
-    def add_to_evidence(self, result_id: str, case_id: str) -> bool:
+    def add_to_evidence(self, result: VideoAnalysisResult, case_id: str) -> bool:
         """
         Add analysis result to case evidence
 
         Args:
-            result_id: ID of the video analysis result
+            result: VideoAnalysisResult object containing the video data
             case_id: ID of the missing person case
 
         Returns:
