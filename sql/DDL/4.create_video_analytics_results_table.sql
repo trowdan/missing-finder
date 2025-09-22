@@ -2,7 +2,7 @@
    This table stores the raw results from AI visual intelligence insights before they are converted to sightings
    Contains detected persons from surveillance footage that can be reviewed and matched to cases */
 
-CREATE TABLE IF NOT EXISTS `homeward.video_analytics_results` (
+CREATE TABLE IF NOT EXISTS `<DATASET>.video_analytics_results` (
   /* Primary identifiers */
   id STRING NOT NULL OPTIONS(description="Unique analytics result identifier"),
   analysis_session_id STRING NOT NULL OPTIONS(description="Identifier for the analysis batch/session"),

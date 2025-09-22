@@ -2,7 +2,7 @@
    Based on the MissingPersonCase dataclass and missing person form structure
    This table stores comprehensive information about missing person cases */
 
-CREATE TABLE IF NOT EXISTS `homeward.missing_persons` (
+CREATE TABLE IF NOT EXISTS `<DATASET>.missing_persons` (
   /* Primary identifiers */
   id STRING NOT NULL OPTIONS(description="Unique case identifier"),
   case_number STRING OPTIONS(description="Official case reference number if available"),

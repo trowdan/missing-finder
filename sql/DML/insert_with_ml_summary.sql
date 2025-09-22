@@ -2,7 +2,7 @@
    Production-ready approach using MERGE statement to handle insert + ML generation atomically
    This avoids separate insert/update operations */
 
-MERGE `homeward.missing_persons` AS target
+MERGE `<DATASET>.missing_persons` AS target
 USING (
   -- Prepare the data with ML summary generated inline
   SELECT 
@@ -97,7 +97,7 @@ USING (
         'Case priority: ', @priority, ', Status: ', @status, '. ',
         'Reported by: ', @reporter_name, ' (', @relationship, ').'
       ),
-      connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
+      connection_id => '<PROJECT_ID>.<REGION>.<CONNECTION_NAME>',
       endpoint => 'gemini-2.5-flash',
       model_params => JSON '{"generation_config": {"temperature": 0}}'
     ).result AS ml_summary

@@ -21,14 +21,14 @@ class BigQueryDataService(DataService):
         offset = (page - 1) * page_size
 
         # Count query - optimized to count only on id field
-        COUNT_QUERY = """
+        COUNT_QUERY = f"""
         SELECT COUNT(id) as total_count
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE (@status_filter IS NULL OR status = @status_filter)
         """
 
         # Data query with pagination
-        CASES_QUERY = """
+        CASES_QUERY = f"""
         SELECT
             id, case_number, name, surname, date_of_birth, gender,
             height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
@@ -37,7 +37,7 @@ class BigQueryDataService(DataService):
             circumstances, priority, status, description, medical_conditions, additional_info,
             photo_url, reporter_name, reporter_phone, reporter_email, relationship,
             created_date, updated_date, ml_summary
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE (@status_filter IS NULL OR status = @status_filter)
         ORDER BY created_date DESC
         LIMIT @page_size OFFSET @offset
@@ -145,7 +145,7 @@ class BigQueryDataService(DataService):
     def get_kpi_data(self) -> KPIData:
         """Get KPI dashboard data from BigQuery"""
 
-        KPI_QUERY = """
+        KPI_QUERY = f"""
         WITH case_stats AS (
           SELECT
             COUNT(id) as total_cases,
@@ -156,11 +156,11 @@ class BigQueryDataService(DataService):
               THEN DATE_DIFF(updated_date, created_date, DAY)
               END) as avg_resolution_days,
             SAFE_DIVIDE(COUNTIF(status = 'Resolved'), COUNT(id)) * 100 as success_rate
-          FROM `homeward.missing_persons`
+          FROM `{self.config.bigquery_dataset}.missing_persons`
         ),
         sighting_stats AS (
           SELECT COUNT(id) as sightings_today
-          FROM `homeward.sightings`
+          FROM `{self.config.bigquery_dataset}.sightings`
           WHERE DATE(created_date) = CURRENT_DATE()
         )
         SELECT
@@ -188,7 +188,7 @@ class BigQueryDataService(DataService):
 
     def get_case_by_id(self, case_id: str) -> Optional[MissingPersonCase]:
         """Get a specific case by ID from BigQuery"""
-        CASE_SELECT_QUERY = """
+        CASE_SELECT_QUERY = f"""
         SELECT
             id,
             case_number,
@@ -224,7 +224,7 @@ class BigQueryDataService(DataService):
             created_date,
             updated_date,
             ml_summary
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE id = @case_id
         """
 
@@ -324,8 +324,8 @@ class BigQueryDataService(DataService):
 
     def create_case(self, case: MissingPersonCase) -> str:
         """Create a new case in BigQuery"""
-        MISSING_PERSON_INSERT_QUERY = """
-        MERGE `homeward.missing_persons` AS target
+        MISSING_PERSON_INSERT_QUERY = f"""
+        MERGE `{self.config.bigquery_dataset}.missing_persons` AS target
         USING (
           SELECT
             @id AS id,
@@ -421,9 +421,9 @@ class BigQueryDataService(DataService):
                   ELSE ''
                 END
               ),
-              connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
-              endpoint => 'gemini-2.5-flash',
-              model_params => JSON '{"generation_config": {"temperature": 0}}'
+              connection_id => '{self.config.bigquery_project_id}.{self.config.bigquery_region}.{self.config.bigquery_connection}',
+              endpoint => '{self.config.bigquery_model}',
+              model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
             ).result AS ml_summary
         ) AS source
         ON target.id = source.id
@@ -496,8 +496,8 @@ class BigQueryDataService(DataService):
 
     def update_case(self, case: MissingPersonCase) -> bool:
         """Update an existing case in BigQuery with AI regeneration and embedding clearing"""
-        MISSING_PERSON_UPDATE_QUERY = """
-        MERGE `homeward.missing_persons` AS target
+        MISSING_PERSON_UPDATE_QUERY = f"""
+        MERGE `{self.config.bigquery_dataset}.missing_persons` AS target
         USING (
           SELECT
             @id AS id,
@@ -592,9 +592,9 @@ class BigQueryDataService(DataService):
                   ELSE ''
                 END
               ),
-              connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
-              endpoint => 'gemini-2.5-flash',
-              model_params => JSON '{"generation_config": {"temperature": 0}}'
+              connection_id => '{self.config.bigquery_project_id}.{self.config.bigquery_region}.{self.config.bigquery_connection}',
+              endpoint => '{self.config.bigquery_model}',
+              model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
             ).result AS ml_summary
         ) AS source
         ON target.id = source.id
@@ -694,14 +694,14 @@ class BigQueryDataService(DataService):
         offset = (page - 1) * page_size
 
         # Count query - optimized to count only on id field
-        COUNT_QUERY = """
+        COUNT_QUERY = f"""
         SELECT COUNT(id) as total_count
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE (@status_filter IS NULL OR status = @status_filter)
         """
 
         # Data query with pagination
-        SIGHTINGS_QUERY = """
+        SIGHTINGS_QUERY = f"""
         SELECT
             id, sighting_number, sighted_date, sighted_time, sighted_address, sighted_city,
             sighted_country, sighted_postal_code, sighted_latitude, sighted_longitude,
@@ -711,7 +711,7 @@ class BigQueryDataService(DataService):
             source_type, witness_name, witness_phone, witness_email,
             video_analytics_result_id, status, priority, verified,
             created_date, updated_date, created_by, notes, ml_summary
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE (@status_filter IS NULL OR status = @status_filter)
         ORDER BY created_date DESC
         LIMIT @page_size OFFSET @offset
@@ -829,7 +829,7 @@ class BigQueryDataService(DataService):
 
     def get_sighting_by_id(self, sighting_id: str) -> Optional[Sighting]:
         """Get a specific sighting by ID from BigQuery"""
-        SIGHTING_SELECT_QUERY = """
+        SIGHTING_SELECT_QUERY = f"""
         SELECT
             id,
             sighting_number,
@@ -867,7 +867,7 @@ class BigQueryDataService(DataService):
             created_by,
             notes,
             ml_summary
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE id = @sighting_id
         """
 
@@ -977,8 +977,8 @@ class BigQueryDataService(DataService):
 
     def create_sighting(self, sighting: Sighting) -> str:
         """Create a new sighting in BigQuery with AI-generated summary"""
-        SIGHTING_INSERT_QUERY = """
-        MERGE `homeward.sightings` AS target
+        SIGHTING_INSERT_QUERY = f"""
+        MERGE `{self.config.bigquery_dataset}.sightings` AS target
         USING (
           SELECT
             @id AS id,
@@ -1082,9 +1082,9 @@ class BigQueryDataService(DataService):
                 END,
                 '.'
               ),
-              connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
-              endpoint => 'gemini-2.5-flash',
-              model_params => JSON '{"generation_config": {"temperature": 0}}'
+              connection_id => '{self.config.bigquery_project_id}.{self.config.bigquery_region}.{self.config.bigquery_connection}',
+              endpoint => '{self.config.bigquery_model}',
+              model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
             ).result AS ml_summary
         ) AS source
         ON target.id = source.id
@@ -1156,8 +1156,8 @@ class BigQueryDataService(DataService):
 
     def update_sighting(self, sighting: Sighting) -> bool:
         """Update an existing sighting in BigQuery with AI regeneration and embedding clearing"""
-        SIGHTING_UPDATE_QUERY = """
-        MERGE `homeward.sightings` AS target
+        SIGHTING_UPDATE_QUERY = f"""
+        MERGE `{self.config.bigquery_dataset}.sightings` AS target
         USING (
           SELECT
             @id AS id,
@@ -1260,9 +1260,9 @@ class BigQueryDataService(DataService):
                 END,
                 '.'
               ),
-              connection_id => 'bq-ai-hackaton.us-central1.homeward_gcp_connection',
-              endpoint => 'gemini-2.5-flash',
-              model_params => JSON '{"generation_config": {"temperature": 0}}'
+              connection_id => '{self.config.bigquery_project_id}.{self.config.bigquery_region}.{self.config.bigquery_connection}',
+              endpoint => '{self.config.bigquery_model}',
+              model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
             ).result AS ml_summary
         ) AS source
         ON target.id = source.id
@@ -1382,7 +1382,7 @@ class BigQueryDataService(DataService):
         # Count query
         COUNT_QUERY = f"""
         SELECT COUNT(id) as total_count
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE {where_clause}
         """
 
@@ -1396,7 +1396,7 @@ class BigQueryDataService(DataService):
             circumstances, priority, status, description, medical_conditions, additional_info,
             photo_url, reporter_name, reporter_phone, reporter_email, relationship,
             created_date, updated_date, ml_summary
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE {where_clause}
         ORDER BY created_date DESC
         LIMIT @page_size OFFSET @offset
@@ -1524,7 +1524,7 @@ class BigQueryDataService(DataService):
         # Count query
         COUNT_QUERY = f"""
         SELECT COUNT(id) as total_count
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE {where_clause}
         """
 
@@ -1539,7 +1539,7 @@ class BigQueryDataService(DataService):
             source_type, witness_name, witness_phone, witness_email,
             video_analytics_result_id, status, priority, verified,
             created_date, updated_date, created_by, notes, ml_summary
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE {where_clause}
         ORDER BY created_date DESC
         LIMIT @page_size OFFSET @offset
@@ -1656,12 +1656,12 @@ class BigQueryDataService(DataService):
 
     def update_missing_persons_embeddings(self) -> dict:
         """Update embeddings for missing persons that don't have them yet"""
-        UPDATE_MISSING_PERSONS_EMBEDDINGS_QUERY = """
-        UPDATE `homeward.missing_persons` AS mp
+        UPDATE_MISSING_PERSONS_EMBEDDINGS_QUERY = f"""
+        UPDATE `{self.config.bigquery_dataset}.missing_persons` AS mp
         SET mp.ml_summary_embedding = e.ml_generate_embedding_result
         FROM ML.GENERATE_EMBEDDING(
-            MODEL `homeward.text_embedding_model`,
-            (SELECT id, ml_summary as content FROM `homeward.missing_persons` WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)),
+            MODEL `{self.config.bigquery_dataset}.text_embedding_model`,
+            (SELECT id, ml_summary as content FROM `{self.config.bigquery_dataset}.missing_persons` WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)),
             STRUCT('SEMANTIC_SIMILARITY' as task_type)
         ) as e
         WHERE mp.id = e.id;
@@ -1676,9 +1676,9 @@ class BigQueryDataService(DataService):
             # Additional check to ensure embeddings were actually created
             if query_job.num_dml_affected_rows == 0:
                 # Check if there are any records that need embeddings
-                check_query = """
+                check_query = f"""
                 SELECT COUNT(*) as records_needing_embeddings
-                FROM `homeward.missing_persons`
+                FROM `{self.config.bigquery_dataset}.missing_persons`
                 WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)
                 """
                 check_job = self.client.query(check_query)
@@ -1705,12 +1705,12 @@ class BigQueryDataService(DataService):
 
     def update_sightings_embeddings(self) -> dict:
         """Update embeddings for sightings that don't have them yet"""
-        UPDATE_SIGHTINGS_EMBEDDINGS_QUERY = """
-        UPDATE `homeward.sightings` as s
+        UPDATE_SIGHTINGS_EMBEDDINGS_QUERY = f"""
+        UPDATE `{self.config.bigquery_dataset}.sightings` as s
         SET s.ml_summary_embedding = e.ml_generate_embedding_result
         FROM ML.GENERATE_EMBEDDING(
-            MODEL `homeward.text_embedding_model`,
-            (SELECT id, ml_summary as content FROM `homeward.sightings` WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)),
+            MODEL `{self.config.bigquery_dataset}.text_embedding_model`,
+            (SELECT id, ml_summary as content FROM `{self.config.bigquery_dataset}.sightings` WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)),
             STRUCT('SEMANTIC_SIMILARITY' as task_type)
         ) as e
         WHERE e.id = s.id;
@@ -1725,9 +1725,9 @@ class BigQueryDataService(DataService):
             # Additional check to ensure embeddings were actually created
             if query_job.num_dml_affected_rows == 0:
                 # Check if there are any records that need embeddings
-                check_query = """
+                check_query = f"""
                 SELECT COUNT(*) as records_needing_embeddings
-                FROM `homeward.sightings`
+                FROM `{self.config.bigquery_dataset}.sightings`
                 WHERE ml_summary IS NOT NULL AND (ml_summary_embedding IS NULL OR ARRAY_LENGTH(ml_summary_embedding) = 0)
                 """
                 check_job = self.client.query(check_query)
@@ -1762,11 +1762,11 @@ class BigQueryDataService(DataService):
             return []
 
         # Verify that the missing person has embeddings
-        check_embeddings_query = """
+        check_embeddings_query = f"""
         SELECT
             COUNT(*) as mp_with_embeddings,
-            (SELECT COUNT(*) FROM `homeward.sightings` WHERE ml_summary_embedding IS NOT NULL AND ARRAY_LENGTH(ml_summary_embedding) > 0) as sightings_with_embeddings
-        FROM `homeward.missing_persons`
+            (SELECT COUNT(*) FROM `{self.config.bigquery_dataset}.sightings` WHERE ml_summary_embedding IS NOT NULL AND ARRAY_LENGTH(ml_summary_embedding) > 0) as sightings_with_embeddings
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE id = @missing_person_id
         AND ml_summary_embedding IS NOT NULL
         AND ARRAY_LENGTH(ml_summary_embedding) > 0
@@ -1797,7 +1797,7 @@ class BigQueryDataService(DataService):
             return []
 
         # Corrected query structure based on demo notebook
-        SIMILARITY_SEARCH_MP_TO_SIGHTINGS_QUERY = """
+        SIMILARITY_SEARCH_MP_TO_SIGHTINGS_QUERY = f"""
         SELECT
         query.id,
         query.case_number,
@@ -1820,15 +1820,15 @@ class BigQueryDataService(DataService):
             (
               SELECT *
               FROM
-                `homeward.sightings`
+                `{self.config.bigquery_dataset}.sightings`
               WHERE
                 DATE(created_date) >= DATE_SUB(@last_seen_date, INTERVAL @delta_days DAY)
             ),
             'ml_summary_embedding',
-            (SELECT id, case_number, ml_summary_embedding FROM `homeward.missing_persons` WHERE id = @missing_person_id),
+            (SELECT id, case_number, ml_summary_embedding FROM `{self.config.bigquery_dataset}.missing_persons` WHERE id = @missing_person_id),
             top_k => @top_k,
             distance_type => 'COSINE',
-            options => '{"fraction_lists_to_search": 0.005}')
+            options => '{{"fraction_lists_to_search": 0.005}}')
         WHERE ST_DWITHIN(
           base.sighted_geo,
           ST_GEOGPOINT(@last_seen_longitude, @last_seen_latitude),
@@ -1884,11 +1884,11 @@ class BigQueryDataService(DataService):
             return []
 
         # Verify that the sighting has embeddings
-        check_embeddings_query = """
+        check_embeddings_query = f"""
         SELECT
             COUNT(*) as sighting_with_embeddings,
-            (SELECT COUNT(*) FROM `homeward.missing_persons` WHERE ml_summary_embedding IS NOT NULL AND ARRAY_LENGTH(ml_summary_embedding) > 0) as mp_with_embeddings
-        FROM `homeward.sightings`
+            (SELECT COUNT(*) FROM `{self.config.bigquery_dataset}.missing_persons` WHERE ml_summary_embedding IS NOT NULL AND ARRAY_LENGTH(ml_summary_embedding) > 0) as mp_with_embeddings
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE id = @sighting_id
         AND ml_summary_embedding IS NOT NULL
         AND ARRAY_LENGTH(ml_summary_embedding) > 0
@@ -1919,7 +1919,7 @@ class BigQueryDataService(DataService):
             return []
 
         # Query structure based on SIMILARITY_SEARCH_SIGHTINGS_TO_MP_QUERY from demo notebook
-        SIMILARITY_SEARCH_SIGHTINGS_TO_MP_QUERY = """
+        SIMILARITY_SEARCH_SIGHTINGS_TO_MP_QUERY = f"""
         SELECT
         query.id as sighting_id,
         query.sighting_number,
@@ -1943,15 +1943,15 @@ class BigQueryDataService(DataService):
             (
               SELECT *
               FROM
-                `homeward.missing_persons`
+                `{self.config.bigquery_dataset}.missing_persons`
               WHERE
                 DATE(created_date) >= DATE_SUB(@sighted_date, INTERVAL @delta_days DAY)
             ),
             'ml_summary_embedding',
-            (SELECT id, sighting_number, ml_summary_embedding FROM `homeward.sightings` WHERE id = @sighting_id),
+            (SELECT id, sighting_number, ml_summary_embedding FROM `{self.config.bigquery_dataset}.sightings` WHERE id = @sighting_id),
             top_k => @top_k,
             distance_type => 'COSINE',
-            options => '{"fraction_lists_to_search": 0.005}')
+            options => '{{"fraction_lists_to_search": 0.005}}')
         WHERE ST_DWITHIN(
           base.last_seen_geo,
           ST_GEOGPOINT(@sighted_longitude, @sighted_latitude),
@@ -2002,7 +2002,7 @@ class BigQueryDataService(DataService):
 
     def get_case_sightings(self, case_id: str) -> list[dict]:
         """Get all sightings linked to a specific case from the case_sightings table"""
-        CASE_SIGHTINGS_QUERY = """
+        CASE_SIGHTINGS_QUERY = f"""
         SELECT
             cs.id as link_id,
             cs.missing_person_id,
@@ -2061,8 +2061,8 @@ class BigQueryDataService(DataService):
             s.verified,
             s.notes as sighting_notes,
             s.ml_summary as sighting_ml_summary
-        FROM `homeward.case_sightings` cs
-        JOIN `homeward.sightings` s ON cs.sighting_id = s.id
+        FROM `{self.config.bigquery_dataset}.case_sightings` cs
+        JOIN `{self.config.bigquery_dataset}.sightings` s ON cs.sighting_id = s.id
         WHERE cs.missing_person_id = @case_id
         ORDER BY cs.created_date DESC, cs.match_confidence DESC
         """
@@ -2182,8 +2182,8 @@ class BigQueryDataService(DataService):
                 requires_review = False
 
             # Prepare the INSERT query
-            INSERT_LINK_QUERY = """
-            INSERT INTO `homeward.case_sightings` (
+            INSERT_LINK_QUERY = f"""
+            INSERT INTO `{self.config.bigquery_dataset}.case_sightings` (
                 id, missing_person_id, sighting_id, match_confidence, match_type, match_reason,
                 status, confirmed, confirmed_by, confirmed_date, similarity_score,
                 investigated, investigation_notes, investigator_name, investigation_date,
@@ -2237,7 +2237,7 @@ class BigQueryDataService(DataService):
         """Get the linked case information for a sighting by querying case_sightings table"""
         try:
             # Query to get the linked case for a sighting
-            LINKED_CASE_QUERY = """
+            LINKED_CASE_QUERY = f"""
             SELECT
                 cs.missing_person_id as case_id,
                 mp.case_number,
@@ -2252,8 +2252,8 @@ class BigQueryDataService(DataService):
                 cs.confirmed,
                 cs.status as link_status,
                 cs.created_date as link_created_date
-            FROM `homeward.case_sightings` cs
-            JOIN `homeward.missing_persons` mp ON cs.missing_person_id = mp.id
+            FROM `{self.config.bigquery_dataset}.case_sightings` cs
+            JOIN `{self.config.bigquery_dataset}.missing_persons` mp ON cs.missing_person_id = mp.id
             WHERE cs.sighting_id = @sighting_id
             AND cs.status IN ('Potential', 'Under_Review', 'Confirmed')
             ORDER BY cs.created_date DESC
@@ -2300,9 +2300,9 @@ class BigQueryDataService(DataService):
         offset = (page - 1) * page_size
 
         # Count query using ST_DWITHIN for geographic distance filtering
-        COUNT_QUERY = """
+        COUNT_QUERY = f"""
         SELECT COUNT(id) as total_count
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE last_seen_latitude IS NOT NULL
             AND last_seen_longitude IS NOT NULL
             AND ST_DWITHIN(
@@ -2313,7 +2313,7 @@ class BigQueryDataService(DataService):
         """
 
         # Data query with geographic filtering and distance calculation
-        CASES_QUERY = """
+        CASES_QUERY = f"""
         SELECT
             id, case_number, name, surname, date_of_birth, gender,
             height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
@@ -2326,7 +2326,7 @@ class BigQueryDataService(DataService):
                 ST_GEOGPOINT(last_seen_longitude, last_seen_latitude),
                 ST_GEOGPOINT(@search_longitude, @search_latitude)
             ) / 1000 as distance_km
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE last_seen_latitude IS NOT NULL
             AND last_seen_longitude IS NOT NULL
             AND ST_DWITHIN(
@@ -2386,9 +2386,9 @@ class BigQueryDataService(DataService):
         offset = (page - 1) * page_size
 
         # Count query using ST_DWITHIN for geographic distance filtering
-        COUNT_QUERY = """
+        COUNT_QUERY = f"""
         SELECT COUNT(id) as total_count
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE sighted_latitude IS NOT NULL
             AND sighted_longitude IS NOT NULL
             AND ST_DWITHIN(
@@ -2399,7 +2399,7 @@ class BigQueryDataService(DataService):
         """
 
         # Data query with geographic filtering and distance calculation
-        SIGHTINGS_QUERY = """
+        SIGHTINGS_QUERY = f"""
         SELECT
             id, witness_name, witness_email, witness_phone, sighted_date,
             sighted_address, sighted_city, sighted_country, sighted_postal_code,
@@ -2411,7 +2411,7 @@ class BigQueryDataService(DataService):
                 ST_GEOGPOINT(sighted_longitude, sighted_latitude),
                 ST_GEOGPOINT(@search_longitude, @search_latitude)
             ) / 1000 as distance_km
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE sighted_latitude IS NOT NULL
             AND sighted_longitude IS NOT NULL
             AND ST_DWITHIN(
@@ -2602,10 +2602,10 @@ class BigQueryDataService(DataService):
         offset = (page - 1) * page_size
 
         # Generate embedding for the search query
-        EMBEDDING_QUERY = """
+        EMBEDDING_QUERY = f"""
         SELECT ml_generate_embedding_result
         FROM ML.GENERATE_EMBEDDING(
-            MODEL `homeward.text_embedding_model`,
+            MODEL `{self.config.bigquery_dataset}.text_embedding_model`,
             (SELECT @query_text as content),
             STRUCT('SEMANTIC_SIMILARITY' as task_type)
         )
@@ -2632,16 +2632,16 @@ class BigQueryDataService(DataService):
             return self.get_cases(page=page, page_size=page_size)
 
         # Count query for semantic search results
-        COUNT_QUERY = """
+        COUNT_QUERY = f"""
         SELECT COUNT(*) as total_count
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE ml_summary_embedding IS NOT NULL
         AND ARRAY_LENGTH(ml_summary_embedding) > 0
         AND ml_summary IS NOT NULL
         """
 
         # Semantic search query with cosine similarity
-        SEMANTIC_SEARCH_QUERY = """
+        SEMANTIC_SEARCH_QUERY = f"""
         SELECT
             id, case_number, name, surname, date_of_birth, gender,
             height, weight, hair_color, eye_color, distinguishing_marks, clothing_description,
@@ -2651,7 +2651,7 @@ class BigQueryDataService(DataService):
             photo_url, reporter_name, reporter_phone, reporter_email, relationship,
             created_date, updated_date, ml_summary,
             ML.DISTANCE(ml_summary_embedding, @query_embedding, 'COSINE') as cosine_distance
-        FROM `homeward.missing_persons`
+        FROM `{self.config.bigquery_dataset}.missing_persons`
         WHERE ml_summary_embedding IS NOT NULL
         AND ARRAY_LENGTH(ml_summary_embedding) > 0
         AND ml_summary IS NOT NULL
@@ -2765,10 +2765,10 @@ class BigQueryDataService(DataService):
         offset = (page - 1) * page_size
 
         # Generate embedding for the search query
-        EMBEDDING_QUERY = """
+        EMBEDDING_QUERY = f"""
         SELECT ml_generate_embedding_result
         FROM ML.GENERATE_EMBEDDING(
-            MODEL `homeward.text_embedding_model`,
+            MODEL `{self.config.bigquery_dataset}.text_embedding_model`,
             (SELECT @query_text as content),
             STRUCT('SEMANTIC_SIMILARITY' as task_type)
         )
@@ -2795,16 +2795,16 @@ class BigQueryDataService(DataService):
             return self.get_sightings(page=page, page_size=page_size)
 
         # Count query for semantic search results
-        COUNT_QUERY = """
+        COUNT_QUERY = f"""
         SELECT COUNT(*) as total_count
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE ml_summary_embedding IS NOT NULL
         AND ARRAY_LENGTH(ml_summary_embedding) > 0
         AND ml_summary IS NOT NULL
         """
 
         # Semantic search query with cosine similarity
-        SEMANTIC_SEARCH_QUERY = """
+        SEMANTIC_SEARCH_QUERY = f"""
         SELECT
             id, sighting_number, sighted_date, sighted_time, sighted_address, sighted_city,
             sighted_country, sighted_postal_code, sighted_latitude, sighted_longitude,
@@ -2815,7 +2815,7 @@ class BigQueryDataService(DataService):
             status, priority, verified, created_date, updated_date,
             created_by, notes, ml_summary,
             ML.DISTANCE(ml_summary_embedding, @query_embedding, 'COSINE') as cosine_distance
-        FROM `homeward.sightings`
+        FROM `{self.config.bigquery_dataset}.sightings`
         WHERE ml_summary_embedding IS NOT NULL
         AND ARRAY_LENGTH(ml_summary_embedding) > 0
         AND ml_summary IS NOT NULL
@@ -2931,9 +2931,9 @@ class BigQueryDataService(DataService):
         """Get all video evidence linked to a specific case from the video_analytics_results table"""
         try:
             # Check if video_analytics_results table exists and has data for this case
-            check_query = """
+            check_query = f"""
             SELECT COUNT(*) as evidence_count
-            FROM `homeward.video_analytics_results`
+            FROM `{self.config.bigquery_dataset}.video_analytics_results`
             WHERE case_id = @case_id
             """
 
@@ -2953,7 +2953,7 @@ class BigQueryDataService(DataService):
                     return []
 
                 # If we have evidence, get the actual evidence with video metadata
-                query = """
+                query = f"""
                 SELECT
                     var.id as result_id,
                     var.case_id,
@@ -2964,13 +2964,13 @@ class BigQueryDataService(DataService):
                     var.camera_type,
                     var.video_latitude as latitude,
                     var.video_longitude as longitude,
-                    'Washington_DC_Area' as address,
-                    CAST(NULL AS FLOAT64) as distance_km,
+                    var.address as address,
+                    var.distance_km as distance_km,
                     var.video_url,
                     var.detection_confidence as confidence_score,
                     CONCAT('Person detected at ', CAST(var.detection_timestamp AS STRING), 's in video from camera ', var.camera_id) as ai_description,
                     CONCAT('AI detection from ', var.model_name, ' with ', CAST(ROUND(var.detection_confidence * 100, 1) AS STRING), '% confidence') as ai_summary
-                FROM `homeward.video_analytics_results` var
+                FROM `{self.config.bigquery_dataset}.video_analytics_results` var
                 WHERE var.case_id = @case_id
                 ORDER BY var.created_date DESC
                 """

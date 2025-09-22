@@ -3,6 +3,7 @@ from datetime import datetime
 
 from google.cloud import bigquery
 
+from homeward.config import AppConfig
 from homeward.models.video_analysis import VideoAnalysisRequest, VideoAnalysisResult
 from homeward.services.video_analysis_service import VideoAnalysisService
 
@@ -12,11 +13,9 @@ logger = logging.getLogger(__name__)
 class BigQueryVideoAnalysisService(VideoAnalysisService):
     """BigQuery implementation of VideoAnalysisService using Gemini AI for video analysis"""
 
-    def __init__(self, project_id: str, dataset_id: str, connection_id: str = None):
-        self.project_id = project_id
-        self.dataset_id = dataset_id
-        self.connection_id = connection_id or f"{project_id}.us-central1.homeward_gcp_connection"
-        self.client = bigquery.Client(project=project_id)
+    def __init__(self, config: AppConfig):
+        self.config = config
+        self.client = bigquery.Client(project=config.bigquery_project_id)
 
     def analyze_videos(
         self, request: VideoAnalysisRequest, missing_person_data: dict = None
@@ -217,12 +216,12 @@ You must perform the following steps in your analysis:
               "\\n# RECORDING:  ",
               OBJ.GET_ACCESS_URL(ref, 'r')
             ),
-            connection_id => '{self.connection_id}',
-            endpoint => 'gemini-2.5-pro',
+            connection_id => '{self.config.bigquery_project_id}.{self.config.bigquery_region}.{self.config.bigquery_connection}',
+            endpoint => '{self.config.bigquery_model}',
             output_schema => 'personFound BOOL, confidenceScore FLOAT64, matchJustification STRING, summaryOfFindings STRING',
             model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
           ) as result
-        FROM `{self.project_id}.{self.dataset_id}.video_objects`
+        FROM `{self.config.bigquery_project_id}.{self.config.bigquery_dataset}.video_objects`
         WHERE 1=1
         """
 
@@ -343,7 +342,7 @@ You must perform the following steps in your analysis:
             # Insert minimal evidence record into video_analytics_results table
             # Note: This is a simplified implementation for demo purposes
             query = f"""
-            INSERT INTO `{self.project_id}.{self.dataset_id}.video_analytics_results`
+            INSERT INTO `{self.config.bigquery_project_id}.{self.config.bigquery_dataset}.video_analytics_results`
             (
                 id, analysis_session_id, case_id, video_url, video_filename,
                 camera_id, video_timestamp, video_latitude, video_longitude,
@@ -393,7 +392,7 @@ You must perform the following steps in your analysis:
             # Query the video_objects table to get the URI
             query = f"""
             SELECT uri
-            FROM `{self.project_id}.{self.dataset_id}.video_objects`
+            FROM `{self.config.bigquery_project_id}.{self.config.bigquery_dataset}.video_objects`
             WHERE CAST(FARM_FINGERPRINT(uri) AS STRING) = @result_id
             LIMIT 1
             """

@@ -3,7 +3,7 @@
    A missing person can have multiple sightings, and a sighting can be linked to multiple cases
    However, only one link per sighting can be confirmed as a positive match */
 
-CREATE TABLE IF NOT EXISTS `homeward.case_sightings` (
+CREATE TABLE IF NOT EXISTS `<DATASET>.case_sightings` (
   /* Primary identifiers */
   id STRING NOT NULL OPTIONS(description="Unique link identifier"),
   missing_person_id STRING NOT NULL OPTIONS(description="Reference to missing_persons.id"),

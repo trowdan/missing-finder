@@ -2,7 +2,7 @@
    This table stores sighting reports that can be linked to missing person cases
    A sighting represents an observation of a person that might match a missing person */
 
-CREATE TABLE IF NOT EXISTS `homeward.sightings` (
+CREATE TABLE IF NOT EXISTS `<DATASET>.sightings` (
   /* Primary identifiers */
   id STRING NOT NULL OPTIONS(description="Unique sighting identifier"),
   sighting_number STRING OPTIONS(description="Official sighting reference number if available"),

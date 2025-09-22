@@ -528,6 +528,41 @@ create_video_downloader_service_account() {
     print_success "Video downloader service account setup completed"
 }
 
+# Generate final .env file from .env.example with actual values
+generate_env_file() {
+    print_step "Generating Final .env File"
+
+    # Check if .env.example exists
+    if [[ ! -f ".env.example" ]]; then
+        print_error ".env.example file not found"
+        exit 1
+    fi
+
+    print_info "Copying .env.example to .env and replacing values..."
+
+    # Read .env.example and replace placeholders
+    local env_content
+    env_content=$(cat .env.example)
+
+    # Replace placeholders with actual values
+    env_content="${env_content//your-project-id/${PROJECT_ID}}"
+    env_content="${env_content//homeward/${HOMEWARD_BQ_DATASET}}"
+    env_content="${env_content//us-central1/${REGION}}"
+    env_content="${env_content//your-video-bucket/${HOMEWARD_VIDEO_BUCKET}}"
+    env_content="${env_content//your-ingestion-bucket/${HOMEWARD_VIDEO_BUCKET}}"
+    env_content="${env_content//your-processed-bucket/${HOMEWARD_VIDEO_BUCKET}-processed}"
+    env_content="${env_content//homeward_gcp_connection/${HOMEWARD_BQ_CONNECTION}}"
+    env_content="${env_content//video_objects/${HOMEWARD_BQ_TABLE}}"
+    env_content="${env_content//your-geocoding-api-key/${HOMEWARD_GEOCODING_API_KEY}}"
+    env_content="${env_content//downloads\/key.json/${HOMEWARD_SERVICE_ACCOUNT_KEY_PATH:-downloads/key.json}}"
+
+    # Write to .env file
+    echo "$env_content" > .env
+
+    print_success ".env file generated successfully"
+    print_info "All environment variables have been set with actual values"
+}
+
 # Create and configure geocoding API key
 create_geocoding_api_key() {
     print_step "Creating Geocoding API Key"
@@ -668,42 +703,55 @@ create_bigquery_object_table() {
     print_info "Table name saved to environment: HOMEWARD_BQ_TABLE"
 }
 
+# Replace placeholders in SQL content
+replace_sql_placeholders() {
+    local sql_content="$1"
+
+    # Replace placeholders with actual values
+    sql_content="${sql_content//<DATASET>/${HOMEWARD_BQ_DATASET}}"
+    sql_content="${sql_content//<PROJECT_ID>/${PROJECT_ID}}"
+    sql_content="${sql_content//<REGION>/${REGION}}"
+    sql_content="${sql_content//<CONNECTION_NAME>/${HOMEWARD_BQ_CONNECTION}}"
+
+    echo "$sql_content"
+}
+
 # Execute SQL scripts from a specified folder
 execute_sql_scripts_from_folder() {
     local folder_path="$1"
     local folder_description="$2"
-    
+
     print_step "Executing SQL Scripts from $folder_description"
-    
+
     # Check if folder exists
     if [[ ! -d "$folder_path" ]]; then
         print_warning "Folder not found: $folder_path"
         print_info "Skipping $folder_description SQL script execution"
         return 0
     fi
-    
+
     # Find SQL files and sort them alphabetically
     local sql_files=()
     while IFS= read -r -d '' file; do
         sql_files+=("$file")
     done < <(find "$folder_path" -name "*.sql" -type f -print0 | sort -z)
-    
+
     if [[ ${#sql_files[@]} -eq 0 ]]; then
         print_warning "No SQL files found in: $folder_path"
         print_info "Skipping $folder_description SQL script execution"
         return 0
     fi
-    
+
     print_info "Found ${#sql_files[@]} SQL files to execute in $folder_description"
-    
+
     local success_count=0
     local failure_count=0
-    
+
     # Execute each SQL file in alphabetical order
     for sql_file in "${sql_files[@]}"; do
         local filename=$(basename "$sql_file")
         print_info "Executing SQL script: $filename"
-        
+
         # Read SQL file content
         local sql_content
         if ! sql_content=$(cat "$sql_file"); then
@@ -711,7 +759,11 @@ execute_sql_scripts_from_folder() {
             ((failure_count++))
             continue
         fi
-        
+
+        # Replace placeholders in SQL content
+        sql_content=$(replace_sql_placeholders "$sql_content")
+        print_info "Replaced placeholders in SQL content"
+
         # Execute SQL using bq query
         if bq query --use_legacy_sql=false --project_id="$PROJECT_ID" "$sql_content"; then
             print_success "Successfully executed: $filename"
@@ -720,16 +772,16 @@ execute_sql_scripts_from_folder() {
             print_error "Failed to execute SQL script: $filename"
             ((failure_count++))
         fi
-        
+
         echo ""
     done
-    
+
     print_step "$folder_description SQL Execution Summary"
     print_success "Successfully executed: $success_count scripts"
     if [[ $failure_count -gt 0 ]]; then
         print_warning "Failed to execute: $failure_count scripts"
     fi
-    
+
     if [[ $success_count -eq 0 && ${#sql_files[@]} -gt 0 ]]; then
         print_error "No SQL scripts were successfully executed in $folder_description"
         exit 1
@@ -1085,6 +1137,9 @@ main() {
         execute_sql_scripts_from_folder "$DEMO_FOLDER/reports/sightings" "Sightings Reports"
     fi
     
+    # Generate final .env file
+    generate_env_file
+
     print_step "Setup Complete"
     print_success "Homeward project setup completed successfully!"
     print_info "Video ingestion bucket: gs://$HOMEWARD_VIDEO_BUCKET"

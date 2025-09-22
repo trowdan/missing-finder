@@ -26,6 +26,6 @@ def create_video_analysis_service(config: AppConfig) -> VideoAnalysisService:
     if config.data_source == DataSource.MOCK:
         return MockVideoAnalysisService()
     elif config.data_source == DataSource.BIGQUERY:
-        return BigQueryVideoAnalysisService(config.bigquery_project_id, config.bigquery_dataset)
+        return BigQueryVideoAnalysisService(config)
     else:
         raise ValueError(f"Unknown data source: {config.data_source}")
