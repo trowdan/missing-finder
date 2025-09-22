@@ -384,7 +384,19 @@ Based on development experience, the following limitations were encountered when
 
 **Future Considerations**: Expected improvement with future multimodal model versions with enhanced video processing capabilities.
 
-### 3. Object Table Cache Refresh Latency (Medium)
+### 3. AI.GENERATE structured output is quite slow (High)
+
+**Problem Statement**: Structured output is quite slow on AI.GENERATE, making more convenient in the UI to parse a json response manually.
+
+**Technical Details**:
+The video intelligence functionalities leverages structured output to return for each analyzed video a set of attributes. I experienced at least 4x more time using structured output compared to json string return with server-side parsing
+
+**Impact on Application**:
+- **Use Case Viability**: May limit deployment in scenarios with lot of videos to scan
+
+**Future Considerations**: Expected improvement with future AI.GENERATE release (for official GA)
+
+### 4. Object Table Cache Refresh Latency (Medium)
 
 **Problem Statement**: Manual cache refresh operations for BigQuery object tables do not provide immediate visibility to newly uploaded GCS objects, requiring reliance on automatic cache refresh cycles.
 
