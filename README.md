@@ -302,26 +302,61 @@ The `setup.sh` script accepts the following parameters:
 - `--demo-folder`: Path to demo data folder (optional)
 
 
-## ⚠️ BigQuery AI Friction points
+## ⚠️ BigQuery AI Friction Points
 
-Based on our development experience, I've experienced the following limitations with BigQuery + Gemini:
+Based on development experience, the following limitations were encountered when integrating BigQuery with Gemini AI models:
 
-### 1. Manual Cache Refresh Issues
-- **Problem**: Manual cache refresh for object tables doesn't work as expected
-- **Impact**: May require waiting for automatic cache refresh cycles
-- **Workaround**: Use automatic cache refresh with appropriate `max_staleness` settings
+### 1. ML.GENERATE_TEXT Reliability Issues with Object Tables (Critical)
 
-### 2. ML.GENERATE_TEXT with Object Tables
-- **Problem**: Direct use of `ML.GENERATE_TEXT` with object tables encounters issues with both global and regional endpoints
-- **Impact**: Limits direct video analysis capabilities
-- **Current Status**: Under investigation, may require alternative approaches
+**Problem Statement**: The `ML.GENERATE_TEXT` function exhibits severe reliability issues when processing unstructured files (images, videos) referenced through BigQuery object tables, returning null results approximately 90% of the time.
 
-### 3. Object Table as Standard Table Treatment
-- **Problem**: Treating object tables as standard tables in `ML.GENERATE_TEXT` queries fails
-- **Impact**: Requires specific handling for video content analysis
-- **Workaround**: Use object table-specific functions and configurations
+**Technical Details**:
+- Occurs across both global and regional BigQuery endpoints
+- Affects multiple Gemini model variants (2.5 Flash, 2.5 Pro)
+- Reproducible even with simple analysis tasks following official Google Cloud documentation
+- Issue persists regardless of file format, size, or GCS bucket configuration
 
-For detailed technical information about these limitations, see `limitations.ipynb`.
+**Impact on Application**:
+- **Development Impact**: Forced migration from `ML.GENERATE_TEXT` to `AI.GENERATE_TEXT`, requiring code refactoring
+- **Reliability Concerns**: Even the alternative `AI.GENERATE_TEXT` shows intermittent null responses
+- **Production Readiness**: Creates uncertainty about system reliability for mission-critical missing person cases
+
+**Evidence**: ![ML.GENERATE_TEXT failure](./docs/img/problems_ml_generate.png "ML.GENERATE_TEXT failure")
+
+### 2. Gemini Video Analysis Limitations with Low-Quality Surveillance Footage (High)
+
+**Problem Statement**: Gemini 2.5 Pro demonstrates poor performance when analyzing low-resolution surveillance videos, particularly those from the VIRAT open dataset commonly used in this use case.
+
+**Technical Details**:
+- Test footage characteristics: Long-distance surveillance cameras, low resolution (optimized for storage/bandwidth)
+- Model fails to identify persons even with comprehensive descriptive prompts
+- Issue appears related to video quality or multimodality capabilities rather than model prompting or configuration
+- High-quality, close-range videos show significantly better results
+
+**Impact on Application**:
+- **Operational Limitation**: Reduces effectiveness with real-world surveillance footage quality typically available to law enforcement
+- **Cost-Benefit Analysis**: Forces choice between higher storage/processing costs for better video quality vs. reduced AI effectiveness
+- **Use Case Viability**: May limit deployment in scenarios where high-quality video isn't available
+
+**Future Considerations**: Expected improvement with future multimodal model versions with enhanced video processing capabilities.
+
+### 3. Object Table Cache Refresh Latency (Medium)
+
+**Problem Statement**: Manual cache refresh operations for BigQuery object tables do not provide immediate visibility to newly uploaded GCS objects, requiring reliance on automatic cache refresh cycles.
+
+**Technical Details**:
+- Manual `REFRESH` operations on external tables show inconsistent immediate effect
+- Automatic cache refresh governed by `max_staleness` parameter introduces unpredictable delays
+- Affects real-time video processing workflows where immediate analysis is critical
+
+**Impact on Application**:
+- **Development Workflow**: Complicates testing and development cycles
+- **Real-time Processing**: Introduces delays in processing newly uploaded surveillance footage
+- **User Experience**: May cause confusion when uploaded videos don't immediately appear for analysis
+
+**Workaround**: For production deployment, configure automatic cache refresh with optimized `max_staleness` settings. For development, populate GCS buckets before creating external tables to avoid cache timing issues.
+
+**Evidence**: ![Cache refresh failure](./docs/img/problems_obj_table_cache.png "Cache refresh failure")
 
 ## 🤝 Contributing
 
