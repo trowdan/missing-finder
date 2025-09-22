@@ -135,7 +135,7 @@ class BigQueryVideoAnalysisService(VideoAnalysisService):
         distinguishing_marks = missing_person_data.get("distinguishing_marks", "None") if missing_person_data else "None"
 
         # Build height/weight description like in demo notebook
-        build_height = f"{height}m, {weight}kg" if height != "Unknown" and weight != "Unknown" else "Unknown"
+        build_height = f"{height}cm, {weight}kg" if height != "Unknown" and weight != "Unknown" else "Unknown"
 
         # Extract clothing parts from description (simplified for demo)
         clothing_top = "Unknown"
@@ -166,8 +166,7 @@ Carefully analyze the following description of the missing person. Every detail 
 - **Approximate Age:** `{age}`
 - **Build - Height:** `{build_height}`
 - **Hair Color and Style:** `{hair}`
-- **Clothing (Top):** `{clothing_top}`
-- **Clothing (Bottom):** `{clothing_botton}`
+- **Clothing:** `{clothing_top}`
 - **Footwear:** `{footwear}`
 - **Accessories:** `{accessories}`
 - **Distinguishing Features:** `{features}`
@@ -185,46 +184,6 @@ You must perform the following steps in your analysis:
     -   Return the confidence score of the finding in the range 0.0 to 1.0
 """
 
-        # Use the exact VIDEO_ANALYSIS_PROMPT_OUTPUT from demo notebook
-        VIDEO_ANALYSIS_PROMPT_OUTPUT = """
-# OUTPUT FORMAT
-Your final output MUST be a single JSON object. Do not include any text or explanations outside of this JSON structure.
-
-**If the person is found:**
-```json
-{
-  "personFound": true,
-  "confidenceScore": 0.85,
-  "matchJustification": "A detailed explanation of why the confidence score was given. List all matching and non-matching features. Example: 'Confidence is high due to a perfect match on the red hooded sweatshirt, blue jeans, and black backpack. Subject's build and hair color are also consistent. Face was partially obscured, preventing a 1.0 score.'",
-  "summaryOfFindings": "A concise, human-readable summary of the events. Example: 'The missing person was spotted at 00:14:32 walking east on the station platform. They appeared to be alone and were walking at a normal pace while looking at their phone.'",
-  "appearances": [
-    {
-      "timestampStart": "HH:MM:SS",
-      "timestampEnd": "HH:MM:SS",
-      "actionsAndBehavior": "Detailed description of what the subject is doing during this specific timeframe.",
-      "directionOfTravel": "e.g., Northbound, Towards the exit, Away from the camera",
-      "companions": [
-        {
-          "description": "Detailed description of companion 1: Gender, estimated age, build, hair, clothing (top, bottom, shoes), and any notable accessories or features."
-        }
-      ]
-    }
-  ]
-}
-```
-**If the person is not found:**
-```json
-{
-  "personFound": false,
-  "confidenceScore": 0,
-  "matchJustification": "",
-  "summaryOfFindings": "",
-  "appearances": [],
-  "companions": []
-}
-```
-"""
-
         # Format the prompt with the missing person data (just like in demo notebook)
         formatted_prompt = VIDEO_ANALYSIS_PROMPT.format(
             gender=gender,
@@ -239,7 +198,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
         )
 
         # Combine with output format (just like in demo notebook)
-        complete_prompt = formatted_prompt + "\n" + VIDEO_ANALYSIS_PROMPT_OUTPUT
+        complete_prompt = formatted_prompt + "\n"
 
         return complete_prompt
 
@@ -260,7 +219,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             ),
             connection_id => '{self.connection_id}',
             endpoint => 'gemini-2.5-pro',
-            output_schema => 'personFound BOOL, confidenceScore FLOAT64, matchJustification STRING, summaryOfFindings STRING, appearances ARRAY<STRUCT<timestampStart STRING, timestampEnd STRING, actionsAndBehavior STRING, directionOfTravel STRING, companions ARRAY<STRUCT<description STRING>>>>',
+            output_schema => 'personFound BOOL, confidenceScore FLOAT64, matchJustification STRING, summaryOfFindings STRING',
             model_params => JSON '{{"generation_config": {{"temperature": 0}}}}'
           ) as result
         FROM `{self.project_id}.{self.dataset_id}.video_objects`
@@ -272,14 +231,25 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             start_date_str = request.start_date.strftime("%Y-%m-%d")
             end_date_str = request.end_date.strftime("%Y-%m-%d")
 
-            query += """
+            query += f"""
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND PARSE_DATETIME('%Y%m%d%H%M%S', meta.value) BETWEEN
+                DATETIME('{start_date_str}') AND DATETIME('{end_date_str} 23:59:59')
+          )
         """
 
         # Add time range filtering if specified (not "All Day")
         if hasattr(request, 'time_range') and request.time_range and request.time_range != "All Day":
             time_conditions = self._get_time_range_condition(request.time_range)
             if time_conditions:
-                query += """
+                query += f"""
+          AND EXISTS (
+            SELECT 1 FROM UNNEST(metadata) AS meta
+            WHERE meta.name = 'timestamp'
+            AND EXTRACT(HOUR FROM PARSE_DATETIME('%Y%m%d%H%M%S', meta.value)) {time_conditions}
+          )
         """
 
         # Add geographic filtering if coordinates and radius are provided
@@ -287,7 +257,15 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             hasattr(request, 'search_radius_km') and
             request.last_seen_latitude and request.last_seen_longitude and request.search_radius_km):
 
-            query += """
+            query += f"""
+          AND ST_DWITHIN(
+            ST_GEOGPOINT(
+              CAST((SELECT value FROM UNNEST(metadata) WHERE name = 'longitude') AS FLOAT64),
+              CAST((SELECT value FROM UNNEST(metadata) WHERE name = 'latitude') AS FLOAT64)
+            ),
+            ST_GEOGPOINT({request.last_seen_longitude}, {request.last_seen_latitude}),
+            {request.search_radius_km * 1000}  -- Convert km to meters for ST_DWITHIN
+          )
         """
 
         return query
