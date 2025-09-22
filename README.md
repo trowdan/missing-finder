@@ -4,6 +4,14 @@
 
 ![Homeward Logo](docs/img/homeward_logo.png)
 
+## Hackathon Approach
+
+This submission draws inspiration from all three BigQuery AI Hackathon approaches:
+
+- **🧠 The AI Architect**: Leveraging BigQuery's AI capabilities to build an intelligent missing persons detection system that summarize cases, sighting and video intelligence results.
+- **🕵️‍♀️ The Semantic Detective**: Implementing advanced semantic matching between missing person descriptions and sighting reports using embeddings and vector similarity search.
+- **🖼️ The Multimodal Pioneer**: *Primary focus* - Utilizing Gemini's multimodal capabilities to analyze video surveillance footage, combining visual content analysis with textual case descriptions for comprehensive person identification
+
 ## Overview
 
 **Homeward** is an innovative missing persons finder application that leverages the power of Google Cloud Platform's AI capabilities to help law enforcement agencies locate missing individuals through video surveillance analysis and semantic matching between case reports and sightings.
@@ -166,6 +174,31 @@ OPTIONS (
 - **ST_GEOGPOINT()**: Convert latitude/longitude from video filenames to geographic points within BigQuery
 - **ST_DWITHIN()**: Proximity-based filtering for relevant surveillance footage within BigQuery
 
+## 📊 Demo Data Sources
+
+The demo data included in this repository comes from various sources:
+
+### Missing Person Reports and Sightings
+- **Source**: AI-generated content
+- **Description**: All missing person case reports and sighting examples in the `demo/reports/` directory have been generated using AI to create realistic but fictional scenarios
+- **Purpose**: Provides diverse test cases while ensuring no real personal information is used
+
+### Video Surveillance Footage
+The demo includes two types of video content:
+
+#### VIRAT OpenData Dataset
+- **Source**: [VIRAT Video Dataset](http://www.viratdata.org/) - A publicly available collection of natural video footage
+- **Description**: Real-world surveillance footage originally collected for computer vision research
+- **Characteristics**: Typical surveillance camera quality with long-distance shots and lower resolution
+- **Note**: Due to the low resolution and distance of these recordings, they present realistic challenges for the the actual LLM-based person detection
+
+#### Custom Videos
+- **Source**: Self-recorded footage specifically for this project
+- **Description**: Higher resolution videos created to demonstrate optimal AI analysis capabilities
+- **Purpose**: Shows the system's potential when working with better quality surveillance footage
+- **Location**: The metadata about the video location has been modified
+
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -241,6 +274,11 @@ The notebook contains the code for:
    ```
 
    The application will be available at `http://localhost:8080`
+
+5. **Run the destroy script:**
+   ```bash
+   ./destroy.sh --project-id your-project-id --region us-central1
+   ```
 
 ## 📁 Project Structure
 
