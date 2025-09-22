@@ -358,19 +358,15 @@ Based on development experience, the following limitations were encountered when
 
 **Evidence**: ![Cache refresh failure](./docs/img/problems_obj_table_cache.png "Cache refresh failure")
 
-## 🤝 Contributing
+## 🔭 Future Enhancement
 
 This project was developed as a submission for the BigQuery AI Hackathon. While the core functionality demonstrates the integration possibilities, there are several areas for future enhancement:
 
-1. **Advanced Video Analytics**: Implement more sophisticated video processing algorithms
-2. **Real-time Processing**: Add streaming capabilities for live video analysis
-3. **Machine Learning Pipeline**: Develop custom ML models for person identification
-4. **Mobile Application**: Create companion mobile app for field officers
-5. **Integration APIs**: Develop REST APIs for integration with existing law enforcement systems
-
-## 📄 License
-
-This project is developed as a proof-of-concept for the BigQuery AI Hackathon. Please see individual component licenses for third-party dependencies.
+1. **Enhanced Video Intelligence**: Implement more sophisticated video processing algorithms, comparing performance and costs of ML models exposed through Vertex AI with Gemini capabilities.
+2. **Real-time Processing**: Add streaming capabilities for live video analysis (currently not supported through BigQuery)
+3. **Production Readiness**: Refactor codebase following software engineering best practices.
+4. **Mobile Application**: Develop companion mobile app for field officers to enable real-time case updates and sighting reports from the field.
+5. **Database Optimization**: Evaluate AlloyDB for faster transactional performance using query federation with BigQuery for hybrid OLTP/OLAP/AI workloads.
 
 ---
 
