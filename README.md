@@ -28,16 +28,7 @@ The primary users of this application are:
 * **Government agency personnel**: Staff from national or regional centers for missing persons who are involved in the coordination and management of these cases.
 
 ## 📹 Video Demo
-<center>
- <iframe width="560" 
-         height="315" 
-         src="https://youtu.be/IpsoQm4AtUM" 
-         title="YouTube video player" 
-         frameborder="0" 
-         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-         allowfullscreen>
- </iframe>
-</center>
+ ![Video Demo](https://youtu.be/IpsoQm4AtUM)
 
 ## 💼 Business impact
 
