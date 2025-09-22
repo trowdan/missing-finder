@@ -222,14 +222,20 @@ Depending on the version you want to try, you can follow the following instructi
 ### Project Setup - 📊 Notebook
 ---
 
-1. **Open the notebook**
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd missing-finder
+   ```
+
+2. **Open the notebook**
 
 Open the `demo-notebook.ipynb` file with your preferred Jupyter notebook editor or run the following command:
 
 ```bash
 jupyter notebook demo-notebook.ipynb
 ```
-2. **Follow the instructions within the notebook**
+3. **Follow the instructions within the notebook**
 
 The notebook contains the code for:
 - Setting up BigQuery object tables for video files
