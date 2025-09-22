@@ -862,7 +862,7 @@ process_media_files() {
             # Determine MIME type based on file extension
             local file_ext="${filename##*.}"
             local mime_type="video/mp4"
-            case "${file_ext,,}" in
+            case "$(echo "$file_ext" | tr '[:upper:]' '[:lower:]')" in
                 avi) mime_type="video/x-msvideo" ;;
                 mov) mime_type="video/quicktime" ;;
                 mkv) mime_type="video/x-matroska" ;;
