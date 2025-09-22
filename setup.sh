@@ -468,6 +468,8 @@ create_video_downloader_service_account() {
             --display-name="$service_account_display_name" \
             --description="$service_account_description"; then
             print_success "Service account created successfully: ${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com"
+            print_info "Waiting for service account propagation (30 seconds)..."
+            sleep 30
         else
             print_error "Failed to create service account"
             exit 1
