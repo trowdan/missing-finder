@@ -731,10 +731,36 @@ def perform_panel_search(
             )
         elif search_type == "semantic":
             description = semantic_fields.description_input.value
-            if panel_type == "missing_persons":
-                results, total_count = data_service.search_cases_semantic(description, page=1, page_size=10)
+
+            # Calculate embeddings before semantic search to ensure all data has embeddings
+            ui.notify("🧠 Calculating embeddings for semantic search...", type="info")
+
+            # Update embeddings for missing persons
+            mp_result = data_service.update_missing_persons_embeddings()
+            if not mp_result["success"]:
+                ui.notify(f"❌ Missing person embedding calculation failed: {mp_result['message']}", type="negative")
+                # Fall back to regular search without semantic functionality
+                if panel_type == "missing_persons":
+                    results, total_count = data_service.get_cases(page=1, page_size=10)
+                else:
+                    results, total_count = data_service.get_sightings(page=1, page_size=10)
             else:
-                results, total_count = data_service.search_sightings_semantic(description, page=1, page_size=10)
+                # Update embeddings for sightings
+                sighting_result = data_service.update_sightings_embeddings()
+                if not sighting_result["success"]:
+                    ui.notify(f"❌ Sighting embedding calculation failed: {sighting_result['message']}", type="negative")
+                    # Fall back to regular search without semantic functionality
+                    if panel_type == "missing_persons":
+                        results, total_count = data_service.get_cases(page=1, page_size=10)
+                    else:
+                        results, total_count = data_service.get_sightings(page=1, page_size=10)
+                else:
+                    # Both embedding calculations succeeded, proceed with semantic search
+                    ui.notify("✅ Embeddings calculated, performing semantic search...", type="positive")
+                    if panel_type == "missing_persons":
+                        results, total_count = data_service.search_cases_semantic(description, page=1, page_size=3)
+                    else:
+                        results, total_count = data_service.search_sightings_semantic(description, page=1, page_size=3)
         else:
             if panel_type == "missing_persons":
                 results, total_count = data_service.get_cases(page=1, page_size=10)
