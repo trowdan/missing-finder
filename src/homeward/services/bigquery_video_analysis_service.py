@@ -283,7 +283,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             start_date_str = request.start_date.strftime("%Y-%m-%d")
             end_date_str = request.end_date.strftime("%Y-%m-%d")
 
-            query += """
+            query += f"""
           AND EXISTS (
             SELECT 1 FROM UNNEST(metadata) AS meta
             WHERE meta.name = 'timestamp'
@@ -296,7 +296,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
         if hasattr(request, 'time_range') and request.time_range and request.time_range != "All Day":
             time_conditions = self._get_time_range_condition(request.time_range)
             if time_conditions:
-                query += """
+                query += f"""
           AND EXISTS (
             SELECT 1 FROM UNNEST(metadata) AS meta
             WHERE meta.name = 'timestamp'
@@ -309,7 +309,7 @@ Your final output MUST be a single JSON object. Do not include any text or expla
             hasattr(request, 'search_radius_km') and
             request.last_seen_latitude and request.last_seen_longitude and request.search_radius_km):
 
-            query += """
+            query += f"""
           AND EXISTS (
             SELECT 1 FROM UNNEST(metadata) AS meta
             WHERE meta.name = 'timestamp'
